@@ -1,6 +1,6 @@
 """Integration tests for document parser."""
 
-from transcript_etl_pipeline.document.model import SectionType
+from transcript_etl_pipeline.document.model import Paragraph, SectionType
 from transcript_etl_pipeline.document.parser import parse_enhanced_text
 
 
@@ -42,7 +42,7 @@ class TestParseEnhancedText:
         assert has_transcript_label
 
         # Should have speaker paragraphs somewhere
-        all_paragraphs = []
+        all_paragraphs: list[Paragraph] = []
         for section in doc.sections:
             all_paragraphs.extend(section.paragraphs)
 
@@ -64,7 +64,7 @@ class TestParseEnhancedText:
         assert len(doc.sections) >= 1
 
         # Should have multiple paragraphs total
-        all_paragraphs = []
+        all_paragraphs: list[Paragraph] = []
         for section in doc.sections:
             all_paragraphs.extend(section.paragraphs)
         assert len(all_paragraphs) >= 1
@@ -81,7 +81,7 @@ class TestParseEnhancedText:
         )
         doc = parse_enhanced_text(text)
         # Should detect multiple paragraphs
-        all_paragraphs = []
+        all_paragraphs: list[Paragraph] = []
         for section in doc.sections:
             all_paragraphs.extend(section.paragraphs)
         assert len(all_paragraphs) >= 2
@@ -107,7 +107,7 @@ class TestParseEnhancedText:
         assert len(doc.sections) >= 1
 
         # Collect all paragraphs
-        all_paragraphs = []
+        all_paragraphs: list[Paragraph] = []
         for section in doc.sections:
             all_paragraphs.extend(section.paragraphs)
 
@@ -140,11 +140,11 @@ class TestParseEnhancedText:
         assert len(doc.sections) >= 1
 
         # Count labeled paragraphs
-        all_paragraphs = []
+        all_paragraphs: list[Paragraph] = []
         for section in doc.sections:
             all_paragraphs.extend(section.paragraphs)
 
-        labeled_paragraphs = [p for p in all_paragraphs if p.label is not None]
+        labeled_paragraphs: list[Paragraph] = [p for p in all_paragraphs if p.label is not None]
         # Should have several labeled paragraphs
         assert len(labeled_paragraphs) >= 2
 
@@ -162,7 +162,7 @@ class TestParseEnhancedText:
         assert len(doc.sections) >= 1
 
         # Should have speaker paragraphs
-        all_paragraphs = []
+        all_paragraphs: list[Paragraph] = []
         for section in doc.sections:
             all_paragraphs.extend(section.paragraphs)
         assert len(all_paragraphs) >= 1

@@ -11,6 +11,14 @@ from __future__ import annotations
 
 import re
 
+__all__ = [
+    "normalize_text",
+    "_normalize_line_endings",
+    "_clean_whitespace",
+    "_is_label",
+    "_normalize_labels",
+]
+
 
 def _normalize_line_endings(text: str) -> str:
     """Convert all line endings to Windows CRLF (\\r\\n).

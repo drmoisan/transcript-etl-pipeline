@@ -6,6 +6,13 @@ inserting CRLF after detected paragraphs while preserving document structure.
 
 import re
 
+__all__ = [
+    "detect_paragraphs",
+    "_is_label_line",
+    "_ends_with_sentence_terminator",
+    "_should_add_paragraph_break",
+]
+
 
 def detect_paragraphs(text: str) -> str:
     """Detect and format paragraphs in transcript text.

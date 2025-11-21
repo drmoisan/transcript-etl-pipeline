@@ -7,6 +7,19 @@ Dan Moisan and provide UI fallback for unresolved speakers.
 import re
 from typing import Protocol
 
+__all__ = [
+    "SpeakerResolutionUI",
+    "resolve_speakers",
+    "_extract_speaker_labels",
+    "_identify_dan_moisan",
+    "_extract_names_from_metadata",
+    "_extract_names_from_dialogue",
+    "_extract_speaker_samples",
+    "_apply_speaker_mappings",
+    "_is_speaker_line",
+    "_extract_speaker_from_line",
+]
+
 
 class SpeakerResolutionUI(Protocol):
     """Protocol for UI callback to resolve unknown speakers."""

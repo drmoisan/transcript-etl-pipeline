@@ -35,8 +35,8 @@ ignore = ["ANN101", "ANN102"]
 fixable = ["ALL"]
 
 [tool.pyright]
-include = ["src"]
-exclude = ["tests/**", "**/.venv/**"]
+include = ["src", "tests"]
+exclude = ["**/.venv/**"]
 typeCheckingMode = "strict"
 reportMissingImports = true
 reportMissingTypeStubs = false

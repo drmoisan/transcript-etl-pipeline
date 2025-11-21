@@ -1,14 +1,14 @@
 """Tests for speaker resolution functionality."""
 
 from transcript_etl_pipeline.transform.speakers import (
-    _apply_speaker_mappings,
-    _extract_names_from_dialogue,
-    _extract_names_from_metadata,
-    _extract_speaker_from_line,
-    _extract_speaker_labels,
-    _extract_speaker_samples,
-    _identify_dan_moisan,
-    _is_speaker_line,
+    _apply_speaker_mappings,  # pyright: ignore[reportPrivateUsage]
+    _extract_names_from_dialogue,  # pyright: ignore[reportPrivateUsage]
+    _extract_names_from_metadata,  # pyright: ignore[reportPrivateUsage]
+    _extract_speaker_from_line,  # pyright: ignore[reportPrivateUsage]
+    _extract_speaker_labels,  # pyright: ignore[reportPrivateUsage]
+    _extract_speaker_samples,  # pyright: ignore[reportPrivateUsage]
+    _identify_dan_moisan,  # pyright: ignore[reportPrivateUsage]
+    _is_speaker_line,  # pyright: ignore[reportPrivateUsage]
     resolve_speakers,
 )
 
@@ -156,28 +156,28 @@ class TestExtractSpeakerSamples:
 
 
 class TestApplySpeakerMappings:
-    """Test speaker mapping application."""
+    """Test speaker _mapping application."""
 
     def test_simple_mapping(self) -> None:
-        """Test applying simple speaker mapping."""
+        """Test applying simple speaker _mapping."""
         text = "Speaker A: Hello\r\nSpeaker B: Hi"
-        mapping = {"Speaker A": "John", "Speaker B": "Jane"}
-        result = _apply_speaker_mappings(text, mapping)
+        _mapping = {"Speaker A": "John", "Speaker B": "Jane"}
+        result = _apply_speaker_mappings(text, _mapping)
         assert "John:" in result
         assert "Jane:" in result
         assert "Speaker A:" not in result
 
     def test_empty_mapping(self) -> None:
-        """Test with empty mapping."""
+        """Test with empty _mapping."""
         text = "Speaker A: Hello"
         result = _apply_speaker_mappings(text, {})
         assert result == text
 
     def test_partial_mapping(self) -> None:
-        """Test mapping only some speakers."""
+        """Test _mapping only some speakers."""
         text = "Speaker A: Hello\r\nSpeaker B: Hi"
-        mapping = {"Speaker A": "John"}
-        result = _apply_speaker_mappings(text, mapping)
+        _mapping = {"Speaker A": "John"}
+        result = _apply_speaker_mappings(text, _mapping)
         assert "John:" in result
         assert "Speaker B:" in result
 
@@ -188,37 +188,37 @@ class TestResolveSpeakers:
     def test_no_speakers(self) -> None:
         """Test text without speakers."""
         text = "Just plain text"
-        result, mapping = resolve_speakers(text)
+        result, _mapping = resolve_speakers(text)
         assert result == text
-        assert mapping == {}
+        assert _mapping == {}
 
     def test_empty_text(self) -> None:
         """Test empty text."""
-        result, mapping = resolve_speakers("")
+        result, _mapping = resolve_speakers("")
         assert result == ""
-        assert mapping == {}
+        assert _mapping == {}
 
     def test_with_metadata_names(self) -> None:
         """Test resolution using metadata names."""
         text = "Attendees: John\r\nSpeaker A: Hello everyone."
-        result, mapping = resolve_speakers(text)
+        _result, _mapping = resolve_speakers(text)
         # Should attempt to map Speaker A to John
-        assert len(mapping) >= 0  # May or may not auto-resolve
+        assert len(_mapping) >= 0  # May or may not auto-resolve
 
     def test_with_ui_callback(self) -> None:
         """Test resolution with UI callback."""
 
-        def mock_ui(speaker: str, samples: list[str]) -> str | None:
+        def mock_ui(speaker_label: str, sample_utterances: list[str]) -> str | None:
             """Mock UI that resolves Speaker A to John."""
-            if speaker == "Speaker A":
+            if speaker_label == "Speaker A":
                 return "John"
             return None
 
         text = "Speaker A: Hello\r\nSpeaker A: World"
-        result, mapping = resolve_speakers(text, ui_callback=mock_ui)
+        result, _mapping = resolve_speakers(text, ui_callback=mock_ui)
         # Should resolve Speaker A to John
-        if "Speaker A" in mapping:
-            assert mapping["Speaker A"] == "John"
+        if "Speaker A" in _mapping:
+            assert _mapping["Speaker A"] == "John"
             assert "John:" in result
 
     def test_dan_moisan_identification(self) -> None:
@@ -228,26 +228,26 @@ class TestResolveSpeakers:
             "Speaker B: I think it's great.\r\n"
             "Speaker A: Thanks Dan."
         )
-        result, mapping = resolve_speakers(text)
+        _result, _mapping = resolve_speakers(text)
         # Should identify Speaker B as Dan Moisan
-        if "Speaker B" in mapping:
-            assert mapping["Speaker B"] == "Dan Moisan"
+        if "Speaker B" in _mapping:
+            assert _mapping["Speaker B"] == "Dan Moisan"
 
     def test_preserves_non_speaker_text(self) -> None:
         """Test that non-speaker text is preserved."""
         text = "Meeting: Team Sync\r\nSpeaker A: Hello"
-        result, mapping = resolve_speakers(text)
+        result, _mapping = resolve_speakers(text)
         assert "Meeting: Team Sync" in result
 
     def test_ui_callback_cancel(self) -> None:
         """Test UI callback returning None (cancel)."""
 
-        def mock_ui_cancel(speaker: str, samples: list[str]) -> str | None:
+        def mock_ui_cancel(speaker_label: str, sample_utterances: list[str]) -> str | None:
             """Mock UI that always cancels."""
             return None
 
         text = "Speaker A: Hello"
-        result, mapping = resolve_speakers(text, ui_callback=mock_ui_cancel)
+        result, _mapping = resolve_speakers(text, ui_callback=mock_ui_cancel)
         # Should not resolve if UI cancels
         # Original text should be preserved
         assert "Speaker A:" in result

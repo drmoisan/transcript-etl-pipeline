@@ -8,14 +8,14 @@ class TestEnhanceText:
 
     def test_empty_text(self) -> None:
         """Test empty text returns empty."""
-        result, mapping = enhance_text("")
+        result, _mapping = enhance_text("")
         assert result == ""
-        assert mapping == {}
+        assert _mapping == {}
 
     def test_simple_transcript(self) -> None:
         """Test enhancement of simple transcript."""
         text = "Speaker A: Hello.\r\nSpeaker B: Hi there."
-        result, mapping = enhance_text(text)
+        result, _mapping = enhance_text(text)
         # Should have speaker labels
         assert "Speaker A:" in result or "Speaker B:" in result
         # Should preserve structure
@@ -25,23 +25,23 @@ class TestEnhanceText:
     def test_with_ui_callback(self) -> None:
         """Test enhancement with UI callback for speaker resolution."""
 
-        def mock_ui(speaker: str, samples: list[str]) -> str | None:
+        def mock_ui(speaker_label: str, sample_utterances: list[str]) -> str | None:
             """Mock UI that resolves speakers."""
-            if speaker == "Speaker A":
+            if speaker_label == "Speaker A":
                 return "John"
             return None
 
         text = "Speaker A: Hello everyone.\r\nSpeaker A: How are you?"
-        result, mapping = enhance_text(text, ui_callback=mock_ui)
+        result, _mapping = enhance_text(text, ui_callback=mock_ui)
         # Should resolve Speaker A to John
-        if "Speaker A" in mapping:
-            assert mapping["Speaker A"] == "John"
+        if "Speaker A" in _mapping:
+            assert _mapping["Speaker A"] == "John"
             assert "John:" in result
 
     def test_paragraph_detection_applied(self) -> None:
         """Test that paragraph detection is applied."""
         text = "Speaker A: First sentence.\r\nSecond sentence.\r\nThird sentence."
-        result, mapping = enhance_text(text)
+        result, _mapping = enhance_text(text)
         # Should add paragraph breaks after sentences
         # Count blank lines as indication of paragraph breaks
         blank_line_count = result.count("\r\n\r\n")
@@ -51,22 +51,22 @@ class TestEnhanceText:
     def test_speaker_resolution_then_paragraphs(self) -> None:
         """Test that speaker resolution happens before paragraph detection."""
 
-        def mock_ui(speaker: str, samples: list[str]) -> str | None:
+        def mock_ui(speaker_label: str, sample_utterances: list[str]) -> str | None:
             """Mock UI that resolves Speaker A."""
-            if speaker == "Speaker A":
+            if speaker_label == "Speaker A":
                 return "Alice"
             return None
 
         text = "Speaker A: First.\r\nSecond.\r\nSpeaker B: Hello."
-        result, mapping = enhance_text(text, ui_callback=mock_ui)
+        result, _mapping = enhance_text(text, ui_callback=mock_ui)
         # Should have Alice instead of Speaker A
-        if "Speaker A" in mapping:
+        if "Speaker A" in _mapping:
             assert "Alice:" in result
 
     def test_metadata_preserved(self) -> None:
         """Test that metadata section is preserved."""
         text = "Meeting: Team Sync\r\nDate: 2024-01-15\r\nSpeaker: Hello everyone."
-        result, mapping = enhance_text(text)
+        result, _mapping = enhance_text(text)
         # Metadata should be preserved
         assert "Meeting: Team Sync" in result
         assert "Date: 2024-01-15" in result
@@ -78,10 +78,10 @@ class TestEnhanceText:
             "Speaker B: I think it's good.\r\n"
             "Speaker A: Thanks."
         )
-        result, mapping = enhance_text(text)
+        result, _mapping = enhance_text(text)
         # Should identify Speaker B as Dan Moisan
-        if "Speaker B" in mapping:
-            assert mapping["Speaker B"] == "Dan Moisan"
+        if "Speaker B" in _mapping:
+            assert _mapping["Speaker B"] == "Dan Moisan"
             assert "Dan Moisan:" in result
 
     def test_complex_transcript(self) -> None:
@@ -94,7 +94,7 @@ class TestEnhanceText:
             "Speaker B: I'm doing well, thanks.\r\n"
             "What about you?"
         )
-        result, mapping = enhance_text(text)
+        result, _mapping = enhance_text(text)
         # Should preserve metadata
         assert "Meeting:" in result
         # Should have speakers (possibly resolved)
@@ -105,7 +105,7 @@ class TestEnhanceText:
     def test_no_ui_callback(self) -> None:
         """Test enhancement without UI callback."""
         text = "Speaker A: Hello.\r\nSpeaker B: Hi."
-        result, mapping = enhance_text(text)
+        result, _mapping = enhance_text(text)
         # Should complete without error
         assert "Hello" in result
         # Might or might not resolve speakers (depends on auto-resolution)

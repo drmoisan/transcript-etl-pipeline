@@ -1,10 +1,10 @@
 """Tests for text normalization."""
 
 from transcript_etl_pipeline.transform.normalize import (
-    _clean_whitespace,
-    _is_label,
-    _normalize_labels,
-    _normalize_line_endings,
+    _clean_whitespace,  # pyright: ignore[reportPrivateUsage]
+    _is_label,  # pyright: ignore[reportPrivateUsage]
+    _normalize_labels,  # pyright: ignore[reportPrivateUsage]
+    _normalize_line_endings,  # pyright: ignore[reportPrivateUsage]
     normalize_text,
 )
 

@@ -1,9 +1,9 @@
 """Tests for paragraph detection functionality."""
 
 from transcript_etl_pipeline.transform.paragraphs import (
-    _ends_with_sentence_terminator,
-    _is_label_line,
-    _should_add_paragraph_break,
+    _ends_with_sentence_terminator,  # pyright: ignore[reportPrivateUsage]
+    _is_label_line,  # pyright: ignore[reportPrivateUsage]
+    _should_add_paragraph_break,  # pyright: ignore[reportPrivateUsage]
     detect_paragraphs,
 )
 

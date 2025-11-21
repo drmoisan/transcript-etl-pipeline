@@ -37,7 +37,7 @@ class TestEndToEndDocx:
         assert normalized is not None
 
         # Transform: Enhance (no UI callback for test)
-        enhanced, speaker_map = enhance_text(normalized)
+        enhanced, _speaker_map = enhance_text(normalized)
         assert enhanced is not None
 
         # Parse
@@ -79,7 +79,7 @@ class TestEndToEndDocx:
         # Run full pipeline
         raw_text = extract_from_file(str(input_file))
         normalized = normalize_text(raw_text)
-        enhanced, speaker_map = enhance_text(normalized)
+        enhanced, _speaker_map = enhance_text(normalized)
         doc = parse_enhanced_text(enhanced)
 
         # Format as DOCX
@@ -103,7 +103,7 @@ class TestEndToEndDocx:
         # Run full pipeline
         raw_text = extract_from_file(str(fixture_path))
         normalized = normalize_text(raw_text)
-        enhanced, speaker_map = enhance_text(normalized)
+        enhanced, _speaker_map = enhance_text(normalized)
         doc = parse_enhanced_text(enhanced)
 
         # Format as DOCX
@@ -129,7 +129,7 @@ class TestEndToEndDocx:
         # Run pipeline
         raw_text = extract_from_file(str(input_file))
         normalized = normalize_text(raw_text)
-        enhanced, speaker_map = enhance_text(normalized)
+        enhanced, _speaker_map = enhance_text(normalized)
         doc = parse_enhanced_text(enhanced)
 
         # Should have no sections
