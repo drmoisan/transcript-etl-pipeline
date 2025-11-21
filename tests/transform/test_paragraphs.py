@@ -1,6 +1,5 @@
 """Tests for paragraph detection functionality."""
 
-
 from transcript_etl_pipeline.transform.paragraphs import (
     _ends_with_sentence_terminator,
     _is_label_line,

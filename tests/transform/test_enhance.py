@@ -1,6 +1,5 @@
 """Tests for enhancement orchestration."""
 
-
 from transcript_etl_pipeline.transform.enhance import enhance_text
 
 

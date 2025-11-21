@@ -1,6 +1,5 @@
 """Tests for speaker resolution functionality."""
 
-
 from transcript_etl_pipeline.transform.speakers import (
     _apply_speaker_mappings,
     _extract_names_from_dialogue,
