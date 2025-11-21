@@ -97,11 +97,12 @@ def _format_paragraph(paragraph, section_type: SectionType) -> list[str]:
     # \sb<n> = space before in twips
     # \sa<n> = space after in twips
     # \fs<n> = font size in half-points (10pt = 20)
-    # \sl<n> = line spacing in twips (negative for exact)
-    # \slmult0 = single spacing
+    # \sl<n> = line spacing in twips
+    # \slmult1 = line spacing is relative to font size
+    line_spacing_twips = int(BODY_FONT.size_pt * 20 * spacing.line_spacing)
     rtf_parts.append(
         rf"\pard\sb{space_before_twips}\sa{space_after_twips}"
-        rf"\f0\fs{int(BODY_FONT.size_pt * 2)}\sl240\slmult1"
+        rf"\f0\fs{int(BODY_FONT.size_pt * 2)}\sl{line_spacing_twips}\slmult1"
     )
 
     # Add label if present (bold)
