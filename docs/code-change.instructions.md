@@ -8,7 +8,7 @@ Please adhere to the following policy every time you make **any change** to code
 ## Before making changes
 
 * [ ] Clarify the objective. Begin reasoning from clearly stated assumptions or axioms.
-* [ ] Review [unit-test-policy.md](../docs/unit-test-policy.md), [developer-tooling](../docs/developer-tooling.md), and [README.md](../docs/README.md)
+* [ ] Review [unit-test-policy.md](../docs/unit-test-policy.md) and [developer-tooling](../docs/developer-tooling.md)
 * [ ] Read existing change plans (e.g., change-plan.md)
 * [ ] Document the plan to make changes. If it is part of an existing change plan, make any relevant updates to the plan before executing.
 
@@ -217,5 +217,5 @@ Rules for functions:
 2. Summarize key changes made and how it relates the objective.
    * Please include the rationale for the change
    * Explain any design choices and other options explored
-3. Update any supporting documents (e.g., [README](../docs/README.md)) and any workplan that was created to show progress
+3. Update any supporting documents (e.g., README) and any workplan that was created to show progress
 4. Provide clear development next steps. If development is complete, please provide detailed instructions on usage.

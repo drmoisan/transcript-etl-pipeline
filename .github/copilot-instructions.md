@@ -25,13 +25,13 @@ Your work should be structured, incremental, and fully validated through tests.
 When implementing **any** code, tests, or tasks, you must adhere to these repo policies:
 
 * **Coding Standards, Workflow, PR/commit procedures:**
-  [`docs/code-change.instructions.md`](../docs/code-change.instructions.md)
+  [code-change.instructions.md](../docs/code-change.instructions.md)
 
 * **Developer Tooling: Poetry, Black, Ruff, Pyright, Pytest, pytest-cov, coverage, pre-commit, VSCode tasks, tools for EXE bundling:**
-  [`docs/developer-tooling.md`](../docs/developer-tooling.md)
+  [developer-tooling.md](../docs/developer-tooling.md)
 
 * **Unit Test Policy (independence, determinism, clarity, AAA, etc.):**
-  [`docs/unit-test-policy.md`](../docs/unit-test-policy.md)
+  [unit-test-policy.md](../docs/unit-test-policy.md)
 
 **Never restate these policies in your code. Follow them directly.**
 
