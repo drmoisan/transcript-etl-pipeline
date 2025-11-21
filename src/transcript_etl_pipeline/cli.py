@@ -156,35 +156,90 @@ def main(args: list[str] | None = None) -> int:
     output_name = parsed_args.output_name
     output_folder = parsed_args.output_folder
 
-    # Check if required arguments are missing
-    missing_args = []
+    # Try to use UI for missing arguments
+    ui_callback: Callable[[str, list[str]], dict[str, str]] | None = None
+    use_ui = not all([source, output_folder])
 
-    if not source:
-        missing_args.append("--source")
+    if use_ui:
+        try:
+            from transcript_etl_pipeline import ui
 
-    if source == "file" and not file_path:
-        missing_args.append("--file (required when --source=file)")
+            # Prompt for source if missing
+            if not source:
+                source = ui.prompt_source_selection()
+                if not source:
+                    print("Operation cancelled by user.")
+                    return 1
 
-    if not output_name:
-        # Generate default filename
-        output_name = generate_default_filename(output_format)
-        print(f"Using default filename: {output_name}")
+            # Prompt for file if source is file and file_path is missing
+            if source == "file" and not file_path:
+                file_path = ui.prompt_file_selection()
+                if not file_path:
+                    print("Operation cancelled by user.")
+                    return 1
 
-    if not output_folder:
-        # Try to use last folder from config
-        last_folder = config.load_last_output_folder()
-        if last_folder:
-            output_folder = last_folder
-            print(f"Using last output folder: {output_folder}")
-        else:
-            missing_args.append("--output-folder")
+            # Prompt for format if not specified (though it has a default)
+            if not parsed_args.format:
+                fmt = ui.prompt_format_selection()
+                if not fmt:
+                    print("Operation cancelled by user.")
+                    return 1
+                output_format = fmt
 
-    # If any required args are missing and we don't have UI fallback, show error
-    if missing_args:
-        print(f"Error: Missing required arguments: {', '.join(missing_args)}")
-        print("\nTo use UI dialogs for missing arguments, run without arguments.")
-        parser.print_help()
-        return 1
+            # Generate default filename if not provided
+            if not output_name:
+                output_name = generate_default_filename(output_format)
+                output_name = ui.prompt_output_name(output_name)
+                if not output_name:
+                    print("Operation cancelled by user.")
+                    return 1
+
+            # Prompt for output folder if missing
+            if not output_folder:
+                last_folder = config.load_last_output_folder()
+                output_folder = ui.prompt_output_folder(last_folder)
+                if not output_folder:
+                    print("Operation cancelled by user.")
+                    return 1
+
+            # Create UI callback for speaker resolution
+            ui_callback = ui.create_speaker_resolution_callback()
+
+        except RuntimeError as e:
+            print(f"Error: {e}")
+            print("Please provide all required CLI arguments.")
+            parser.print_help()
+            return 1
+
+    # If not using UI, check for missing required args
+    if not use_ui:
+        missing_args = []
+
+        if not source:
+            missing_args.append("--source")
+
+        if source == "file" and not file_path:
+            missing_args.append("--file (required when --source=file)")
+
+        if not output_name:
+            # Generate default filename
+            output_name = generate_default_filename(output_format)
+            print(f"Using default filename: {output_name}")
+
+        if not output_folder:
+            # Try to use last folder from config
+            last_folder = config.load_last_output_folder()
+            if last_folder:
+                output_folder = last_folder
+                print(f"Using last output folder: {output_folder}")
+            else:
+                missing_args.append("--output-folder")
+
+        # If any required args are missing, show error
+        if missing_args:
+            print(f"Error: Missing required arguments: {', '.join(missing_args)}")
+            parser.print_help()
+            return 1
 
     # Validate file path if provided
     if source == "file" and file_path and not Path(file_path).exists():
@@ -209,6 +264,7 @@ def main(args: list[str] | None = None) -> int:
             output_format=output_format,
             output_name=output_name,
             output_folder=output_folder,
+            ui_callback=ui_callback,
         )
         return 0
     except Exception as e:
