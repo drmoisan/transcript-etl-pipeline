@@ -64,6 +64,7 @@ src/
     document/
       __init__.py
       model.py          # Represents labels, paragraphs, metadata, etc.
+      parser.py         # Parse enhanced text into Document model
       formatting_rules.py
 
     formatters/
@@ -360,11 +361,7 @@ Each must:
 
 ---
 
-# **6.5. Bonus Implementations**
-
-These implementations go beyond the original specification and provide additional value:
-
-### **6.5.1 Document Parser**
+# **6.5 Document Parser**
 
 Implement in `document/parser.py`:
 
@@ -376,14 +373,14 @@ Implement in `document/parser.py`:
   * Line continuation handling (multi-line paragraphs)
 * **Benefits**: Bridges transform output to formatter input cleanly
 
-### **6.5.2 Comprehensive Type Safety**
+# **6.6 Type Safety Requirements**
 
 * **Pyright strict mode compliance**: All code passes strict type checking
 * **Protocol-based design**: Use `Protocol` for extensible interfaces (e.g., `SpeakerResolutionUI`)
 * **TYPE_CHECKING patterns**: Handle untyped third-party libraries gracefully
 * **Benefits**: Catch errors at development time, improve IDE support, enable refactoring confidence
 
-### **6.5.3 Robust Error Handling**
+# **6.7 Error Handling Requirements**
 
 * **Graceful degradation**: Handle tkinter unavailability with clear error messages
 * **Encoding detection**: Automatic UTF-8/UTF-16 detection for file input

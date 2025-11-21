@@ -7,12 +7,12 @@ The repository has **significantly exceeded** the outdated IMPLEMENTATION_STATUS
 #### **Phase 1: Foundation & Data Models** ✅ COMPLETE
 - ✅ `document/model.py` - All data structures (Label, Paragraph, DocumentSection, Document)
 - ✅ `document/formatting_rules.py` - Complete formatting specs (fonts, spacing)
-- ✅ parser.py - **BONUS**: Full document parser implementation
+- ✅ `document/parser.py` - Parse enhanced text into Document model (smart metadata detection, section inference, paragraph building)
 - ✅ **32 tests** passing (as documented)
 
 #### **Phase 2: Extract Stage** ✅ COMPLETE
-- ✅ `extract/from_file.py` - File extraction with encoding detection
-- ✅ `extract/from_clipboard.py` - Clipboard extraction with tkinter
+- ✅ `extract/from_file.py` - File extraction with automatic UTF-8/UTF-16 encoding detection
+- ✅ `extract/from_clipboard.py` - Clipboard extraction with tkinter (graceful degradation if unavailable)
 - ✅ **18 tests** passing (as documented)
 
 #### **Phase 3: Transform Stage - Normalize** ✅ COMPLETE
@@ -65,7 +65,7 @@ The repository has **significantly exceeded** the outdated IMPLEMENTATION_STATUS
 | **Total Tests** | Target: Full coverage | **165 tests** | ✅ Excellent |
 | **Test Pass Rate** | 100% | **100% (165/165)** | ✅ Perfect |
 | **Code Quality** | All checks passing | **All passing** (Black, Ruff, Pyright) | ✅ Perfect |
-| **Type Coverage** | Full annotations | **Strict Pyright: 0 errors** | ✅ Perfect |
+| **Type Coverage** | Full annotations (strict) | **Strict Pyright: 0 errors** | ✅ Perfect |
 | **Source Files** | ~9-12 | **15 source files** | ✅ Complete |
 | **Test Files** | Full coverage | **5 test modules** | ✅ Complete |
 
@@ -101,22 +101,7 @@ The repository has **significantly exceeded** the outdated IMPLEMENTATION_STATUS
 - ⚠️ **OPTIONAL**: Pre-commit hooks configuration
 - ⚠️ **OPTIONAL**: EXE bundling setup for Windows distribution
 
-### 🎪 **BONUS IMPLEMENTATIONS** (Beyond Vision)
 
-1. **Document Parser** (parser.py) - Not in original spec!
-   - Parses enhanced text into Document model
-   - Smart metadata detection
-   - Section type inference
-   
-2. **Comprehensive Type Safety**
-   - Full Pyright strict mode compliance
-   - Protocol-based design (SpeakerResolutionUI)
-   - TYPE_CHECKING patterns for third-party libraries
-
-3. **Robust Error Handling**
-   - Graceful tkinter unavailability
-   - File encoding detection
-   - Clear user-facing error messages
 
 ### 📝 **SUMMARY**
 
