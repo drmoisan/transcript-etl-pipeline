@@ -360,6 +360,38 @@ Each must:
 
 ---
 
+# **6.5. Bonus Implementations**
+
+These implementations go beyond the original specification and provide additional value:
+
+### **6.5.1 Document Parser**
+
+Implement in `document/parser.py`:
+
+* **Purpose**: Parse enhanced text (post-transform) into the structured `Document` model for formatting
+* **Features**:
+  * Smart metadata detection (lines before first label)
+  * Automatic section type inference
+  * Label extraction and paragraph building
+  * Line continuation handling (multi-line paragraphs)
+* **Benefits**: Bridges transform output to formatter input cleanly
+
+### **6.5.2 Comprehensive Type Safety**
+
+* **Pyright strict mode compliance**: All code passes strict type checking
+* **Protocol-based design**: Use `Protocol` for extensible interfaces (e.g., `SpeakerResolutionUI`)
+* **TYPE_CHECKING patterns**: Handle untyped third-party libraries gracefully
+* **Benefits**: Catch errors at development time, improve IDE support, enable refactoring confidence
+
+### **6.5.3 Robust Error Handling**
+
+* **Graceful degradation**: Handle tkinter unavailability with clear error messages
+* **Encoding detection**: Automatic UTF-8/UTF-16 detection for file input
+* **User-facing messages**: All errors provide actionable guidance
+* **Benefits**: Smooth user experience across different environments
+
+---
+
 # **7. CLI Specification**
 
 Build a complete CLI in `cli.py`.
