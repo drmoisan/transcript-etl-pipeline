@@ -11,8 +11,12 @@ from datetime import datetime
 from pathlib import Path
 
 from transcript_etl_pipeline import config
+from transcript_etl_pipeline.document.parser import parse_enhanced_text
 from transcript_etl_pipeline.extract.from_clipboard import extract_from_clipboard
 from transcript_etl_pipeline.extract.from_file import extract_from_file
+from transcript_etl_pipeline.formatters.docx_formatter import format_to_docx
+from transcript_etl_pipeline.formatters.md_formatter import format_to_md
+from transcript_etl_pipeline.formatters.rtf_formatter import format_to_rtf
 from transcript_etl_pipeline.transform.enhance import enhance_text
 from transcript_etl_pipeline.transform.normalize import normalize_text
 
@@ -119,17 +123,23 @@ def run_pipeline(
 
     print(f"Identified speakers: {speaker_map if speaker_map else 'None'}")
 
+    # Parse enhanced text into Document model
+    print("Parsing document structure...")
+    document = parse_enhanced_text(enhanced_text)
+
     # Load - Format and save
     print(f"Formatting to {output_format.upper()}...")
-
-    # For now, we'll use a simple text-based document model
-    # In a full implementation, we'd parse enhanced_text into a Document structure
     output_path = Path(output_folder) / output_name
 
-    # Create a simple temporary file with the enhanced text
-    # TODO: Parse enhanced_text into proper Document structure with sections/paragraphs
-    # For now, just write the enhanced text
-    output_path.write_text(enhanced_text, encoding="utf-8")
+    # Format based on output format
+    if output_format == "docx":
+        format_to_docx(document, str(output_path))
+    elif output_format == "rtf":
+        format_to_rtf(document, str(output_path))
+    elif output_format == "md":
+        format_to_md(document, str(output_path))
+    else:
+        raise ValueError(f"Unsupported format: {output_format}")
 
     print(f"✓ Output saved to: {output_path}")
 

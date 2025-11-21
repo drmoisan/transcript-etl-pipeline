@@ -79,7 +79,7 @@ def _format_paragraph(docx_doc: DocxDocument, paragraph, section_type: SectionTy
 
 
 def _apply_spacing(
-    docx_paragraph: DocxDocument.Paragraph,  # type: ignore[name-defined]
+    docx_paragraph,  # type: ignore[no-untyped-def]
     spacing,
 ) -> None:
     """Apply spacing rules to a paragraph.
@@ -104,7 +104,7 @@ def _apply_spacing(
         docx_paragraph.paragraph_format.space_after = Pt(0)
 
 
-def _apply_font(run: DocxDocument.Run, font_style) -> None:  # type: ignore[name-defined]
+def _apply_font(run, font_style) -> None:  # type: ignore[no-untyped-def]
     """Apply font styling to a text run.
 
     Args:
