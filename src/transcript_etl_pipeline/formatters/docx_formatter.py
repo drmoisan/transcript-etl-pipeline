@@ -11,16 +11,12 @@ from docx.shared import Pt  # type: ignore[import-untyped]
 from transcript_etl_pipeline.document.formatting_rules import (
     BODY_FONT,
     LABEL_FONT,
-    METADATA_SPACING,
-    REGULAR_PARAGRAPH_SPACING,
-    SPEAKER_PARAGRAPH_SPACING,
-    TRANSCRIPT_LABEL_SPACING,
+    SPACING_RULES,
 )
-from transcript_etl_pipeline.document.model import Document as TranscriptDocument
-from transcript_etl_pipeline.document.model import SectionType
+from transcript_etl_pipeline.document.model import Document, DocumentSection, SectionType
 
 
-def format_to_docx(doc: TranscriptDocument, output_path: str) -> None:
+def format_to_docx(doc: Document, output_path: str) -> None:
     """Format transcript document to DOCX file.
 
     Applies all formatting rules:
@@ -45,7 +41,7 @@ def format_to_docx(doc: TranscriptDocument, output_path: str) -> None:
     docx_doc.save(output_path)
 
 
-def _format_section(docx_doc: DocxDocument, section: TranscriptDocument.DocumentSection) -> None:
+def _format_section(docx_doc: DocxDocument, section: DocumentSection) -> None:
     """Format a document section.
 
     Args:
@@ -56,9 +52,7 @@ def _format_section(docx_doc: DocxDocument, section: TranscriptDocument.Document
         _format_paragraph(docx_doc, paragraph, section.section_type)
 
 
-def _format_paragraph(
-    docx_doc: DocxDocument, paragraph: TranscriptDocument.Paragraph, section_type: SectionType
-) -> None:
+def _format_paragraph(docx_doc: DocxDocument, paragraph, section_type: SectionType) -> None:
     """Format a single paragraph.
 
     Args:
@@ -69,19 +63,9 @@ def _format_paragraph(
     # Create a new paragraph in the document
     docx_paragraph = docx_doc.add_paragraph()
 
-    # Apply spacing based on section type and whether paragraph has a label
-    if section_type == SectionType.METADATA:
-        # Metadata: no extra spacing
-        _apply_spacing(docx_paragraph, METADATA_SPACING)
-    elif paragraph.label and paragraph.label.text.lower() == "transcript:":
-        # Transcript: label gets 12pt space above
-        _apply_spacing(docx_paragraph, TRANSCRIPT_LABEL_SPACING)
-    elif paragraph.label:
-        # Speaker paragraphs get 12pt space above
-        _apply_spacing(docx_paragraph, SPEAKER_PARAGRAPH_SPACING)
-    else:
-        # Regular paragraphs get 6pt space above
-        _apply_spacing(docx_paragraph, REGULAR_PARAGRAPH_SPACING)
+    # Get spacing based on section type
+    spacing = SPACING_RULES[section_type]
+    _apply_spacing(docx_paragraph, spacing)
 
     # Add label if present (bold)
     if paragraph.label:
@@ -89,14 +73,14 @@ def _format_paragraph(
         _apply_font(run, LABEL_FONT)
 
     # Add body text (normal)
-    if paragraph.body:
-        run = docx_paragraph.add_run(paragraph.body)
+    if paragraph.text:
+        run = docx_paragraph.add_run(paragraph.text)
         _apply_font(run, BODY_FONT)
 
 
 def _apply_spacing(
-    docx_paragraph: DocxDocument.Paragraph,  # type: ignore[name-defined]
-    spacing: TranscriptDocument.SpacingRule,
+    docx_paragraph,  # type: ignore[no-untyped-def]
+    spacing,
 ) -> None:
     """Apply spacing rules to a paragraph.
 
@@ -108,25 +92,25 @@ def _apply_spacing(
     docx_paragraph.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
 
     # Set before spacing
-    if spacing.space_before_pt > 0:
-        docx_paragraph.paragraph_format.space_before = Pt(spacing.space_before_pt)
+    if spacing.before_pt > 0:
+        docx_paragraph.paragraph_format.space_before = Pt(spacing.before_pt)
     else:
         docx_paragraph.paragraph_format.space_before = Pt(0)
 
     # Set after spacing
-    if spacing.space_after_pt > 0:
-        docx_paragraph.paragraph_format.space_after = Pt(spacing.space_after_pt)
+    if spacing.after_pt > 0:
+        docx_paragraph.paragraph_format.space_after = Pt(spacing.after_pt)
     else:
         docx_paragraph.paragraph_format.space_after = Pt(0)
 
 
-def _apply_font(run: DocxDocument.Run, font_style: TranscriptDocument.FontStyle) -> None:  # type: ignore[name-defined]
+def _apply_font(run, font_style) -> None:  # type: ignore[no-untyped-def]
     """Apply font styling to a text run.
 
     Args:
         run: The python-docx Run object
         font_style: The font style to apply
     """
-    run.font.name = font_style.font_name
-    run.font.size = Pt(font_style.font_size_pt)
+    run.font.name = font_style.name
+    run.font.size = Pt(font_style.size_pt)
     run.font.bold = font_style.bold
