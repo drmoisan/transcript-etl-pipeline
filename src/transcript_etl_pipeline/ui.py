@@ -6,14 +6,25 @@ CLI arguments are not provided.
 
 from collections.abc import Callable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-try:
+if TYPE_CHECKING:
     import tkinter as tk
     from tkinter import filedialog, messagebox, simpledialog
 
-    TKINTER_AVAILABLE = True
+# Try to import tkinter at runtime
+try:
+    import tkinter as tk  # type: ignore[no-redef]
+    from tkinter import filedialog, messagebox, simpledialog  # type: ignore[no-redef]
+
+    _tkinter_available = True
 except ImportError:
-    TKINTER_AVAILABLE = False
+    _tkinter_available = False
+    # Create dummy placeholders to avoid "possibly unbound" errors
+    tk = None  # type: ignore[assignment]
+    filedialog = None  # type: ignore[assignment]
+    messagebox = None  # type: ignore[assignment]
+    simpledialog = None  # type: ignore[assignment]
 
 
 def check_tkinter_available() -> None:
@@ -22,7 +33,7 @@ def check_tkinter_available() -> None:
     Raises:
         RuntimeError: If tkinter is not available
     """
-    if not TKINTER_AVAILABLE:
+    if not _tkinter_available:
         raise RuntimeError("tkinter is not available. Please provide all required CLI arguments.")
 
 
@@ -34,6 +45,8 @@ def show_error(title: str, message: str) -> None:
         message: Error message
     """
     check_tkinter_available()
+    if tk is None or messagebox is None:
+        raise RuntimeError("tkinter is not available")
     root = tk.Tk()
     root.withdraw()
     messagebox.showerror(title, message)
@@ -48,6 +61,8 @@ def show_info(title: str, message: str) -> None:
         message: Information message
     """
     check_tkinter_available()
+    if tk is None or messagebox is None:
+        raise RuntimeError("tkinter is not available")
     root = tk.Tk()
     root.withdraw()
     messagebox.showinfo(title, message)
@@ -61,6 +76,7 @@ def prompt_source_selection() -> str | None:
         "clipboard", "file", or None if cancelled
     """
     check_tkinter_available()
+    assert tk is not None and messagebox is not None
 
     root = tk.Tk()
     root.withdraw()
@@ -88,6 +104,7 @@ def prompt_file_selection() -> str | None:
         Path to selected file, or None if cancelled
     """
     check_tkinter_available()
+    assert tk is not None and filedialog is not None
 
     root = tk.Tk()
     root.withdraw()
@@ -113,6 +130,7 @@ def prompt_format_selection() -> str | None:
         "docx", "rtf", "md", or None if cancelled
     """
     check_tkinter_available()
+    assert tk is not None
 
     root = tk.Tk()
     root.withdraw()
@@ -122,7 +140,7 @@ def prompt_format_selection() -> str | None:
     dialog.title("Select Output Format")
     dialog.geometry("300x150")
 
-    result = {"format": None}
+    result: dict[str, str | None] = {"format": None}
 
     tk.Label(dialog, text="Select output format:", font=("Arial", 12)).pack(pady=10)
 
@@ -158,6 +176,7 @@ def prompt_output_name(default_name: str) -> str | None:
         Filename entered by user, or None if cancelled
     """
     check_tkinter_available()
+    assert tk is not None and simpledialog is not None
 
     root = tk.Tk()
     root.withdraw()
@@ -181,6 +200,7 @@ def prompt_output_folder(default_folder: str | None = None) -> str | None:
         Path to selected folder, or None if cancelled
     """
     check_tkinter_available()
+    assert tk is not None and filedialog is not None
 
     root = tk.Tk()
     root.withdraw()
@@ -205,6 +225,7 @@ def prompt_speaker_mapping(speaker_label: str, samples: list[str]) -> str | None
         Person's name, or None if cancelled
     """
     check_tkinter_available()
+    assert tk is not None
 
     root = tk.Tk()
     root.withdraw()
@@ -233,7 +254,7 @@ def prompt_speaker_mapping(speaker_label: str, samples: list[str]) -> str | None
     name_entry.pack(pady=5)
     name_entry.focus()
 
-    result = {"name": None}
+    result: dict[str, str | None] = {"name": None}
 
     def on_ok() -> None:
         name = name_entry.get().strip()
@@ -258,28 +279,23 @@ def prompt_speaker_mapping(speaker_label: str, samples: list[str]) -> str | None
     return result["name"]
 
 
-def create_speaker_resolution_callback() -> Callable[[str, list[str]], dict[str, str]]:
+def create_speaker_resolution_callback() -> Callable[..., str | None]:
     """Create a UI callback function for speaker resolution.
 
     Returns:
         Callback function that can be passed to enhance_text
     """
 
-    def ui_callback(speaker_label: str, samples: list[str]) -> dict[str, str]:
+    def ui_callback(*, speaker_label: str, sample_utterances: list[str]) -> str | None:
         """UI callback for resolving speaker identities.
 
         Args:
             speaker_label: The speaker label to resolve
-            samples: Sample utterances from this speaker
+            sample_utterances: Sample utterances from this speaker
 
         Returns:
-            Dictionary mapping speaker label to person name
+            Person name, or None if user cancelled
         """
-        name = prompt_speaker_mapping(speaker_label, samples)
-        if name:
-            return {speaker_label: name}
-        else:
-            # User cancelled, return empty dict to keep original label
-            return {}
+        return prompt_speaker_mapping(speaker_label, sample_utterances)
 
     return ui_callback

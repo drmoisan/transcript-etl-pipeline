@@ -59,7 +59,7 @@ def parse_enhanced_text(text: str) -> Document:
             current_section = DocumentSection(section_type=current_section_type)
 
         # Collect paragraph lines
-        paragraph_lines = []
+        paragraph_lines: list[str] = []
         para_label = label
 
         # Add the rest of the first line if it has content after label

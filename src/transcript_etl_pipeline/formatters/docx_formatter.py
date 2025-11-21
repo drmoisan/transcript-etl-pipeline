@@ -4,6 +4,8 @@ This module generates Microsoft Word (.docx) files with proper formatting
 according to the transcript formatting rules.
 """
 
+from typing import TYPE_CHECKING, Any
+
 from docx import Document as DocxDocument  # type: ignore[import-untyped]
 from docx.enum.text import WD_LINE_SPACING  # type: ignore[import-untyped]
 from docx.shared import Pt  # type: ignore[import-untyped]
@@ -12,8 +14,26 @@ from transcript_etl_pipeline.document.formatting_rules import (
     BODY_FONT,
     LABEL_FONT,
     SPACING_RULES,
+    FontStyle,
+    SpacingRule,
 )
-from transcript_etl_pipeline.document.model import Document, DocumentSection, SectionType
+from transcript_etl_pipeline.document.model import (
+    Document,
+    DocumentSection,
+    Paragraph,
+    SectionType,
+)
+
+if TYPE_CHECKING:
+    # For type checking, we use Any to avoid untyped import issues
+    # The actual types from python-docx are not well-typed
+    DocxDocType = Any
+    DocxParagraphType = Any
+    DocxRunType = Any
+else:
+    DocxDocType = Any
+    DocxParagraphType = Any
+    DocxRunType = Any
 
 
 def format_to_docx(doc: Document, output_path: str) -> None:
@@ -31,17 +51,17 @@ def format_to_docx(doc: Document, output_path: str) -> None:
         doc: The transcript document to format
         output_path: Path where the DOCX file should be saved
     """
-    docx_doc = DocxDocument()
+    docx_doc = DocxDocument()  # type: ignore[no-untyped-call]
 
     # Process all sections
     for section in doc.sections:
         _format_section(docx_doc, section)
 
     # Save the document
-    docx_doc.save(output_path)
+    docx_doc.save(output_path)  # type: ignore[no-untyped-call]
 
 
-def _format_section(docx_doc: DocxDocument, section: DocumentSection) -> None:
+def _format_section(docx_doc: Any, section: DocumentSection) -> None:
     """Format a document section.
 
     Args:
@@ -52,7 +72,7 @@ def _format_section(docx_doc: DocxDocument, section: DocumentSection) -> None:
         _format_paragraph(docx_doc, paragraph, section.section_type)
 
 
-def _format_paragraph(docx_doc: DocxDocument, paragraph, section_type: SectionType) -> None:
+def _format_paragraph(docx_doc: Any, paragraph: Paragraph, section_type: SectionType) -> None:
     """Format a single paragraph.
 
     Args:
@@ -78,10 +98,7 @@ def _format_paragraph(docx_doc: DocxDocument, paragraph, section_type: SectionTy
         _apply_font(run, BODY_FONT)
 
 
-def _apply_spacing(
-    docx_paragraph,  # type: ignore[no-untyped-def]
-    spacing,
-) -> None:
+def _apply_spacing(docx_paragraph: Any, spacing: SpacingRule) -> None:
     """Apply spacing rules to a paragraph.
 
     Args:
@@ -89,7 +106,7 @@ def _apply_spacing(
         spacing: The spacing rule to apply
     """
     # Set line spacing to 1.0 (single spacing)
-    docx_paragraph.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
+    docx_paragraph.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE  # type: ignore[attr-defined]
 
     # Set before spacing
     if spacing.before_pt > 0:
@@ -104,7 +121,7 @@ def _apply_spacing(
         docx_paragraph.paragraph_format.space_after = Pt(0)
 
 
-def _apply_font(run, font_style) -> None:  # type: ignore[no-untyped-def]
+def _apply_font(run: Any, font_style: FontStyle) -> None:
     """Apply font styling to a text run.
 
     Args:

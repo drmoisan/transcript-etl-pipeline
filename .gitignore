@@ -13,3 +13,4 @@ htmlcov/
 .env.*
 dist/
 build/
+.vscode/*

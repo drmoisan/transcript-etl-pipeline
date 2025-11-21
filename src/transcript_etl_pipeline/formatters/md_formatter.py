@@ -4,7 +4,12 @@ This module generates Markdown (.md) files with formatting that approximates
 the transcript formatting rules within Markdown's limitations.
 """
 
-from transcript_etl_pipeline.document.model import Document, DocumentSection, SectionType
+from transcript_etl_pipeline.document.model import (
+    Document,
+    DocumentSection,
+    Paragraph,
+    SectionType,
+)
 
 
 def format_to_md(doc: Document, output_path: str) -> None:
@@ -35,7 +40,7 @@ def _generate_markdown(doc: Document) -> str:
     Returns:
         Complete Markdown document as a string
     """
-    md_parts = []
+    md_parts: list[str] = []
 
     # Process all sections
     for section in doc.sections:
@@ -55,13 +60,13 @@ def _format_section(section: DocumentSection) -> list[str]:
     Returns:
         List of Markdown strings for the section
     """
-    md_parts = []
+    md_parts: list[str] = []
     for i, paragraph in enumerate(section.paragraphs):
         md_parts.extend(_format_paragraph(paragraph, section.section_type, is_first=i == 0))
     return md_parts
 
 
-def _format_paragraph(paragraph, section_type: SectionType, is_first: bool) -> list[str]:
+def _format_paragraph(paragraph: Paragraph, section_type: SectionType, is_first: bool) -> list[str]:
     """Format a single paragraph to Markdown.
 
     Args:
@@ -72,7 +77,7 @@ def _format_paragraph(paragraph, section_type: SectionType, is_first: bool) -> l
     Returns:
         List of Markdown strings for the paragraph
     """
-    md_parts = []
+    md_parts: list[str] = []
 
     # Add spacing approximation using blank lines
     # Metadata: no extra blank lines

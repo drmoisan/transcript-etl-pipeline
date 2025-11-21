@@ -6,7 +6,6 @@ extract → transform → load.
 
 import argparse
 import sys
-from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
@@ -19,6 +18,7 @@ from transcript_etl_pipeline.formatters.md_formatter import format_to_md
 from transcript_etl_pipeline.formatters.rtf_formatter import format_to_rtf
 from transcript_etl_pipeline.transform.enhance import enhance_text
 from transcript_etl_pipeline.transform.normalize import normalize_text
+from transcript_etl_pipeline.transform.speakers import SpeakerResolutionUI
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -85,7 +85,7 @@ def run_pipeline(
     output_format: str,
     output_name: str,
     output_folder: str,
-    ui_callback: Callable[[str, list[str]], dict[str, str]] | None = None,
+    ui_callback: SpeakerResolutionUI | None = None,
 ) -> None:
     """Run the complete ETL pipeline.
 
@@ -167,7 +167,9 @@ def main(args: list[str] | None = None) -> int:
     output_folder = parsed_args.output_folder
 
     # Try to use UI for missing arguments
-    ui_callback: Callable[[str, list[str]], dict[str, str]] | None = None
+    from transcript_etl_pipeline.transform.speakers import SpeakerResolutionUI
+
+    ui_callback: SpeakerResolutionUI | None = None
     use_ui = not all([source, output_folder])
 
     if use_ui:
@@ -223,7 +225,7 @@ def main(args: list[str] | None = None) -> int:
 
     # If not using UI, check for missing required args
     if not use_ui:
-        missing_args = []
+        missing_args: list[str] = []
 
         if not source:
             missing_args.append("--source")
