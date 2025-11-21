@@ -1,0 +1,11 @@
+Meeting Date: 2025-11-21
+Attendees: Dan Moisan, Alice Smith, Bob Johnson
+Topic: Project Planning
+
+Transcript:
+Speaker A: Good morning everyone. Let's start with the project status.
+Speaker B: Thanks for having me. I've completed the initial research and have some findings to share.
+Speaker A: That's great. Dan, what do you think about the timeline?
+Speaker C: I believe we can meet the deadline if we stay focused. The key is to prioritize the core features first.
+Speaker B: I agree with Dan. We should also consider the resource allocation.
+Speaker A: Excellent points. Let's document these action items and schedule a follow-up next week.
