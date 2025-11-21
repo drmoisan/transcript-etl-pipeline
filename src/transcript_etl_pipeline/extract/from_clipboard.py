@@ -10,7 +10,7 @@ from collections.abc import Callable
 
 _tkinter_available = False
 try:
-    import tkinter as tk  # type: ignore[reportUnusedImport]
+    import tkinter as tk  # type: ignore[reportUnusedImport]  # noqa: F401
 
     _tkinter_available = True
 except ImportError:
