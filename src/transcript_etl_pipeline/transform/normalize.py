@@ -123,46 +123,14 @@ def _normalize_labels(text: str) -> str:
     normalized_lines: list[str] = []
 
     for line in lines:
-        # Check if line starts with a label
-        match = re.match(r"^([A-Z][^\s:]*:)\s*(.*)", line)
-        if match:
-            label = match.group(1)
-            rest = match.group(2)
-            # Ensure exactly one space after label
-            normalized_lines.append(f"{label} {rest}".rstrip())
-            continue
+        # Ensure 1 space after label
+        normalized_line: str = re.sub(r"([A-Za-z0-9 ]+:)\s*", r"\1 ", line).rstrip()
 
-        # Check for mid-line labels
-        # Look for pattern like: "text SomeLabel: more text"
-        # Pattern: word boundary + capitalized word + colon
-        parts = re.split(r"(\s+[A-Z][^\s:]*:)", line)
+        # Send mid-line labels to a new line
+        normalized_line = re.sub(r"(?<=[.,?!]) (?=[A-Za-z0-9 ]+:)", r"\r\n", normalized_line)
 
-        if len(parts) == 1:
-            # No mid-line label found
-            normalized_lines.append(line)
-        else:
-            # Process parts - odd indices are the labels (with leading space)
-            current_line = parts[0]
-            for i in range(1, len(parts)):
-                if i % 2 == 1:  # This is a label with leading space
-                    label = parts[i].strip()
-                    if _is_label(label):
-                        # Add current line if non-empty, start new line with label
-                        if current_line.strip():
-                            normalized_lines.append(current_line.rstrip())
-                        current_line = label
-                    else:
-                        current_line += parts[i]
-                else:
-                    # Regular text after label - add with single space
-                    text_part = parts[i].lstrip()
-                    if current_line.endswith(":"):
-                        current_line += " " + text_part if text_part else ""
-                    else:
-                        current_line += " " + text_part if text_part else ""
-
-            if current_line.strip():
-                normalized_lines.append(current_line.rstrip())
+        # Add it to the new list
+        normalized_lines.append(normalized_line)
 
     return "\r\n".join(normalized_lines)
 

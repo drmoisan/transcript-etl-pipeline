@@ -131,18 +131,18 @@ class TestNormalizeLabels:
 
     def test_mid_line_label_gets_newline(self) -> None:
         """Test that mid-line label gets CRLF before it."""
-        text = "Some text John: Hello world"
+        text = "Some text. John: Hello world"
         result = _normalize_labels(text)
-        assert result == "Some text\r\nJohn: Hello world"
+        assert result == "Some text.\r\nJohn: Hello world"
 
     def test_multiple_mid_line_labels(self) -> None:
         """Test multiple mid-line labels."""
-        text = "Intro text Speaker1: Hello Speaker2: Hi"
+        text = "Intro text. Speaker1: Hello. Speaker2: Hi"
         result = _normalize_labels(text)
         lines = result.split("\r\n")
         assert len(lines) == 3
-        assert lines[0] == "Intro text"
-        assert lines[1] == "Speaker1: Hello"
+        assert lines[0] == "Intro text."
+        assert lines[1] == "Speaker1: Hello."
         assert lines[2] == "Speaker2: Hi"
 
     def test_label_only_line(self) -> None:

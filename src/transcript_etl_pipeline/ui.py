@@ -286,7 +286,7 @@ def create_speaker_resolution_callback() -> Callable[..., str | None]:
         Callback function that can be passed to enhance_text
     """
 
-    def ui_callback(*, speaker_label: str, sample_utterances: list[str]) -> str | None:
+    def ui_callback(speaker_label: str, sample_utterances: list[str]) -> str | None:
         """UI callback for resolving speaker identities.
 
         Args:

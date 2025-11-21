@@ -11,6 +11,7 @@ __all__ = [
     "SpeakerResolutionUI",
     "resolve_speakers",
     "_extract_speaker_labels",
+    "_identify_speaker_by_name",
     "_identify_dan_moisan",
     "_extract_names_from_metadata",
     "_extract_names_from_dialogue",
@@ -18,6 +19,9 @@ __all__ = [
     "_apply_speaker_mappings",
     "_is_speaker_line",
     "_extract_speaker_from_line",
+    "_is_direct_address_to_person",
+    "_extract_names_from_line",
+    "_apply_proximity_heuristics",
 ]
 
 
@@ -63,28 +67,35 @@ def resolve_speakers(
     # Build mapping of speaker labels to resolved names
     speaker_map: dict[str, str] = {}
 
-    # First, try to identify Dan Moisan
-    dan_label = _identify_dan_moisan(text, speaker_labels)
-    if dan_label:
-        speaker_map[dan_label] = "Dan Moisan"
-
-    # Try to auto-resolve other speakers from metadata and context
-    metadata_names = _extract_names_from_metadata(text)
+    # Extract all potential names from metadata and dialogue
+    metadata_names = _extract_names_from_metadata(text, speaker_labels)
     dialogue_names = _extract_names_from_dialogue(text)
     available_names = metadata_names | dialogue_names
 
-    # Remove Dan Moisan from available names since we already resolved him
-    available_names.discard("Dan Moisan")
-    available_names.discard("Dan")
+    # Build a mapping of name -> possible speakers
+    name_to_speakers: dict[str, list[str]] = {}
+    for name in available_names:
+        candidates = _identify_speaker_by_name(text, speaker_labels, name)
+        if candidates:
+            name_to_speakers[name] = candidates
+
+    # Handle Dan Moisan specially - always use full name
+    if "Dan" in name_to_speakers:
+        dan_candidates = name_to_speakers["Dan"]
+        if len(dan_candidates) == 1:
+            speaker_map[dan_candidates[0]] = "Dan Moisan"
+        # Remove Dan from further processing
+        del name_to_speakers["Dan"]
+
+    # Resolve unambiguous mappings (1 name -> 1 speaker)
+    for name, candidates in name_to_speakers.items():
+        if len(candidates) == 1:
+            speaker = candidates[0]
+            if speaker not in speaker_map:  # Don't overwrite existing
+                speaker_map[speaker] = name
 
     # Try to match remaining speakers to available names
     unresolved_speakers = [s for s in speaker_labels if s not in speaker_map]
-    for speaker in unresolved_speakers:
-        # Try simple matching (e.g., "John" mentioned and "Speaker A" exists)
-        resolved = _try_auto_match_speaker(speaker, available_names, text)
-        if resolved:
-            speaker_map[speaker] = resolved
-            available_names.discard(resolved)
 
     # For any still-unresolved speakers, use UI callback if provided
     if ui_callback:
@@ -115,7 +126,23 @@ def _extract_speaker_labels(text: str) -> list[str]:
     labels: list[str] = []
     seen: set[str] = set()
 
-    for line in text.split("\r\n"):
+    lines = text.split("\r\n")
+
+    # Check if text contains "Transcript:" label
+    has_transcript_label = any(line.strip().startswith("Transcript:") for line in lines)
+
+    # If Transcript: label exists, only process lines after it
+    # Otherwise, process all lines (for backward compatibility with tests)
+    in_transcript = not has_transcript_label
+
+    for line in lines:
+        # Check if we've reached the transcript section
+        if not in_transcript:
+            if line.strip().startswith("Transcript:"):
+                in_transcript = True
+            continue
+
+        # Now we're in the transcript, extract speaker labels
         match = re.match(pattern, line)
         if match:
             label = match.group(1).strip()
@@ -126,12 +153,241 @@ def _extract_speaker_labels(text: str) -> list[str]:
     return labels
 
 
+def _identify_speaker_by_name(text: str, speaker_labels: list[str], name: str) -> list[str]:
+    """Identify which speaker label(s) could correspond to a person by their first name.
+
+    Uses a two-pass approach:
+    1. Direct inference: Identify speakers who address the person (they are NOT that person)
+    2. Proximity heuristics: If ambiguous, use response patterns to narrow candidates
+
+    Proximity patterns:
+    - Immediate response after direct address (likely the addressed person)
+    - Self-identification ("Sorry, I was saying..." after being muted/frozen)
+    - Third-person references by others ("her screen", "she is on mute")
+
+    Args:
+        text: The text to analyze
+        speaker_labels: List of speaker labels
+        name: The first name to identify (e.g., "Dan", "John", "Alice")
+
+    Returns:
+        List of possible speaker labels for the named person
+        (may be empty or contain multiple candidates)
+    """
+    lines = text.split("\r\n")
+
+    # PASS 1: Direct inference - find who addresses the person
+    speakers_addressing_person: list[str] = []
+    direct_address_locations: list[int] = []  # Track where direct addresses occur
+
+    for i, line in enumerate(lines):
+        # Look for the name in dialogue (not as a speaker label)
+        # Check if this is a direct address (not hypothetical/third-person)
+        if (
+            not line.lower().startswith(f"{name.lower()}:")
+            and name.lower() in line.lower()
+            and _is_direct_address_to_person(line, name)
+        ):
+            # Found a direct address to the person
+            # Find which speaker said this (they are addressing the person)
+            for j in range(i, -1, -1):
+                if _is_speaker_line(lines[j], speaker_labels):
+                    speaker = _extract_speaker_from_line(lines[j])
+                    if speaker and speaker != name:
+                        speakers_addressing_person.append(speaker)
+                        direct_address_locations.append(i)
+                    break
+
+    # Calculate possible speakers from direct inference
+    if speakers_addressing_person:
+        speakers_addressing_person_set: set[str] = set(speakers_addressing_person)
+        possible_speakers = [
+            speaker
+            for speaker in speaker_labels
+            if speaker not in speakers_addressing_person_set and speaker != name
+        ]
+
+        # PASS 2: Proximity heuristics if multiple candidates remain
+        if len(possible_speakers) > 1:
+            refined_candidates = _apply_proximity_heuristics(
+                lines, speaker_labels, name, possible_speakers, direct_address_locations
+            )
+            if refined_candidates:
+                return refined_candidates
+
+        return possible_speakers
+
+    return []
+
+
+def _apply_proximity_heuristics(
+    lines: list[str],
+    speaker_labels: list[str],
+    name: str,
+    candidates: list[str],
+    address_locations: list[int],
+) -> list[str]:
+    """Apply proximity heuristics to narrow down speaker candidates.
+
+    Heuristics used:
+    1. Third-person exclusion: Remove candidates who refer to person in 3rd person
+    2. Immediate response: Speaker who responds right after being addressed
+    3. Self-identification: Apologies or explanations indicating identity
+
+    Args:
+        lines: All lines of text split by CRLF
+        speaker_labels: List of all speaker labels
+        name: The name being identified
+        candidates: Current list of possible speakers for this name
+        address_locations: Line indices where direct addresses to name occurred
+
+    Returns:
+        Refined list of candidates, or empty list if heuristics don't help
+    """
+    name_lower = name.lower()
+
+    # FIRST: Exclude speakers who use third-person references
+    # These speakers are definitively NOT the person
+    third_person_patterns = [
+        # Gendered pronouns with name
+        rf"\b(her|she|she'?s)\b.*{name_lower}",
+        rf"{name_lower}.*\b(her|she|she'?s)\b",
+        rf"\b(his|he|he'?s)\b.*{name_lower}",
+        rf"{name_lower}.*\b(his|he|he'?s)\b",
+        # Possession with name
+        rf"{name_lower}'?s\s+(screen|audio|connection|microphone)",
+        # Status references with name
+        rf"{name_lower}\s+is\s+(muted?|frozen|disconnected)",
+        # Generic third-person tech references (context clue after address)
+        r"\b(her|his)\s+(screen|audio|connection|microphone|video)\b",
+        r"\b(she|he)\s+is\s+(muted?|frozen|disconnected)\b",
+        # Generic third-person pronouns near address context
+        # (If someone says "she" or "he" right after addressing the person, they're not that person)
+        r"\b(she|he)\b",  # Any use of "she" or "he" is third-person
+    ]
+
+    speakers_using_third_person: set[str] = set()
+    for line in lines:
+        line_lower = line.lower()
+        speaker = _extract_speaker_from_line(line)
+        if speaker:
+            for pattern in third_person_patterns:
+                if re.search(pattern, line_lower):
+                    speakers_using_third_person.add(speaker)
+                    break
+
+    # Filter out candidates who used third-person references
+    candidates = [c for c in candidates if c not in speakers_using_third_person]
+
+    # If we've narrowed down to one candidate, return immediately
+    if len(candidates) == 1:
+        return candidates
+
+    # If no candidates remain, return empty (heuristics failed)
+    if not candidates:
+        return []
+
+    # THEN: Score remaining candidates
+    candidate_scores: dict[str, int] = {speaker: 0 for speaker in candidates}
+
+    # Heuristic 1: Immediate response pattern
+    # If a candidate responds immediately after being addressed, score +3
+    # BUT: Check that the response is self-referential, not asking about the person
+    # Also filter out: speakers building on the question (not the actual response)
+    # Exception: "can you hear ME" is self-referential, "can you hear" (without ME) is asking
+    asking_about_patterns = [
+        r"\bare\s+you\s+there\b",
+        r"\bwhere\s+(is|are)\s+you\b",
+        r"\bcan\s+you\s+hear\b(?!\s+me)",  # "can you hear" but NOT "can you hear me"
+        rf"\b{name_lower},?\s+are\s+you\b",
+        r"\bdid\s+you\s+(hear|get|see)\b",
+        r"\byou\s+(are|is)\s+on\s+mute\b",  # Telling someone they're muted
+        r"\byou\s+(are|is)\s+(muted|frozen|disconnected)\b",  # Technical issue notifications
+        r"\byour\s+(audio|video|screen|connection)\b",  # Referring to their tech
+    ]
+
+    # Patterns indicating someone is building on the question, not responding to it
+    building_on_question_patterns = [
+        r"\b(let\s+me\s+)?build(ing)?\b",  # "let me build", "building on that"
+        r"\bto\s+add\s+to\s+that\b",
+        r"\balso\b.*\b(can|could|would)\s+you\b",  # "also can you", "also could you"
+        r"\band\s+(can|could|would)\s+you\b",  # "and can you", "and would you"
+        r"\b(can|could|would)\s+you\s+(also|tell|share|explain)\b",  # continuing to ask
+    ]
+
+    for addr_line_idx in address_locations:
+        # Find the next speaker line after the address
+        responding_speaker = None
+        response_line = None
+        for i in range(addr_line_idx + 1, len(lines)):
+            if _is_speaker_line(lines[i], speaker_labels):
+                responding_speaker = _extract_speaker_from_line(lines[i])
+                response_line = lines[i].lower()
+                break
+            # Stop if we hit another address or too many non-speaker lines
+            if i - addr_line_idx > 5:
+                break
+
+        if responding_speaker and responding_speaker in candidates and response_line:
+            # Check if this is actually asking ABOUT the person (not a self-response)
+            is_asking_about = any(
+                re.search(pattern, response_line) for pattern in asking_about_patterns
+            )
+
+            # Check if this is building on the question (not the actual response)
+            is_building_on_question = any(
+                re.search(pattern, response_line) for pattern in building_on_question_patterns
+            )
+
+            if not is_asking_about and not is_building_on_question:
+                candidate_scores[responding_speaker] += 3
+
+    # Heuristic 2: Self-identification patterns
+    # Look for apologetic or clarifying phrases that indicate identity
+    self_id_patterns = [
+        r"\bsorry,?\s+i\b",  # "Sorry, I was..."
+        r"\bno,?\s+i'?m\s+here\b",  # "No, I'm here"
+        r"\bapologies?\b.*\bi\b",  # "Apologies, I..."
+        r"\bi\s+was\s+(saying|trying|just)\b",  # "I was saying..."
+        r"\bcan\s+you\s+hear\s+me\s+now\b",  # "Can you hear me now"
+        r"\bi\s+lost\s+(you|connection)\b",  # "I lost you"
+        r"^[^:]+:\s*sure,?\s+(let\s+me|i('ll)?|i\s+can)\b",  # "Sure, let me...", "Sure, I'll..."
+        r"\blet\s+me\s+(begin|start|explain|share)\b",  # "let me begin", "let me start"
+    ]
+
+    for line in lines:
+        line_lower = line.lower()
+        speaker = _extract_speaker_from_line(line)
+
+        if speaker and speaker in candidates:
+            for pattern in self_id_patterns:
+                if re.search(pattern, line_lower):
+                    candidate_scores[speaker] += 2
+                    break
+
+    # Return candidates with highest scores (if there's a clear winner)
+    if not candidate_scores:
+        return []
+
+    max_score = max(candidate_scores.values())
+    if max_score == 0:
+        # No heuristics helped
+        return []
+
+    # Return candidates with the maximum score
+    # Only return if there's a meaningful score (> 1)
+    if max_score > 1:
+        top_candidates = [s for s, score in candidate_scores.items() if score == max_score]
+        return top_candidates
+
+    return []
+
+
 def _identify_dan_moisan(text: str, speaker_labels: list[str]) -> str | None:
     """Identify which speaker label corresponds to Dan Moisan.
 
-    Looks for contextual references like:
-    - "Dan, what do you think?"
-    - "As Dan mentioned..."
+    This is a convenience wrapper around _identify_speaker_by_name.
+    Returns the first candidate if multiple are found, or None if no candidates.
 
     Args:
         text: The text to analyze
@@ -140,42 +396,83 @@ def _identify_dan_moisan(text: str, speaker_labels: list[str]) -> str | None:
     Returns:
         The speaker label for Dan Moisan, or None if not found
     """
-    # If "Dan" appears as a speaker label itself, that's NOT Dan Moisan
-    # We need to find references to Dan in the dialogue
-
-    # Look for conversational references to Dan
-    speakers_addressing_dan: list[str] = []
-    lines = text.split("\r\n")
-
-    for i, line in enumerate(lines):
-        # Look for "Dan" in dialogue (not as a speaker label)
-        if not line.startswith("Dan:") and "Dan" in line:
-            # Found a reference to Dan
-            # Now find which speaker said this (they are addressing Dan)
-            for j in range(i, -1, -1):
-                if _is_speaker_line(lines[j]):
-                    speaker = _extract_speaker_from_line(lines[j])
-                    if speaker and speaker != "Dan":
-                        speakers_addressing_dan.append(speaker)
-                    break
-
-    # The speakers who address Dan are NOT Dan
-    # So Dan is the speaker NOT in this list
-    if speakers_addressing_dan:
-        speakers_addressing_dan_set: set[str] = set(speakers_addressing_dan)
-        for speaker in speaker_labels:
-            if speaker not in speakers_addressing_dan_set and speaker != "Dan":
-                # This is likely Dan
-                return speaker
-
-    return None
+    candidates = _identify_speaker_by_name(text, speaker_labels, "Dan")
+    return candidates[0] if candidates else None
 
 
-def _extract_names_from_metadata(text: str) -> set[str]:
+def _is_direct_address_to_person(line: str, name: str) -> bool:
+    """Check if a line contains a direct address to a person vs hypothetical/third-person reference.
+
+    Direct address patterns:
+    - "Name, what..." (vocative with comma at start)
+    - "..., Name." (vocative with comma at end)
+    - "...to Name." (prepositional phrases)
+    - "Name mentioned/said..." (attribution)
+
+    NOT direct address (hypothetical/third-person):
+    - "is Name a..." (third-person question)
+    - "if ... is Name" (conditional/hypothetical)
+    - "Is Name ..." (question about Name, not to Name)
+
+    Args:
+        line: The line to check
+        name: The first name to check for (e.g., "Dan", "John", "Alice")
+
+    Returns:
+        True if this is a direct address to the named person
+    """
+    line_lower = line.lower()
+    name_lower = name.lower()
+
+    # Exclude third-person questions about the person
+    # Pattern: "is Name [article] [noun]" like "is Dan a leader"
+    if re.search(rf"\bis {name_lower} (a|an|the)\b", line_lower):
+        return False
+
+    # Exclude questions that start with "Is Name"
+    # These are questions ABOUT the person, not TO them
+    if re.search(rf"\bis {name_lower}\b", line_lower):
+        return False
+
+    # Exclude hypothetical framing
+    # "if you were to say" or "the question is"
+    hypothetical_markers = [
+        r"if you were to say",
+        r"if someone were to ask",
+        rf"the question is.*{name_lower}",
+        rf"you might ask.*{name_lower}",
+        rf"one might say.*{name_lower}",
+    ]
+    for marker in hypothetical_markers:
+        if re.search(marker, line_lower):
+            return False
+
+    # Check for direct address patterns
+    # "Name, " with vocative comma
+    if re.search(rf"\b{name_lower},\s", line_lower):
+        return True
+
+    # ", Name" at end of sentence or phrase (vocative)
+    # Examples: "Thanks, Dan." "I'm learning about you, Dan."
+    if re.search(rf",\s*{name_lower}\b", line_lower):
+        return True
+
+    # "to Name" or "with Name" (but we already excluded "is Name")
+    if re.search(rf"\b(to|with|for|about|from)\s+{name_lower}\b", line_lower):
+        return True
+
+    # "Name mentioned" or "Name said" (third person but attributive)
+    return bool(
+        re.search(rf"\b{name_lower}\s+(mentioned|said|thinks|believes|suggested)\b", line_lower)
+    )
+
+
+def _extract_names_from_metadata(text: str, speaker_labels: list[str] | None = None) -> set[str]:
     """Extract names from metadata section of transcript.
 
     Args:
         text: The text to analyze
+        speaker_labels: Optional list of known speaker labels
 
     Returns:
         Set of names found in metadata
@@ -188,7 +485,7 @@ def _extract_names_from_metadata(text: str) -> set[str]:
     in_metadata = True
     for line in lines:
         # Check if this looks like a speaker with dialogue (not metadata)
-        if _is_speaker_line(line) and _looks_like_dialogue(line):
+        if _is_speaker_line(line, speaker_labels) and _looks_like_dialogue(line):
             in_metadata = False
             break
 
@@ -316,26 +613,6 @@ def _extract_names_from_dialogue(text: str) -> set[str]:
     return names
 
 
-def _try_auto_match_speaker(speaker_label: str, available_names: set[str], text: str) -> str | None:
-    """Try to automatically match a speaker label to an available name.
-
-    Args:
-        speaker_label: The speaker label to resolve
-        available_names: Set of available names to match against
-        text: The full text for context
-
-    Returns:
-        The matched name, or None if no match found
-    """
-    # Simple heuristic: if only one name is available, use it
-    if len(available_names) == 1:
-        return next(iter(available_names))
-
-    # Try to find name mentions near this speaker's utterances
-    # This is a simple implementation - could be made more sophisticated
-    return None
-
-
 def _extract_speaker_samples(speaker: str, text: str, count: int = 3) -> list[str]:
     """Extract sample utterances from a specific speaker.
 
@@ -391,17 +668,24 @@ def _apply_speaker_mappings(text: str, speaker_map: dict[str, str]) -> str:
     return "\r\n".join(result_lines)
 
 
-def _is_speaker_line(line: str) -> bool:
+def _is_speaker_line(line: str, speaker_labels: list[str] | None = None) -> bool:
     """Check if a line starts with a speaker label.
 
     Args:
         line: The line to check
+        speaker_labels: List of known speaker labels to match against.
+                       If None or empty, matches any valid label pattern.
 
     Returns:
         True if line starts with a speaker label
     """
-    pattern = r"^[A-Z][A-Za-z0-9\s]*?:\s"
-    return bool(re.match(pattern, line))
+    if not speaker_labels:
+        # Fallback to pattern matching when no speaker list provided
+        pattern = r"^[A-Z][A-Za-z0-9\s]*?:\s"
+        return bool(re.match(pattern, line))
+
+    # Check if line starts with any known speaker label
+    return any(line.startswith(f"{speaker}:") for speaker in speaker_labels)
 
 
 def _extract_speaker_from_line(line: str) -> str | None:
