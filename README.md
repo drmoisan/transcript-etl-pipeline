@@ -2,7 +2,7 @@
 
 A Python tool for extracting, transforming, and formatting meeting transcripts with automatic speaker detection and multiple output formats (DOCX, RTF, Markdown).
 
-[![Tests](https://img.shields.io/badge/tests-187%20passed-brightgreen)](https://github.com/drmoisan/transcript-etl-pipeline)
+[![Tests](https://img.shields.io/badge/tests-241%20passed-brightgreen)](https://github.com/drmoisan/transcript-etl-pipeline)
 [![Coverage](https://img.shields.io/badge/coverage-62%25-yellow)](https://github.com/drmoisan/transcript-etl-pipeline)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000)](https://github.com/psf/black)
 [![Type Checking](https://img.shields.io/badge/type%20checking-pyright%20strict-blue)](https://github.com/microsoft/pyright)
@@ -23,6 +23,8 @@ A Python tool for extracting, transforming, and formatting meeting transcripts w
 - **CLI** with argparse for automation
 - **Interactive UI** with tkinter dialogs when arguments are missing
 - **Configuration** storage for last output folder
+- **Comprehensive Logging** with dual handlers (console INFO+, file DEBUG+) for diagnostics
+- **Git Context Scripts** (PowerShell) for AI-assisted commit/PR message generation
 
 ## Installation
 
@@ -98,9 +100,15 @@ src/transcript_etl_pipeline/
 │   ├── docx_formatter.py
 │   ├── rtf_formatter.py
 │   └── md_formatter.py
+├── logging_config.py # Centralized logging configuration
 ├── cli.py           # Command-line interface
 ├── ui.py            # Interactive dialogs
 └── config.py        # Configuration management
+
+scripts/
+├── collect-commit-context.ps1    # Generate Git context for commits
+├── collect-pull-request-context.ps1  # Generate Git context for PRs
+└── README.md                     # Scripts documentation
 ```
 
 ## Formatting Rules
@@ -117,13 +125,13 @@ All output formats follow consistent spacing and styling:
 
 ## Testing
 
-The project includes comprehensive test coverage with 187 tests:
+The project includes comprehensive test coverage with 241 tests:
 
-- **Unit Tests**: 165 tests covering core functionality
+- **Unit Tests**: 219 tests covering core functionality
 - **Integration Tests**: 22 tests for end-to-end pipeline validation
 - **Coverage**: 62% overall, 97%+ for core transformation logic
   - 100% coverage: formatters (RTF, MD), transform logic, document model
-  - 97%+ coverage: parser, DOCX formatter, normalizer
+  - 97%+ coverage: parser, DOCX formatter, normalizer, speaker resolution
   - Lower coverage: CLI/UI integration layers (tested via integration tests)
 
 ```bash
@@ -243,6 +251,14 @@ The pipeline automatically identifies "Dan Moisan" by analyzing dialogue referen
 - Unknown speakers trigger UI prompt with sample utterances (if UI available)
 - Use CLI with `--source` and all required arguments to skip UI prompts
 
+### Logging and Diagnostics
+
+Pipeline execution is logged to `~/.transcript_etl/pipeline.log` with:
+- Stage-by-stage progress (Extract → Normalize → Enhance → Parse → Load)
+- Character counts and speaker mappings
+- Detailed error tracebacks
+- Console output (INFO+) and file output (DEBUG+)
+
 ## Contributing
 
 Contributions are welcome! Please:
@@ -265,16 +281,19 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ✅ **Production Ready**
 
 - Core ETL pipeline fully functional
-- 187 tests with 62% coverage
-- All code quality checks passing
-- Multiple output formats supported
+- 241 tests with 62% coverage (all passing)
+- All code quality checks passing (Black, Ruff, Pyright, Pytest)
+- Multiple output formats supported (DOCX, RTF, MD)
 - CLI and UI fully operational
+- Comprehensive logging infrastructure
+- PowerShell utilities for Git context collection
 
 ### Known Limitations
 
 - Speaker resolution requires either metadata names or UI interaction
 - UI dialogs require tkinter (can be bypassed with full CLI arguments)
 - Best results with properly formatted transcript input
+- Speaker identification uses heuristics that may need refinement for edge cases
 
 ## Acknowledgements
 

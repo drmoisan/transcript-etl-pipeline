@@ -4,8 +4,13 @@ This module handles speaker identification, including special logic to identify
 Dan Moisan and provide UI fallback for unresolved speakers.
 """
 
+import logging
 import re
 from typing import Protocol
+
+from transcript_etl_pipeline.transform.name import Name
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "SpeakerResolutionUI",
@@ -63,6 +68,7 @@ def resolve_speakers(
 
     # Find all unique speaker labels
     speaker_labels = _extract_speaker_labels(text)
+    logger.debug(f"Found speaker labels: {speaker_labels}")
 
     # Build mapping of speaker labels to resolved names
     speaker_map: dict[str, str] = {}
@@ -71,34 +77,77 @@ def resolve_speakers(
     metadata_names = _extract_names_from_metadata(text, speaker_labels)
     dialogue_names = _extract_names_from_dialogue(text)
     available_names = metadata_names | dialogue_names
+    logger.debug(f"Metadata names: {[n.full_name for n in metadata_names]}")
+    logger.debug(f"Dialogue names: {[n.full_name for n in dialogue_names]}")
+    logger.debug(f"Available names: {[n.full_name for n in available_names]}")
 
-    # Build a mapping of name -> possible speakers
-    name_to_speakers: dict[str, list[str]] = {}
+    # Build a mapping of Name -> possible speakers
+    name_to_speakers: dict[Name, list[str]] = {}
     for name in available_names:
         candidates = _identify_speaker_by_name(text, speaker_labels, name)
         if candidates:
             name_to_speakers[name] = candidates
+            logger.debug(f"Name '{name.full_name}' matched to speakers: {candidates}")
 
     # Handle Dan Moisan specially - always use full name
-    if "Dan" in name_to_speakers:
-        dan_candidates = name_to_speakers["Dan"]
-        if len(dan_candidates) == 1:
-            speaker_map[dan_candidates[0]] = "Dan Moisan"
-        # Remove Dan from further processing
-        del name_to_speakers["Dan"]
+    # Find any Name with first_name Dan/Daniel (using variants)
+    dan_name = Name(first_name="Dan")
+    for name in list(name_to_speakers.keys()):
+        if dan_name.matches(name):
+            dan_candidates = name_to_speakers[name]
+            if len(dan_candidates) == 1:
+                speaker_map[dan_candidates[0]] = "Dan Moisan"
+                logger.debug(f"Mapped Dan Moisan: {dan_candidates[0]} -> Dan Moisan")
+            # Remove from further processing
+            del name_to_speakers[name]
+            break
 
     # Resolve unambiguous mappings (1 name -> 1 speaker)
     for name, candidates in name_to_speakers.items():
         if len(candidates) == 1:
             speaker = candidates[0]
             if speaker not in speaker_map:  # Don't overwrite existing
-                speaker_map[speaker] = name
+                speaker_map[speaker] = name.full_name
+                logger.debug(f"Mapped unambiguous: {speaker} -> {name.full_name}")
 
     # Try to match remaining speakers to available names
     unresolved_speakers = [s for s in speaker_labels if s not in speaker_map]
+    logger.debug(f"Unresolved speakers: {unresolved_speakers}")
+
+    # FALLBACK: For metadata names that had no dialogue matches,
+    # try process of elimination with remaining speakers
+    if unresolved_speakers and metadata_names:
+        unused_metadata_names = [name for name in metadata_names if name not in name_to_speakers]
+        unused_full_names = [n.full_name for n in unused_metadata_names]
+        logger.debug(f"Unused metadata names (no dialogue match): {unused_full_names}")
+
+        # Prefer names with last names (more specific) over first-name-only
+        preferred_names = [name for name in unused_metadata_names if name.last_name]
+        if not preferred_names:
+            # If no names with last names, use all unused names
+            preferred_names = unused_metadata_names
+        logger.debug(f"Preferred names: {[n.full_name for n in preferred_names]}")
+
+        # If we have exactly 1 unresolved speaker and at least 1 preferred name
+        if len(unresolved_speakers) == 1 and len(preferred_names) >= 1:
+            # Use the first preferred name as a fallback
+            chosen_name = preferred_names[0]
+            speaker_map[unresolved_speakers[0]] = chosen_name.full_name
+            logger.debug(
+                f"Matched by elimination (first available): "
+                f"{unresolved_speakers[0]} -> {chosen_name.full_name}"
+            )
+            unresolved_speakers = []  # All resolved
+        # Otherwise, if exactly 1 unused name total, use that
+        elif len(unresolved_speakers) == 1 and len(unused_metadata_names) == 1:
+            unused_name = unused_metadata_names[0].full_name
+            speaker_map[unresolved_speakers[0]] = unused_name
+            logger.debug(f"Matched by elimination: {unresolved_speakers[0]} -> {unused_name}")
+            unresolved_speakers = []  # All resolved
 
     # For any still-unresolved speakers, use UI callback if provided
     if ui_callback:
+        unresolved_speakers = [s for s in speaker_labels if s not in speaker_map]
         for speaker in unresolved_speakers:
             if speaker not in speaker_map:
                 samples = _extract_speaker_samples(speaker, text, count=3)
@@ -153,8 +202,8 @@ def _extract_speaker_labels(text: str) -> list[str]:
     return labels
 
 
-def _identify_speaker_by_name(text: str, speaker_labels: list[str], name: str) -> list[str]:
-    """Identify which speaker label(s) could correspond to a person by their first name.
+def _identify_speaker_by_name(text: str, speaker_labels: list[str], name: Name) -> list[str]:
+    """Identify which speaker label(s) could correspond to a person.
 
     Uses a two-pass approach:
     1. Direct inference: Identify speakers who address the person (they are NOT that person)
@@ -168,7 +217,7 @@ def _identify_speaker_by_name(text: str, speaker_labels: list[str], name: str) -
     Args:
         text: The text to analyze
         speaker_labels: List of speaker labels
-        name: The first name to identify (e.g., "Dan", "John", "Alice")
+        name: The Name object to identify
 
     Returns:
         List of possible speaker labels for the named person
@@ -180,20 +229,31 @@ def _identify_speaker_by_name(text: str, speaker_labels: list[str], name: str) -
     speakers_addressing_person: list[str] = []
     direct_address_locations: list[int] = []  # Track where direct addresses occur
 
+    # Check all name variants (first name, shortened forms)
+    name_variants = name.shortened_variants
+
     for i, line in enumerate(lines):
-        # Look for the name in dialogue (not as a speaker label)
+        # Look for any variant of the name in dialogue (not as a speaker label)
         # Check if this is a direct address (not hypothetical/third-person)
-        if (
-            not line.lower().startswith(f"{name.lower()}:")
-            and name.lower() in line.lower()
-            and _is_direct_address_to_person(line, name)
-        ):
+        line_lower = line.lower()
+        found_variant = None
+        for variant in name_variants:
+            variant_lower = variant.lower()
+            if (
+                not line_lower.startswith(f"{variant_lower}:")
+                and variant_lower in line_lower
+                and _is_direct_address_to_person(line, variant)
+            ):
+                found_variant = variant
+                break
+
+        if found_variant:
             # Found a direct address to the person
             # Find which speaker said this (they are addressing the person)
             for j in range(i, -1, -1):
                 if _is_speaker_line(lines[j], speaker_labels):
                     speaker = _extract_speaker_from_line(lines[j])
-                    if speaker and speaker != name:
+                    if speaker and speaker not in name_variants:
                         speakers_addressing_person.append(speaker)
                         direct_address_locations.append(i)
                     break
@@ -204,7 +264,7 @@ def _identify_speaker_by_name(text: str, speaker_labels: list[str], name: str) -
         possible_speakers = [
             speaker
             for speaker in speaker_labels
-            if speaker not in speakers_addressing_person_set and speaker != name
+            if speaker not in speakers_addressing_person_set and speaker not in name_variants
         ]
 
         # PASS 2: Proximity heuristics if multiple candidates remain
@@ -223,7 +283,7 @@ def _identify_speaker_by_name(text: str, speaker_labels: list[str], name: str) -
 def _apply_proximity_heuristics(
     lines: list[str],
     speaker_labels: list[str],
-    name: str,
+    name: Name,
     candidates: list[str],
     address_locations: list[int],
 ) -> list[str]:
@@ -237,34 +297,45 @@ def _apply_proximity_heuristics(
     Args:
         lines: All lines of text split by CRLF
         speaker_labels: List of all speaker labels
-        name: The name being identified
+        name: The Name object being identified
         candidates: Current list of possible speakers for this name
         address_locations: Line indices where direct addresses to name occurred
 
     Returns:
         Refined list of candidates, or empty list if heuristics don't help
     """
-    name_lower = name.lower()
+    # Use first name and variants for matching
+    name_variants_lower = {v.lower() for v in name.shortened_variants}
+    name_lower = name.first_name.lower()
 
     # FIRST: Exclude speakers who use third-person references
     # These speakers are definitively NOT the person
-    third_person_patterns = [
-        # Gendered pronouns with name
-        rf"\b(her|she|she'?s)\b.*{name_lower}",
-        rf"{name_lower}.*\b(her|she|she'?s)\b",
-        rf"\b(his|he|he'?s)\b.*{name_lower}",
-        rf"{name_lower}.*\b(his|he|he'?s)\b",
-        # Possession with name
-        rf"{name_lower}'?s\s+(screen|audio|connection|microphone)",
-        # Status references with name
-        rf"{name_lower}\s+is\s+(muted?|frozen|disconnected)",
-        # Generic third-person tech references (context clue after address)
-        r"\b(her|his)\s+(screen|audio|connection|microphone|video)\b",
-        r"\b(she|he)\s+is\s+(muted?|frozen|disconnected)\b",
-        # Generic third-person pronouns near address context
-        # (If someone says "she" or "he" right after addressing the person, they're not that person)
-        r"\b(she|he)\b",  # Any use of "she" or "he" is third-person
-    ]
+    # Check for any name variant in third-person context
+    third_person_patterns: list[str] = []
+    for variant_lower in name_variants_lower:
+        third_person_patterns.extend(
+            [
+                # Gendered pronouns with name
+                rf"\b(her|she|she'?s)\b.*{variant_lower}",
+                rf"{variant_lower}.*\b(her|she|she'?s)\b",
+                rf"\b(his|he|he'?s)\b.*{variant_lower}",
+                rf"{variant_lower}.*\b(his|he|he'?s)\b",
+                # Possession with name
+                rf"{variant_lower}'?s\s+(screen|audio|connection|microphone)",
+                # Status references with name
+                rf"{variant_lower}\s+is\s+(muted?|frozen|disconnected)",
+            ]
+        )
+    # Add generic third-person patterns
+    third_person_patterns.extend(
+        [
+            # Generic third-person tech references
+            r"\b(her|his)\s+(screen|audio|connection|microphone|video)\b",
+            r"\b(she|he)\s+is\s+(muted?|frozen|disconnected)\b",
+            # Generic third-person pronouns
+            r"\b(she|he)\b",
+        ]
+    )
 
     speakers_using_third_person: set[str] = set()
     for line in lines:
@@ -396,7 +467,8 @@ def _identify_dan_moisan(text: str, speaker_labels: list[str]) -> str | None:
     Returns:
         The speaker label for Dan Moisan, or None if not found
     """
-    candidates = _identify_speaker_by_name(text, speaker_labels, "Dan")
+    dan_name = Name(first_name="Dan")
+    candidates = _identify_speaker_by_name(text, speaker_labels, dan_name)
     return candidates[0] if candidates else None
 
 
@@ -467,148 +539,94 @@ def _is_direct_address_to_person(line: str, name: str) -> bool:
     )
 
 
-def _extract_names_from_metadata(text: str, speaker_labels: list[str] | None = None) -> set[str]:
+def _extract_names_from_metadata(text: str, speaker_labels: list[str] | None = None) -> set[Name]:
     """Extract names from metadata section of transcript.
+
+    Metadata is everything before the "Transcript:" label.
+    Everything after "Transcript:" is dialogue.
 
     Args:
         text: The text to analyze
-        speaker_labels: Optional list of known speaker labels
+        speaker_labels: Optional list of known speaker labels (unused, kept for compatibility)
 
     Returns:
-        Set of names found in metadata
+        Set of Name objects found in metadata
     """
-    names: set[str] = set()
+    names: set[Name] = set()
     lines = text.split("\r\n")
 
-    # Metadata is before the first actual speaker utterance
-    # Speaker lines typically have text after the colon that looks like dialogue
-    in_metadata = True
+    # Metadata is everything before "Transcript:" label
     for line in lines:
-        # Check if this looks like a speaker with dialogue (not metadata)
-        if _is_speaker_line(line, speaker_labels) and _looks_like_dialogue(line):
-            in_metadata = False
+        # Stop when we hit the Transcript section
+        if line.strip().startswith("Transcript:"):
             break
 
-        if in_metadata and any(
-            keyword in line.lower() for keyword in ["attendee", "participant", "present"]
-        ):
-            # Extract names from the line
+        # Extract names from metadata lines
+        if any(keyword in line.lower() for keyword in ["attendee", "participant", "present"]):
             found_names = _extract_names_from_line(line)
             names.update(found_names)
 
     return names
 
 
-def _looks_like_dialogue(line: str) -> bool:
-    """Check if a speaker line looks like dialogue rather than metadata.
+def _extract_names_from_dialogue(text: str) -> set[Name]:
+    """Extract names mentioned in dialogue through direct address patterns.
 
-    Args:
-        line: The line to check
+    Only extracts names from clear direct address contexts like:
+    - "Hi, Dan"
+    - "Thanks, Anne"
+    - "Dan, what do you think?"
 
-    Returns:
-        True if this looks like actual dialogue
-    """
-    # Extract the content after the label
-    if ":" not in line:
-        return False
-
-    label, content = line.split(":", 1)
-    label = label.strip()
-    content = content.strip()
-
-    # Metadata labels we want to exclude
-    metadata_keywords = [
-        "attendee",
-        "participant",
-        "meeting",
-        "date",
-        "time",
-        "location",
-        "subject",
-        "present",
-        "transcript",
-    ]
-
-    # If the label itself is a metadata keyword, it's not dialogue
-    if label.lower() in metadata_keywords:
-        return False
-
-    # If content is empty, not dialogue
-    if not content:
-        return False
-
-    words = content.split()
-    if len(words) == 0:
-        return False
-
-    # Check for common dialogue patterns
-    dialogue_words = ["hello", "hi", "hey", "yes", "no", "thanks", "i", "you", "we", "what", "how"]
-    first_word = words[0].lower().rstrip(",.!?")
-    if first_word in dialogue_words:
-        return True
-
-    # If it has sentence punctuation, likely dialogue
-    if any(content.rstrip().endswith(p) for p in [".", "?", "!"]):
-        return True
-
-    # If it's a longer phrase (more than 3 words), might be dialogue
-    return len(words) > 3
-
-
-def _extract_names_from_dialogue(text: str) -> set[str]:
-    """Extract names mentioned in dialogue.
+    This conservative approach avoids extracting sentence-starting words,
+    company names, and other false positives.
 
     Args:
         text: The text to analyze
 
     Returns:
-        Set of names mentioned in conversations
+        Set of Name objects mentioned in direct address
     """
-    names: set[str] = set()
+    names: set[Name] = set()
 
-    # Look for capitalized words that might be names
-    # This is a simple heuristic
-    pattern = r"\b([A-Z][a-z]+)\b"
+    # Direct address patterns (name preceded/followed by comma)
+    # Look for greetings followed by comma and name
+    patterns = [
+        r"(?:Hi|Hey|Hello|Thanks|Thank you),\s+([A-Z][a-z]+)",  # "Hi, Dan"
+        r"\b([A-Z][a-z]+),\s+(?:what|how|can|could|would|do|did|thanks)",  # "Dan, what..."
+        r"(?:As|So)\s+([A-Z][a-z]+)\s+(?:mentioned|said|noted)",  # "As Dan mentioned"
+        r"(?:how|where)\s+is\s+([A-Z][a-z]+)",  # "how is Alice?"
+    ]
 
-    # Words to exclude (common dialogue words, not names)
+    # Words to exclude (common dialogue words that might match patterns)
     excluded_words = {
         "the",
         "this",
         "that",
-        "these",
-        "those",
         "what",
-        "when",
-        "where",
-        "who",
-        "why",
-        "how",
-        "speaker",
+        "thanks",
+        "thank",
         "hello",
         "hi",
         "hey",
-        "thanks",
-        "thank",
-        "yes",
-        "yeah",
-        "sure",
-        "okay",
-        "good",
-        "great",
-        "well",
-        "now",
-        "here",
-        "there",
-        "world",  # Common in examples
+        # Geographic terms
+        "america",
+        "north",
+        "south",
+        "east",
+        "west",
     }
 
-    for line in text.split("\r\n"):
-        # Include names from speaker lines too
-        matches = re.findall(pattern, line)
+    for pattern in patterns:
+        matches = re.findall(pattern, text, re.MULTILINE)
         for match in matches:
-            # Filter out common words that aren't names
-            if match.lower() not in excluded_words:
-                names.add(match)
+            if match.lower() not in excluded_words and len(match) > 1:
+                logger.debug(f"Extracted name from dialogue: {match}")
+                # Create Name object from first name only
+                try:
+                    name = Name(first_name=match)
+                    names.add(name)
+                except ValueError:
+                    logger.debug(f"Skipping invalid name: {match}")
 
     return names
 
@@ -704,16 +722,16 @@ def _extract_speaker_from_line(line: str) -> str | None:
     return None
 
 
-def _extract_names_from_line(line: str) -> set[str]:
+def _extract_names_from_line(line: str) -> set[Name]:
     """Extract potential names from a line.
 
     Args:
         line: The line to analyze
 
     Returns:
-        Set of potential names
+        Set of Name objects
     """
-    names: set[str] = set()
+    names: set[Name] = set()
 
     # Remove the field label (e.g., "Attendees:")
     content = line.split(":", 1)[1] if ":" in line else line
@@ -725,10 +743,13 @@ def _extract_names_from_line(line: str) -> set[str]:
         # Clean and check if it looks like a name
         cleaned = part.strip()
         if cleaned and cleaned[0].isupper():
-            # Simple name extraction - could be improved
-            words = cleaned.split()
-            for word in words:
-                if word and word[0].isupper() and len(word) > 1:
-                    names.add(word)
+            # Parse as full name using Name.from_string
+            try:
+                name = Name.from_string(cleaned)
+                names.add(name)
+            except ValueError:
+                # Skip invalid names (e.g., too many tokens)
+                logger.debug(f"Skipping invalid name: {cleaned}")
+                continue
 
     return names

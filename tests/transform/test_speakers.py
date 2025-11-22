@@ -2,6 +2,7 @@
 
 import pytest
 
+from transcript_etl_pipeline.transform.name import Name
 from transcript_etl_pipeline.transform.speakers import (
     _apply_speaker_mappings,  # pyright: ignore[reportPrivateUsage]
     _extract_names_from_dialogue,  # pyright: ignore[reportPrivateUsage]
@@ -80,16 +81,16 @@ class TestExtractNamesFromMetadata:
         """Test extracting names from attendees line."""
         text = "Attendees: John, Jane, Bob\r\nSpeaker: Hello"
         names = _extract_names_from_metadata(text)
-        assert "John" in names
-        assert "Jane" in names
-        assert "Bob" in names
+        assert Name(first_name="John") in names
+        assert Name(first_name="Jane") in names
+        assert Name(first_name="Bob") in names
 
     def test_participants_line(self) -> None:
         """Test extracting names from participants line."""
         text = "Participants: Alice, Charlie\r\nSpeaker: Hi"
         names = _extract_names_from_metadata(text)
-        assert "Alice" in names
-        assert "Charlie" in names
+        assert Name(first_name="Alice") in names
+        assert Name(first_name="Charlie") in names
 
     def test_no_metadata(self) -> None:
         """Test text without metadata."""
@@ -105,8 +106,8 @@ class TestExtractNamesFromDialogue:
         """Test extracting names mentioned in dialogue."""
         text = "Speaker A: Hello John, how is Alice?\r\nSpeaker B: She is fine."
         names = _extract_names_from_dialogue(text)
-        assert "John" in names
-        assert "Alice" in names
+        assert Name(first_name="John") in names
+        assert Name(first_name="Alice") in names
 
     def test_filter_common_words(self) -> None:
         """Test filtering out common words."""
@@ -114,7 +115,7 @@ class TestExtractNamesFromDialogue:
         names = _extract_names_from_dialogue(text)
         # Should not include "The" even though it's capitalized
         # Our filter might not be perfect but should avoid obvious ones
-        assert "The" not in names or len(names) > 0  # Implementation dependent
+        assert Name(first_name="The") not in names or len(names) > 0  # Implementation dependent
 
 
 class TestIdentifyDanMoisan:
@@ -573,35 +574,39 @@ class TestIdentifySpeakerByName:
         "name,direct_address,expected_speaker",
         [
             (
-                "Alice",
+                Name(first_name="Alice"),
                 "Speaker A: Alice, what do you think?\r\nSpeaker B: I think it's good.",
                 "Speaker B",
             ),
-            ("Bob", "Speaker A: Thanks, Bob.\r\nSpeaker B: You're welcome.", "Speaker B"),
             (
-                "Charlie",
+                Name(first_name="Bob"),
+                "Speaker A: Thanks, Bob.\r\nSpeaker B: You're welcome.",
+                "Speaker B",
+            ),
+            (
+                Name(first_name="Charlie"),
                 "Speaker A: I need to speak to Charlie.\r\nSpeaker B: I'm here.",
                 "Speaker B",
             ),
             (
-                "Diana",
+                Name(first_name="Diana"),
                 "Speaker A: Diana mentioned this earlier.\r\nSpeaker B: Yes, I did.",
                 "Speaker B",
             ),
             (
-                "Eve",
+                Name(first_name="Eve"),
                 "Speaker A: I'm learning about you, Eve.\r\nSpeaker B: Thank you.",
                 "Speaker B",
             ),
             (
-                "Frank",
+                Name(first_name="Frank"),
                 "Speaker A: For Frank, this is important.\r\nSpeaker B: I appreciate that.",
                 "Speaker B",
             ),
         ],
     )
     def test_various_names_vocative_comma(
-        self, name: str, direct_address: str, expected_speaker: str
+        self, name: Name, direct_address: str, expected_speaker: str
     ) -> None:
         """Test that identification works with various first names."""
         labels = ["Speaker A", "Speaker B"]
@@ -611,13 +616,22 @@ class TestIdentifySpeakerByName:
     @pytest.mark.parametrize(
         "name,hypothetical_text",
         [
-            ("Alice", "Speaker A: Is Alice a good fit?\r\nSpeaker B: I think so."),
-            ("Bob", "Speaker A: If you were to say Bob is great.\r\nSpeaker B: Agreed."),
-            ("Charlie", "Speaker A: Is Charlie an experienced leader?\r\nSpeaker B: Yes."),
-            ("Diana", "Speaker A: The question is whether Diana can do it.\r\nSpeaker B: I can."),
+            (Name(first_name="Alice"), "Speaker A: Is Alice a good fit?\r\nSpeaker B: I think so."),
+            (
+                Name(first_name="Bob"),
+                "Speaker A: If you were to say Bob is great.\r\nSpeaker B: Agreed.",
+            ),
+            (
+                Name(first_name="Charlie"),
+                "Speaker A: Is Charlie an experienced leader?\r\nSpeaker B: Yes.",
+            ),
+            (
+                Name(first_name="Diana"),
+                "Speaker A: The question is whether Diana can do it.\r\nSpeaker B: I can.",
+            ),
         ],
     )
-    def test_various_names_hypothetical_excluded(self, name: str, hypothetical_text: str) -> None:
+    def test_various_names_hypothetical_excluded(self, name: Name, hypothetical_text: str) -> None:
         """Test that hypothetical references are correctly excluded for any name."""
         labels = ["Speaker A", "Speaker B"]
         identified = _identify_speaker_by_name(hypothetical_text, labels, name)
@@ -628,7 +642,7 @@ class TestIdentifySpeakerByName:
         text = "Speaker A: ALICE, can you help?\r\nSpeaker B: Sure."
         labels = ["Speaker A", "Speaker B"]
         # Should work with lowercase input name
-        identified = _identify_speaker_by_name(text, labels, "alice")
+        identified = _identify_speaker_by_name(text, labels, Name(first_name="alice"))
         assert identified == ["Speaker B"]
 
     def test_multiple_speakers_complex(self) -> None:
@@ -643,7 +657,7 @@ class TestIdentifySpeakerByName:
             "Speaker A: Thanks Alice."
         )
         labels = ["Speaker A", "Speaker B", "Speaker C"]
-        identified = _identify_speaker_by_name(text, labels, "Alice")
+        identified = _identify_speaker_by_name(text, labels, Name(first_name="Alice"))
         # Speaker B responds immediately after Alice is addressed
         assert identified == ["Speaker B"]
 
@@ -651,14 +665,14 @@ class TestIdentifySpeakerByName:
         """Test that no matches returns empty list."""
         text = "Speaker A: Hello\r\nSpeaker B: Hi"
         labels = ["Speaker A", "Speaker B"]
-        identified = _identify_speaker_by_name(text, labels, "Alice")
+        identified = _identify_speaker_by_name(text, labels, Name(first_name="Alice"))
         assert identified == []
 
     def test_name_as_speaker_label(self) -> None:
         """Test when the name itself appears as a speaker label."""
         text = "Alice: Hello everyone.\r\nSpeaker A: Hi Alice, how are you?"
         labels = ["Alice", "Speaker A"]
-        identified = _identify_speaker_by_name(text, labels, "Alice")
+        identified = _identify_speaker_by_name(text, labels, Name(first_name="Alice"))
         # Alice is not in the candidate list because she's not addressed
         # (Speaker A addresses Alice, so Alice could be in the other speakers,
         # but Alice is the one doing the addressing in the speaker line)
@@ -676,7 +690,7 @@ class TestIdentifySpeakerByName:
             "Speaker A: Thanks Alice for the input."
         )
         labels = ["Speaker A", "Speaker B", "Speaker C"]
-        identified = _identify_speaker_by_name(text, labels, "Alice")
+        identified = _identify_speaker_by_name(text, labels, Name(first_name="Alice"))
         # Speaker B responds immediately after Alice is addressed
         assert identified == ["Speaker B"]
 
@@ -694,7 +708,7 @@ class TestProximityHeuristics:
         )
         labels = ["Speaker A", "Speaker B", "Speaker C"]
         # Alice is addressed, B responds immediately → B is likely Alice
-        identified = _identify_speaker_by_name(text, labels, "Alice")
+        identified = _identify_speaker_by_name(text, labels, Name(first_name="Alice"))
         assert identified == ["Speaker B"]
 
     def test_technical_difficulty_pattern(self) -> None:
@@ -708,7 +722,7 @@ class TestProximityHeuristics:
         )
         labels = ["Speaker A", "Speaker B", "Speaker C"]
         # Speaker C self-identifies with "I'm here" and "Sorry I lost you"
-        identified = _identify_speaker_by_name(text, labels, "Alice")
+        identified = _identify_speaker_by_name(text, labels, Name(first_name="Alice"))
         assert identified == ["Speaker C"]
 
     def test_muted_speaker_pattern(self) -> None:
@@ -720,7 +734,7 @@ class TestProximityHeuristics:
         )
         labels = ["Speaker A", "Speaker B", "Speaker C"]
         # Speaker C apologizes and uses self-identification
-        identified = _identify_speaker_by_name(text, labels, "Alice")
+        identified = _identify_speaker_by_name(text, labels, Name(first_name="Alice"))
         assert identified == ["Speaker C"]
 
     def test_third_person_reference_reinforcement(self) -> None:
@@ -734,7 +748,7 @@ class TestProximityHeuristics:
         labels = ["Speaker A", "Speaker B", "Speaker C", "Speaker D"]
         # A, B, C all refer to Alice in third person → they are NOT Alice
         # D self-identifies → D is Alice
-        identified = _identify_speaker_by_name(text, labels, "Alice")
+        identified = _identify_speaker_by_name(text, labels, Name(first_name="Alice"))
         assert identified == ["Speaker D"]
 
     def test_no_clear_heuristic_returns_empty(self) -> None:
@@ -751,7 +765,7 @@ class TestProximityHeuristics:
         # No direct address followed by response
         # No self-identification patterns
         # Should return empty list (heuristics inconclusive)
-        identified = _identify_speaker_by_name(text, labels, "Alice")
+        identified = _identify_speaker_by_name(text, labels, Name(first_name="Alice"))
         assert identified == []
 
     def test_multiple_direct_addresses_with_responses(self) -> None:
@@ -764,10 +778,10 @@ class TestProximityHeuristics:
         )
         labels = ["Speaker A", "Speaker B", "Speaker C"]
         # Alice is addressed, B responds immediately → B is Alice
-        alice_identified = _identify_speaker_by_name(text, labels, "Alice")
+        alice_identified = _identify_speaker_by_name(text, labels, Name(first_name="Alice"))
         assert alice_identified == ["Speaker B"]
         # Bob is addressed, C responds → C is Bob
-        bob_identified = _identify_speaker_by_name(text, labels, "Bob")
+        bob_identified = _identify_speaker_by_name(text, labels, Name(first_name="Bob"))
         assert bob_identified == ["Speaker C"]
 
     def test_apology_pattern_self_identification(self) -> None:
@@ -779,7 +793,7 @@ class TestProximityHeuristics:
         )
         labels = ["Speaker A", "Speaker B", "Speaker C"]
         # Speaker C uses "Apologies, I" pattern
-        identified = _identify_speaker_by_name(text, labels, "Alice")
+        identified = _identify_speaker_by_name(text, labels, Name(first_name="Alice"))
         assert identified == ["Speaker C"]
 
     def test_combined_heuristics_reinforce_identification(self) -> None:
@@ -793,7 +807,7 @@ class TestProximityHeuristics:
         labels = ["Speaker A", "Speaker B", "Speaker C", "Speaker D"]
         # B and C refer to Alice in third person (reinforcement)
         # D self-identifies with apology and context
-        identified = _identify_speaker_by_name(text, labels, "Alice")
+        identified = _identify_speaker_by_name(text, labels, Name(first_name="Alice"))
         assert identified == ["Speaker D"]
 
     def test_building_on_question_pattern(self) -> None:
@@ -814,5 +828,5 @@ class TestProximityHeuristics:
         # Speaker A addresses Alice
         # Speaker B builds on the question (not a response from Alice)
         # Speaker C responds with "Sure, let me begin" - this is Alice
-        identified = _identify_speaker_by_name(text, labels, "Alice")
+        identified = _identify_speaker_by_name(text, labels, Name(first_name="Alice"))
         assert identified == ["Speaker C"]
