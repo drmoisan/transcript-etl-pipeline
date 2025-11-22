@@ -8,9 +8,28 @@ import logging
 import re
 from typing import Protocol
 
+from english_words import get_english_words_set
+
 from transcript_etl_pipeline.transform.name import Name
 
 logger = logging.getLogger(__name__)
+
+# Load English dictionary once at module level for performance
+# Currently unused but available for future dictionary-based checks
+_english_words: set[str] | None = None
+
+
+def _get_english_words() -> set[str]:  # pyright: ignore[reportUnusedFunction]
+    """Get English words dictionary, loading it once and caching.
+
+    Returns:
+        Set of lowercase English words
+    """
+    global _english_words
+    if _english_words is None:
+        _english_words = get_english_words_set(["web2"], lower=True)
+    return _english_words
+
 
 __all__ = [
     "SpeakerResolutionUI",
@@ -27,6 +46,7 @@ __all__ = [
     "_is_direct_address_to_person",
     "_extract_names_from_line",
     "_apply_proximity_heuristics",
+    "_extract_title_case_chains",
     "_is_proper_noun",
     "_is_likely_person_name",
 ]
@@ -571,133 +591,245 @@ def _extract_names_from_metadata(text: str, speaker_labels: list[str] | None = N
     return names
 
 
-def _is_proper_noun(word: str) -> bool:
-    """Check if a word is a proper noun based on capitalization.
+def _extract_title_case_chains(text: str) -> list[tuple[str, int]]:
+    """Extract chains of consecutive title-cased words from text.
 
-    A proper noun is identified by:
-    - First letter is uppercase
-    - Not all uppercase (acronyms)
-    - Contains at least one lowercase letter (if more than one letter)
+    Identifies sequences of title-cased words (e.g., "Dan Moisan", "New York")
+    and returns them as word groups along with their position.
 
     Args:
-        word: The word to check
+        text: The text to analyze
 
     Returns:
-        True if the word appears to be a proper noun
+        List of tuples (word_group, start_position) where word_group is the
+        space-joined title-cased words
     """
-    if not word or len(word) < 2:
+    # Pattern to match title-cased words
+    title_case_pattern = r"\b[A-Z][a-z]+\b"
+
+    chains: list[tuple[str, int]] = []
+    words = list(re.finditer(title_case_pattern, text))
+
+    if not words:
+        return chains
+
+    # Group consecutive title-cased words
+    current_chain = [words[0]]
+
+    for i in range(1, len(words)):
+        prev_end = words[i - 1].end()
+        curr_start = words[i].start()
+
+        # Check if words are consecutive (only whitespace between)
+        between = text[prev_end:curr_start]
+        if between.strip() == "":
+            current_chain.append(words[i])
+        else:
+            # Save current chain if it exists
+            if current_chain:
+                chain_text = " ".join(m.group() for m in current_chain)
+                chains.append((chain_text, current_chain[0].start()))
+            current_chain = [words[i]]
+
+    # Don't forget the last chain
+    if current_chain:
+        chain_text = " ".join(m.group() for m in current_chain)
+        chains.append((chain_text, current_chain[0].start()))
+
+    return chains
+
+
+def _is_proper_noun(word_group: str) -> bool:
+    """Check if a word or word group is a proper noun.
+
+    Enhanced logic:
+    - Looks for title case chains (consecutive title-cased words are entities)
+    - For single words, checks against English dictionary for COMMON words
+    - Word groups >3 tokens are rejected (unlikely to be names)
+
+    Args:
+        word_group: The word or phrase to check (may be multiple words)
+
+    Returns:
+        True if the word group appears to be a proper noun
+    """
+    if not word_group or not word_group.strip():
         return False
 
-    # Must start with uppercase
-    if not word[0].isupper():
+    tokens = word_group.strip().split()
+
+    # Word groups >3 tokens are unlikely to be names
+    if len(tokens) > 3:
         return False
 
-    # Must not be all uppercase (likely an acronym or abbreviation)
-    if word.isupper():
-        return False
+    # All tokens must be title-cased
+    for token in tokens:
+        if len(token) < 2:
+            return False
+        if not token[0].isupper():
+            return False
+        if token.isupper():  # All caps (acronym)
+            return False
+        if not any(c.islower() for c in token):
+            return False
 
-    # Must have at least one lowercase letter (proper capitalization)
-    return any(c.islower() for c in word)
+    # For single-word groups, check if it's a COMMON English word
+    # We use a small list of very common words instead of the full dictionary
+    # because the dictionary includes proper names
+    if len(tokens) == 1:
+        word_lower = tokens[0].lower()
+
+        # Common words that are definitely not proper nouns
+        common_words = {
+            "the",
+            "this",
+            "that",
+            "these",
+            "those",
+            "what",
+            "which",
+            "where",
+            "when",
+            "why",
+            "how",
+            "thanks",
+            "thank",
+            "hello",
+            "hi",
+            "hey",
+            "goodbye",
+            "bye",
+            "yes",
+            "no",
+            "okay",
+            "sure",
+            "really",
+            "very",
+            "much",
+            "and",
+            "but",
+            "or",
+            "nor",
+            "for",
+            "yet",
+            "so",
+            "meeting",
+            "call",
+            "conference",
+            "discussion",
+        }
+
+        if word_lower in common_words:
+            logger.debug(f"Skipping '{word_group}': common English word")
+            return False
+
+    return True
 
 
-def _is_likely_person_name(word: str) -> bool:
+def _is_likely_person_name(word_group: str) -> bool:
     """Determine if a proper noun is likely a person name vs. place/thing.
 
-    Uses exclusion lists for:
-    - Common places (cities, countries, regions)
-    - Common things (organizations, products, concepts)
-    - Common nouns that might be capitalized
+    Enhanced logic:
+    - Multi-token groups with COMMON English words are likely company names/titles
+    - Exception: honorifics and proper names that happen to be in dictionary
+    - Single-token groups are checked against exclusion lists
 
     Args:
-        word: The proper noun to classify
+        word_group: The proper noun to classify (may be multiple words)
 
     Returns:
-        True if the word is likely a person name
+        True if the word group is likely a person name
     """
-    word_lower = word.lower()
+    tokens = word_group.strip().split()
 
-    # Common places to exclude
-    places = {
-        "america",
-        "north",
-        "south",
-        "east",
-        "west",
-        "africa",
-        "asia",
-        "europe",
-        "australia",
-        "canada",
-        "mexico",
-        "california",
-        "texas",
-        "florida",
-        "york",
-        "london",
-        "paris",
-        "tokyo",
-        "beijing",
-        "moscow",
-        "boston",
-        "chicago",
-        "seattle",
-        "atlanta",
-        "denver",
-        "portland",
-        "austin",
-    }
+    # Honorifics that indicate a person name follows
+    honorifics = {"mr", "mrs", "ms", "dr", "prof", "sir", "dame", "lord", "lady"}
 
-    # Common things (organizations, products, concepts) to exclude
-    things = {
-        "monday",
-        "tuesday",
-        "wednesday",
-        "thursday",
-        "friday",
-        "saturday",
-        "sunday",
-        "january",
-        "february",
-        "march",
-        "april",
-        "may",
-        "june",
-        "july",
-        "august",
-        "september",
-        "october",
-        "november",
-        "december",
-        "microsoft",
-        "apple",
-        "google",
-        "amazon",
-        "facebook",
-        "twitter",
-        "linkedin",
-        "github",
-        "windows",
-        "linux",
-        "android",
-        "iphone",
-        "internet",
-        "email",
-    }
-
-    # Common words that might be capitalized
-    common_words = {
+    # Common words that are definitely not names (even though they're in dictionary)
+    # This list should include common nouns, verbs, adjectives, etc.
+    common_non_names = {
         "the",
         "this",
         "that",
+        "these",
+        "those",
         "what",
         "which",
         "where",
         "when",
+        "why",
+        "how",
+        "and",
+        "but",
+        "or",
+        "nor",
+        "for",
+        "yet",
+        "so",
+        "new",
+        "old",
+        "big",
+        "small",
+        "great",
+        "good",
+        "bad",
+        "first",
+        "last",
+        "next",
+        "other",
+        "time",
+        "day",
+        "year",
+        "way",
+        "work",
+        "world",
+        "life",
+        "hand",
+        "part",
+        "child",
+        "eye",
+        "woman",
+        "man",
+        "place",
+        "case",
+        "point",
+        "government",
+        "company",
+        "number",
+        "group",
+        "problem",
+        "fact",
+        "be",
+        "have",
+        "do",
+        "say",
+        "get",
+        "make",
+        "go",
+        "know",
+        "take",
+        "see",
+        "come",
+        "think",
+        "look",
+        "want",
+        "give",
+        "use",
+        "find",
+        "tell",
+        "ask",
+        "seem",
+        "feel",
+        "try",
+        "leave",
+        "call",
         "thanks",
         "thank",
         "hello",
         "hi",
         "hey",
+        "goodbye",
+        "bye",
         "yes",
         "no",
         "okay",
@@ -707,24 +839,127 @@ def _is_likely_person_name(word: str) -> bool:
         "much",
     }
 
-    # Check if word is in any exclusion list
-    return not (word_lower in places or word_lower in things or word_lower in common_words)
+    # Check if multi-token group contains common English words (not names)
+    if len(tokens) > 1:
+        for token in tokens:
+            token_lower = token.lower().rstrip(".")
+
+            # Skip honorifics
+            if token_lower in honorifics:
+                continue
+
+            # If we find a common non-name word, it's likely a company/title
+            if token_lower in common_non_names:
+                logger.debug(f"Skipping '{word_group}': multi-token with common word '{token}'")
+                return False
+
+    # For single tokens, check exclusion lists
+    if len(tokens) == 1:
+        word_lower = tokens[0].lower()
+
+        # Common places to exclude
+        places = {
+            "america",
+            "north",
+            "south",
+            "east",
+            "west",
+            "africa",
+            "asia",
+            "europe",
+            "australia",
+            "canada",
+            "mexico",
+            "california",
+            "texas",
+            "florida",
+            "york",
+            "london",
+            "paris",
+            "tokyo",
+            "beijing",
+            "moscow",
+            "boston",
+            "chicago",
+            "seattle",
+            "atlanta",
+            "denver",
+            "portland",
+            "austin",
+        }
+
+        # Temporal words to exclude
+        temporal = {
+            "monday",
+            "tuesday",
+            "wednesday",
+            "thursday",
+            "friday",
+            "saturday",
+            "sunday",
+            "january",
+            "february",
+            "march",
+            "april",
+            "may",
+            "june",
+            "july",
+            "august",
+            "september",
+            "october",
+            "november",
+            "december",
+        }
+
+        # Organizations/products to exclude
+        organizations = {
+            "microsoft",
+            "apple",
+            "google",
+            "amazon",
+            "facebook",
+            "twitter",
+            "linkedin",
+            "github",
+            "windows",
+            "linux",
+            "android",
+            "iphone",
+            "internet",
+            "email",
+        }
+
+        # Also check common words for single tokens
+        if (
+            word_lower in places
+            or word_lower in temporal
+            or word_lower in organizations
+            or word_lower in common_non_names
+        ):
+            logger.debug(f"Skipping '{word_group}': in exclusion list")
+            return False
+
+    return True
 
 
 def _extract_names_from_dialogue(text: str) -> set[Name]:
     """Extract names mentioned in dialogue through direct address patterns.
 
     Enhanced to properly identify proper nouns and distinguish between
-    person names vs. places/things. Only extracts names from clear direct
-    address contexts like:
+    person names vs. places/things. Uses title case chain detection to
+    identify multi-word names.
+
+    Only extracts names from clear direct address contexts like:
     - "Hi, Dan"
     - "Thanks, Anne"
     - "Dan, what do you think?"
+    - "Hi, Dan Moisan" (multi-word names)
 
     The function:
-    1. First checks if a captured word is a proper noun (capitalization)
-    2. Then filters out places, organizations, and common words
-    3. Only captures words that are likely person names
+    1. Extracts title case chains (e.g., "Dan Moisan", "New York")
+    2. Checks if each chain is a proper noun (English dictionary check)
+    3. Filters out places, organizations, and common words
+    4. Only captures words/chains that are likely person names
 
     Args:
         text: The text to analyze
@@ -734,33 +969,41 @@ def _extract_names_from_dialogue(text: str) -> set[Name]:
     """
     names: set[Name] = set()
 
-    # Direct address patterns (name preceded/followed by comma or in greeting context)
+    # Direct address patterns - capturing one or more title-cased words (non-greedy)
+    # Use [ ] instead of \s to prevent matching across lines (\s includes \r and \n)
+    # Pattern captures consecutive title-cased words up to 3 words
+    name_pattern = r"[A-Z][a-z]+(?:[ ][A-Z][a-z]+){0,2}"
+
     patterns = [
-        r"(?:Hi|Hey|Hello|Thanks|Thank you),\s+([A-Z][a-z]+)",  # "Hi, Dan"
-        r"(?:Hi|Hey|Hello|Thanks|Thank you)\s+([A-Z][a-z]+)",  # "Hello Alice" (no comma)
-        r"\b([A-Z][a-z]+),\s+(?:what|how|can|could|would|do|did|thanks)",  # "Dan, what..."
-        r"(?:As|So)\s+([A-Z][a-z]+)\s+(?:mentioned|said|noted)",  # "As Dan mentioned"
-        # (?i) makes how/where case-insensitive, but [A-Z][a-z]+ still requires title case name
-        r"(?i)(?:how|where)\s+is\s+([A-Z][a-z]+)",  # "How is Alice?" or "where is Bob?"
+        rf"(?:Hi|Hey|Hello|Thanks|Thank you),[ ]+({name_pattern})",  # "Hi, Dan"
+        rf"(?:Hi|Hey|Hello|Thanks|Thank you)[ ]+({name_pattern})",  # "Hello Alice"
+        rf"\b({name_pattern}),[ ]+(?:what|how|can|could|would|do|did|thanks)",  # "Dan, what..."
+        rf"(?:As|So)[ ]+({name_pattern})[ ]+(?:mentioned|said|noted)",  # "As Dan mentioned"
+        rf"(?i)(?:how|where)[ ]+is[ ]+({name_pattern})",  # "How is Alice?"
     ]
 
     for pattern in patterns:
         matches = re.findall(pattern, text, re.MULTILINE)
         for match in matches:
-            # First check: Must be a proper noun
-            if not _is_proper_noun(match):
-                logger.debug(f"Skipping '{match}': not a proper noun")
+            match = match.strip()
+
+            # Skip if match contains newlines (captured across lines)
+            if "\r" in match or "\n" in match:
                 continue
 
-            # Second check: Must be likely a person name (not place/thing)
+            # First check: Must be a proper noun (checks dictionary for single words)
+            if not _is_proper_noun(match):
+                continue
+
+            # Second check: Must be likely a person name (not place/thing/company)
             if not _is_likely_person_name(match):
-                logger.debug(f"Skipping '{match}': likely a place or thing, not a person")
                 continue
 
             # Passed all checks, create Name object
             logger.debug(f"Extracted name from dialogue: {match}")
             try:
-                name = Name(first_name=match)
+                # Parse multi-word names properly
+                name = Name.from_string(match)
                 names.add(name)
             except ValueError:
                 logger.debug(f"Skipping invalid name: {match}")
