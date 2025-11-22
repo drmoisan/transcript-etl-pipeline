@@ -740,7 +740,8 @@ def _extract_names_from_dialogue(text: str) -> set[Name]:
         r"(?:Hi|Hey|Hello|Thanks|Thank you)\s+([A-Z][a-z]+)",  # "Hello Alice" (no comma)
         r"\b([A-Z][a-z]+),\s+(?:what|how|can|could|would|do|did|thanks)",  # "Dan, what..."
         r"(?:As|So)\s+([A-Z][a-z]+)\s+(?:mentioned|said|noted)",  # "As Dan mentioned"
-        r"(?i)(?:how|where)\s+is\s+([A-Z][a-z]+)",  # "how is Alice?" (case-insensitive)
+        # (?i) makes how/where case-insensitive, but [A-Z][a-z]+ still requires title case name
+        r"(?i)(?:how|where)\s+is\s+([A-Z][a-z]+)",  # "How is Alice?" or "where is Bob?"
     ]
 
     for pattern in patterns:
