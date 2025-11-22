@@ -27,6 +27,8 @@ __all__ = [
     "_is_direct_address_to_person",
     "_extract_names_from_line",
     "_apply_proximity_heuristics",
+    "_is_proper_noun",
+    "_is_likely_person_name",
 ]
 
 
@@ -569,16 +571,160 @@ def _extract_names_from_metadata(text: str, speaker_labels: list[str] | None = N
     return names
 
 
+def _is_proper_noun(word: str) -> bool:
+    """Check if a word is a proper noun based on capitalization.
+
+    A proper noun is identified by:
+    - First letter is uppercase
+    - Not all uppercase (acronyms)
+    - Contains at least one lowercase letter (if more than one letter)
+
+    Args:
+        word: The word to check
+
+    Returns:
+        True if the word appears to be a proper noun
+    """
+    if not word or len(word) < 2:
+        return False
+
+    # Must start with uppercase
+    if not word[0].isupper():
+        return False
+
+    # Must not be all uppercase (likely an acronym or abbreviation)
+    if word.isupper():
+        return False
+
+    # Must have at least one lowercase letter (proper capitalization)
+    return any(c.islower() for c in word)
+
+
+def _is_likely_person_name(word: str) -> bool:
+    """Determine if a proper noun is likely a person name vs. place/thing.
+
+    Uses exclusion lists for:
+    - Common places (cities, countries, regions)
+    - Common things (organizations, products, concepts)
+    - Common nouns that might be capitalized
+
+    Args:
+        word: The proper noun to classify
+
+    Returns:
+        True if the word is likely a person name
+    """
+    word_lower = word.lower()
+
+    # Common places to exclude
+    places = {
+        "america",
+        "north",
+        "south",
+        "east",
+        "west",
+        "africa",
+        "asia",
+        "europe",
+        "australia",
+        "canada",
+        "mexico",
+        "california",
+        "texas",
+        "florida",
+        "york",
+        "london",
+        "paris",
+        "tokyo",
+        "beijing",
+        "moscow",
+        "boston",
+        "chicago",
+        "seattle",
+        "atlanta",
+        "denver",
+        "portland",
+        "austin",
+    }
+
+    # Common things (organizations, products, concepts) to exclude
+    things = {
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday",
+        "january",
+        "february",
+        "march",
+        "april",
+        "may",
+        "june",
+        "july",
+        "august",
+        "september",
+        "october",
+        "november",
+        "december",
+        "microsoft",
+        "apple",
+        "google",
+        "amazon",
+        "facebook",
+        "twitter",
+        "linkedin",
+        "github",
+        "windows",
+        "linux",
+        "android",
+        "iphone",
+        "internet",
+        "email",
+    }
+
+    # Common words that might be capitalized
+    common_words = {
+        "the",
+        "this",
+        "that",
+        "what",
+        "which",
+        "where",
+        "when",
+        "thanks",
+        "thank",
+        "hello",
+        "hi",
+        "hey",
+        "yes",
+        "no",
+        "okay",
+        "sure",
+        "really",
+        "very",
+        "much",
+    }
+
+    # Check if word is in any exclusion list
+    return not (word_lower in places or word_lower in things or word_lower in common_words)
+
+
 def _extract_names_from_dialogue(text: str) -> set[Name]:
     """Extract names mentioned in dialogue through direct address patterns.
 
-    Only extracts names from clear direct address contexts like:
+    Enhanced to properly identify proper nouns and distinguish between
+    person names vs. places/things. Only extracts names from clear direct
+    address contexts like:
     - "Hi, Dan"
     - "Thanks, Anne"
     - "Dan, what do you think?"
 
-    This conservative approach avoids extracting sentence-starting words,
-    company names, and other false positives.
+    The function:
+    1. First checks if a captured word is a proper noun (capitalization)
+    2. Then filters out places, organizations, and common words
+    3. Only captures words that are likely person names
 
     Args:
         text: The text to analyze
@@ -588,45 +734,35 @@ def _extract_names_from_dialogue(text: str) -> set[Name]:
     """
     names: set[Name] = set()
 
-    # Direct address patterns (name preceded/followed by comma)
-    # Look for greetings followed by comma and name
+    # Direct address patterns (name preceded/followed by comma or in greeting context)
     patterns = [
         r"(?:Hi|Hey|Hello|Thanks|Thank you),\s+([A-Z][a-z]+)",  # "Hi, Dan"
+        r"(?:Hi|Hey|Hello|Thanks|Thank you)\s+([A-Z][a-z]+)",  # "Hello Alice" (no comma)
         r"\b([A-Z][a-z]+),\s+(?:what|how|can|could|would|do|did|thanks)",  # "Dan, what..."
         r"(?:As|So)\s+([A-Z][a-z]+)\s+(?:mentioned|said|noted)",  # "As Dan mentioned"
-        r"(?:how|where)\s+is\s+([A-Z][a-z]+)",  # "how is Alice?"
+        r"(?i)(?:how|where)\s+is\s+([A-Z][a-z]+)",  # "how is Alice?" (case-insensitive)
     ]
-
-    # Words to exclude (common dialogue words that might match patterns)
-    excluded_words = {
-        "the",
-        "this",
-        "that",
-        "what",
-        "thanks",
-        "thank",
-        "hello",
-        "hi",
-        "hey",
-        # Geographic terms
-        "america",
-        "north",
-        "south",
-        "east",
-        "west",
-    }
 
     for pattern in patterns:
         matches = re.findall(pattern, text, re.MULTILINE)
         for match in matches:
-            if match.lower() not in excluded_words and len(match) > 1:
-                logger.debug(f"Extracted name from dialogue: {match}")
-                # Create Name object from first name only
-                try:
-                    name = Name(first_name=match)
-                    names.add(name)
-                except ValueError:
-                    logger.debug(f"Skipping invalid name: {match}")
+            # First check: Must be a proper noun
+            if not _is_proper_noun(match):
+                logger.debug(f"Skipping '{match}': not a proper noun")
+                continue
+
+            # Second check: Must be likely a person name (not place/thing)
+            if not _is_likely_person_name(match):
+                logger.debug(f"Skipping '{match}': likely a place or thing, not a person")
+                continue
+
+            # Passed all checks, create Name object
+            logger.debug(f"Extracted name from dialogue: {match}")
+            try:
+                name = Name(first_name=match)
+                names.add(name)
+            except ValueError:
+                logger.debug(f"Skipping invalid name: {match}")
 
     return names
 

@@ -12,6 +12,8 @@ from transcript_etl_pipeline.transform.speakers import (
     _extract_speaker_samples,  # pyright: ignore[reportPrivateUsage]
     _identify_dan_moisan,  # pyright: ignore[reportPrivateUsage]
     _identify_speaker_by_name,  # pyright: ignore[reportPrivateUsage]
+    _is_likely_person_name,  # pyright: ignore[reportPrivateUsage]
+    _is_proper_noun,  # pyright: ignore[reportPrivateUsage]
     _is_speaker_line,  # pyright: ignore[reportPrivateUsage]
     resolve_speakers,
 )
@@ -830,3 +832,220 @@ class TestProximityHeuristics:
         # Speaker C responds with "Sure, let me begin" - this is Alice
         identified = _identify_speaker_by_name(text, labels, Name(first_name="Alice"))
         assert identified == ["Speaker C"]
+
+
+class TestIsProperNoun:
+    """Test proper noun detection logic."""
+
+    def test_valid_proper_noun(self) -> None:
+        """Test valid proper nouns are recognized."""
+        assert _is_proper_noun("John")
+        assert _is_proper_noun("Alice")
+        assert _is_proper_noun("Daniel")
+
+    def test_lowercase_not_proper_noun(self) -> None:
+        """Test lowercase words are not proper nouns."""
+        assert not _is_proper_noun("hello")
+        assert not _is_proper_noun("world")
+        assert not _is_proper_noun("test")
+
+    def test_all_uppercase_not_proper_noun(self) -> None:
+        """Test all uppercase words are not proper nouns (acronyms)."""
+        assert not _is_proper_noun("USA")
+        assert not _is_proper_noun("NASA")
+        assert not _is_proper_noun("IBM")
+
+    def test_single_letter_not_proper_noun(self) -> None:
+        """Test single letters are not proper nouns."""
+        assert not _is_proper_noun("A")
+        assert not _is_proper_noun("I")
+        assert not _is_proper_noun("x")
+
+    def test_empty_not_proper_noun(self) -> None:
+        """Test empty strings are not proper nouns."""
+        assert not _is_proper_noun("")
+        assert not _is_proper_noun(" ")
+
+    def test_mixed_case_proper_nouns(self) -> None:
+        """Test proper nouns with mixed case."""
+        assert _is_proper_noun("McDonald")
+        assert _is_proper_noun("O'Brien")
+
+    def test_hyphenated_proper_nouns(self) -> None:
+        """Test hyphenated proper nouns."""
+        # These should be proper nouns if they follow the pattern
+        assert _is_proper_noun("Anne-Marie")
+        assert _is_proper_noun("Jean-Claude")
+
+
+class TestIsLikelyPersonName:
+    """Test person name classification logic."""
+
+    def test_typical_person_names(self) -> None:
+        """Test typical person names are recognized."""
+        assert _is_likely_person_name("John")
+        assert _is_likely_person_name("Alice")
+        assert _is_likely_person_name("Sarah")
+        assert _is_likely_person_name("Michael")
+        assert _is_likely_person_name("Jennifer")
+
+    def test_place_names_excluded(self) -> None:
+        """Test place names are excluded."""
+        assert not _is_likely_person_name("America")
+        assert not _is_likely_person_name("California")
+        assert not _is_likely_person_name("London")
+        assert not _is_likely_person_name("Paris")
+        assert not _is_likely_person_name("Tokyo")
+        assert not _is_likely_person_name("Chicago")
+
+    def test_days_excluded(self) -> None:
+        """Test day names are excluded."""
+        assert not _is_likely_person_name("Monday")
+        assert not _is_likely_person_name("Tuesday")
+        assert not _is_likely_person_name("Friday")
+
+    def test_months_excluded(self) -> None:
+        """Test month names are excluded."""
+        assert not _is_likely_person_name("January")
+        assert not _is_likely_person_name("February")
+        assert not _is_likely_person_name("December")
+
+    def test_company_names_excluded(self) -> None:
+        """Test company names are excluded."""
+        assert not _is_likely_person_name("Microsoft")
+        assert not _is_likely_person_name("Apple")
+        assert not _is_likely_person_name("Google")
+        assert not _is_likely_person_name("Amazon")
+
+    def test_common_words_excluded(self) -> None:
+        """Test common words are excluded."""
+        assert not _is_likely_person_name("The")
+        assert not _is_likely_person_name("This")
+        assert not _is_likely_person_name("Thanks")
+        assert not _is_likely_person_name("Hello")
+        assert not _is_likely_person_name("Really")
+
+    def test_case_insensitive_filtering(self) -> None:
+        """Test filtering is case-insensitive."""
+        assert not _is_likely_person_name("MONDAY")
+        assert not _is_likely_person_name("monday")
+        assert not _is_likely_person_name("MoNdAy")
+
+
+class TestExtractNamesFromDialogueEnhanced:
+    """Test enhanced name extraction with proper noun filtering."""
+
+    def test_extracts_proper_person_names(self) -> None:
+        """Test extraction of proper person names."""
+        text = "Speaker A: Hi, Dan\r\nSpeaker B: Hello Alice"
+        names = _extract_names_from_dialogue(text)
+        assert Name(first_name="Dan") in names
+        assert Name(first_name="Alice") in names
+
+    def test_filters_place_names(self) -> None:
+        """Test place names are filtered out."""
+        text = "Speaker A: Hi, California\r\nSpeaker B: Thanks, London"
+        names = _extract_names_from_dialogue(text)
+        assert Name(first_name="California") not in names
+        assert Name(first_name="London") not in names
+
+    def test_filters_day_names(self) -> None:
+        """Test day names are filtered out."""
+        text = "Speaker A: Hi, Monday\r\nSpeaker B: Thanks, Friday"
+        names = _extract_names_from_dialogue(text)
+        assert Name(first_name="Monday") not in names
+        assert Name(first_name="Friday") not in names
+
+    def test_filters_month_names(self) -> None:
+        """Test month names are filtered out."""
+        text = "Speaker A: As January mentioned\r\nSpeaker B: So December said"
+        names = _extract_names_from_dialogue(text)
+        assert Name(first_name="January") not in names
+        assert Name(first_name="December") not in names
+
+    def test_filters_company_names(self) -> None:
+        """Test company names are filtered out."""
+        text = "Speaker A: Hi, Microsoft\r\nSpeaker B: Thanks, Google"
+        names = _extract_names_from_dialogue(text)
+        assert Name(first_name="Microsoft") not in names
+        assert Name(first_name="Google") not in names
+
+    def test_filters_common_words(self) -> None:
+        """Test common words are filtered out."""
+        text = "Speaker A: Hi, The\r\nSpeaker B: Thanks, This"
+        names = _extract_names_from_dialogue(text)
+        assert Name(first_name="The") not in names
+        assert Name(first_name="This") not in names
+
+    def test_filters_acronyms(self) -> None:
+        """Test all-uppercase acronyms are filtered out (not proper nouns)."""
+        text = "Speaker A: Hi, USA\r\nSpeaker B: Thanks, NASA"
+        names = _extract_names_from_dialogue(text)
+        assert Name(first_name="USA") not in names
+        assert Name(first_name="NASA") not in names
+
+    def test_multiple_valid_names(self) -> None:
+        """Test extraction of multiple valid person names."""
+        text = (
+            "Speaker A: John, what do you think?\r\n"
+            "Speaker B: I agree. Sarah, how is Alice?\r\n"
+            "Speaker C: She's fine."
+        )
+        names = _extract_names_from_dialogue(text)
+        assert Name(first_name="John") in names
+        assert Name(first_name="Sarah") in names
+        assert Name(first_name="Alice") in names
+
+    def test_mixed_valid_and_invalid(self) -> None:
+        """Test mixture of valid person names and invalid entries."""
+        text = (
+            "Speaker A: John, what about California?\r\n"
+            "Speaker B: Hi, Monday\r\n"
+            "Speaker C: Thanks, Alice"
+        )
+        names = _extract_names_from_dialogue(text)
+        # Should include person names
+        assert Name(first_name="John") in names
+        assert Name(first_name="Alice") in names
+        # Should exclude places and days
+        assert Name(first_name="California") not in names
+        assert Name(first_name="Monday") not in names
+
+    def test_empty_text(self) -> None:
+        """Test extraction from empty text."""
+        names = _extract_names_from_dialogue("")
+        assert len(names) == 0
+
+    def test_no_matching_patterns(self) -> None:
+        """Test text with no matching patterns."""
+        text = "Speaker A: Just regular text here\r\nSpeaker B: Nothing special"
+        names = _extract_names_from_dialogue(text)
+        assert len(names) == 0
+
+    def test_greeting_pattern(self) -> None:
+        """Test greeting pattern extraction."""
+        text = "Speaker A: Hello, Michael\r\nSpeaker B: Hey, Jennifer"
+        names = _extract_names_from_dialogue(text)
+        assert Name(first_name="Michael") in names
+        assert Name(first_name="Jennifer") in names
+
+    def test_direct_address_pattern(self) -> None:
+        """Test direct address pattern (name followed by question)."""
+        text = "Speaker A: Sarah, what do you think?\r\nSpeaker B: Robert, how are you?"
+        names = _extract_names_from_dialogue(text)
+        assert Name(first_name="Sarah") in names
+        assert Name(first_name="Robert") in names
+
+    def test_mention_pattern(self) -> None:
+        """Test mention pattern (As X mentioned)."""
+        text = "Speaker A: As David mentioned earlier\r\nSpeaker B: So Emily noted"
+        names = _extract_names_from_dialogue(text)
+        assert Name(first_name="David") in names
+        assert Name(first_name="Emily") in names
+
+    def test_how_is_pattern(self) -> None:
+        """Test 'how is X' pattern."""
+        text = "Speaker A: How is Thomas?\r\nSpeaker B: Where is Lisa?"
+        names = _extract_names_from_dialogue(text)
+        assert Name(first_name="Thomas") in names
+        assert Name(first_name="Lisa") in names
