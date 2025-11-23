@@ -203,6 +203,18 @@ files = [
 ]
 
 [[package]]
+name = "english-words"
+version = "2.0.2"
+description = "Generate sets of english words by combining different word lists"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "english-words-2.0.2.tar.gz", hash = "sha256:e51d05607fe92ebf65047a2359e977c78a46aa16d1d92a3cba0bac3e34957d8e"},
+    {file = "english_words-2.0.2-py3-none-any.whl", hash = "sha256:a65b900b17201526d8ab2d414f45e5a37afc714a1857377b30182c754ae6e0d6"},
+]
+
+[[package]]
 name = "filelock"
 version = "3.20.0"
 description = "A platform independent file lock."
@@ -737,4 +749,4 @@ test = ["covdefaults (>=2.3)", "coverage (>=7.2.7)", "coverage-enable-subprocess
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "f331f5338bb773cca32360a65d65075ff6aaf7c301e171c24c89ebb8ec19f6db"
+content-hash = "1cb52528d7dd19234205fe5fd426eb5fb8f66d9c85be8ddddd470da423b4d614"
