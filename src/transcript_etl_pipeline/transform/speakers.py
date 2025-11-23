@@ -644,7 +644,7 @@ def _is_proper_noun(word_group: str) -> bool:
 
     Enhanced logic:
     - Looks for title case chains (consecutive title-cased words are entities)
-    - For single words, checks against English dictionary for COMMON words
+    - For single words, checks against English dictionary
     - Word groups >3 tokens are rejected (unlikely to be names)
 
     Args:
@@ -673,54 +673,13 @@ def _is_proper_noun(word_group: str) -> bool:
         if not any(c.islower() for c in token):
             return False
 
-    # For single-word groups, check if it's a COMMON English word
-    # We use a small list of very common words instead of the full dictionary
-    # because the dictionary includes proper names
+    # For single-word groups, check if it's in the English dictionary
+    # If it is in the dictionary, it is most likely not a proper noun
     if len(tokens) == 1:
         word_lower = tokens[0].lower()
-
-        # Common words that are definitely not proper nouns
-        common_words = {
-            "the",
-            "this",
-            "that",
-            "these",
-            "those",
-            "what",
-            "which",
-            "where",
-            "when",
-            "why",
-            "how",
-            "thanks",
-            "thank",
-            "hello",
-            "hi",
-            "hey",
-            "goodbye",
-            "bye",
-            "yes",
-            "no",
-            "okay",
-            "sure",
-            "really",
-            "very",
-            "much",
-            "and",
-            "but",
-            "or",
-            "nor",
-            "for",
-            "yet",
-            "so",
-            "meeting",
-            "call",
-            "conference",
-            "discussion",
-        }
-
-        if word_lower in common_words:
-            logger.debug(f"Skipping '{word_group}': common English word")
+        english_words = _get_english_words()
+        if word_lower in english_words:
+            logger.debug(f"Skipping '{word_group}': found in English dictionary")
             return False
 
     return True
@@ -730,8 +689,8 @@ def _is_likely_person_name(word_group: str) -> bool:
     """Determine if a proper noun is likely a person name vs. place/thing.
 
     Enhanced logic:
-    - Multi-token groups with COMMON English words are likely company names/titles
-    - Exception: honorifics and proper names that happen to be in dictionary
+    - Multi-token groups with English words are likely company names/titles
+    - Exception: honorifics like "Mr.", "Mrs.", "Dr." are not company names
     - Single-token groups are checked against exclusion lists
 
     Args:
@@ -745,102 +704,12 @@ def _is_likely_person_name(word_group: str) -> bool:
     # Honorifics that indicate a person name follows
     honorifics = {"mr", "mrs", "ms", "dr", "prof", "sir", "dame", "lord", "lady"}
 
-    # Common words that are definitely not names (even though they're in dictionary)
-    # This list should include common nouns, verbs, adjectives, etc.
-    common_non_names = {
-        "the",
-        "this",
-        "that",
-        "these",
-        "those",
-        "what",
-        "which",
-        "where",
-        "when",
-        "why",
-        "how",
-        "and",
-        "but",
-        "or",
-        "nor",
-        "for",
-        "yet",
-        "so",
-        "new",
-        "old",
-        "big",
-        "small",
-        "great",
-        "good",
-        "bad",
-        "first",
-        "last",
-        "next",
-        "other",
-        "time",
-        "day",
-        "year",
-        "way",
-        "work",
-        "world",
-        "life",
-        "hand",
-        "part",
-        "child",
-        "eye",
-        "woman",
-        "man",
-        "place",
-        "case",
-        "point",
-        "government",
-        "company",
-        "number",
-        "group",
-        "problem",
-        "fact",
-        "be",
-        "have",
-        "do",
-        "say",
-        "get",
-        "make",
-        "go",
-        "know",
-        "take",
-        "see",
-        "come",
-        "think",
-        "look",
-        "want",
-        "give",
-        "use",
-        "find",
-        "tell",
-        "ask",
-        "seem",
-        "feel",
-        "try",
-        "leave",
-        "call",
-        "thanks",
-        "thank",
-        "hello",
-        "hi",
-        "hey",
-        "goodbye",
-        "bye",
-        "yes",
-        "no",
-        "okay",
-        "sure",
-        "really",
-        "very",
-        "much",
-    }
-
-    # Check if multi-token group contains common English words (not names)
+    # Check if multi-token group contains English words
+    # This likely indicates a company name or title
     if len(tokens) > 1:
+        english_words = _get_english_words()
+
+        # Check each token (excluding honorifics)
         for token in tokens:
             token_lower = token.lower().rstrip(".")
 
@@ -848,9 +717,9 @@ def _is_likely_person_name(word_group: str) -> bool:
             if token_lower in honorifics:
                 continue
 
-            # If we find a common non-name word, it's likely a company/title
-            if token_lower in common_non_names:
-                logger.debug(f"Skipping '{word_group}': multi-token with common word '{token}'")
+            # If we find an English word, it's likely a company/title
+            if token_lower in english_words:
+                logger.debug(f"Skipping '{word_group}': multi-token with English word '{token}'")
                 return False
 
     # For single tokens, check exclusion lists
@@ -929,13 +798,7 @@ def _is_likely_person_name(word_group: str) -> bool:
             "email",
         }
 
-        # Also check common words for single tokens
-        if (
-            word_lower in places
-            or word_lower in temporal
-            or word_lower in organizations
-            or word_lower in common_non_names
-        ):
+        if word_lower in places or word_lower in temporal or word_lower in organizations:
             logger.debug(f"Skipping '{word_group}': in exclusion list")
             return False
 
