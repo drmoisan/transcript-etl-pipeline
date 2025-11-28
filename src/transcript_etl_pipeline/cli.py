@@ -5,12 +5,12 @@ extract → transform → load.
 """
 
 import argparse
-import sys
 import traceback
 from datetime import datetime
 from pathlib import Path
 
 from transcript_etl_pipeline import config
+from transcript_etl_pipeline.devtools.debug_callgraph import run_with_callgraph
 from transcript_etl_pipeline.document.parser import parse_enhanced_text
 from transcript_etl_pipeline.extract.from_clipboard import extract_from_clipboard
 from transcript_etl_pipeline.extract.from_file import extract_from_file
@@ -232,7 +232,8 @@ def main(args: list[str] | None = None) -> int:
         Exit code (0 for success, non-zero for error)
     """
     # Set up logging first thing
-    log_file = Path.home() / "artifacts" / "pipeline.log"
+    # log_file = Path.home() / "artifacts" / "pipeline.log"
+    log_file = Path(__file__).resolve().parents[2] / "artifacts" / "pipeline.log"
     setup_logging(str(log_file))
     logger.info("Transcript ETL Pipeline starting...")
 
@@ -397,4 +398,6 @@ def main(args: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    run_with_callgraph(main)
+    # sys.exit(run_with_callgraph(main))
+    # sys.exit(main())

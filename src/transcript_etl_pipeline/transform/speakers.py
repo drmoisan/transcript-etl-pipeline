@@ -97,10 +97,11 @@ def resolve_speakers(
 
     # Extract all potential names from metadata and dialogue
     metadata_names = _extract_names_from_metadata(text, speaker_labels)
-    dialogue_names = _extract_names_from_dialogue(text)
-    available_names = metadata_names | dialogue_names
+    # dialogue_names = _extract_names_from_dialogue(text)
+    # available_names = metadata_names | dialogue_names
+    available_names = extract_person_names_from_text(text, metadata_names)
     logger.debug(f"Metadata names: {[n.full_name for n in metadata_names]}")
-    logger.debug(f"Dialogue names: {[n.full_name for n in dialogue_names]}")
+    # logger.debug(f"Dialogue names: {[n.full_name for n in dialogue_names]}")
     logger.debug(f"Available names: {[n.full_name for n in available_names]}")
 
     # Build a mapping of Name -> possible speakers
@@ -544,6 +545,15 @@ def _is_direct_address_to_person(line: str, name: str) -> bool:
     # Check for direct address patterns
     # "Name, " with vocative comma
     if re.search(rf"\b{name_lower},\s", line_lower):
+        return True
+
+    # "Name " at start followed by question or imperative
+    # Examples: "Dan what do you think?" "Alice tell me about..."
+    # Match name at word boundary followed by space and question word or verb
+    if re.search(
+        rf"\b{name_lower}\s+(what|where|when|why|how|who|can|could|would|will|tell|explain|show)",
+        line_lower,
+    ):
         return True
 
     # ", Name" at end of sentence or phrase (vocative)
@@ -1082,6 +1092,7 @@ def _is_proper_noun(word_group: str) -> bool:
 
         # Otherwise check against dictionary
         english_words = _get_english_words()
+        english_words.add("okay")
         if word_lower in english_words:
             logger.debug(f"Skipping '{word_group}': found in English dictionary")
             return False
@@ -2111,6 +2122,158 @@ def _is_likely_person_name(word_group: str) -> bool:
             return False
 
     return True
+
+
+def _ensure_nltk_data() -> None:
+    """Ensure required NLTK data packages are downloaded.
+
+    Downloads the following if not already present:
+    - punkt or punkt_tab: Sentence tokenization
+    - averaged_perceptron_tagger_eng: Part-of-speech tagging (newer NLTK)
+    - maxent_ne_chunker: Named entity chunking
+    - words: Word corpus for NER
+
+    This function is idempotent and safe to call multiple times.
+    """
+    import contextlib
+
+    import nltk  # type: ignore[import-untyped]
+
+    # For each package, try common names in order of preference
+    packages_to_try = [
+        ["punkt_tab", "punkt"],  # Sentence tokenizer
+        ["averaged_perceptron_tagger_eng", "averaged_perceptron_tagger"],  # POS tagger
+        ["maxent_ne_chunker"],  # NER chunker
+        ["words"],  # Word corpus
+    ]
+
+    for package_variants in packages_to_try:
+        downloaded = False
+        for package_name in package_variants:
+            if downloaded:
+                break
+            try:
+                # Try to find the package
+                nltk.data.find(package_name)  # type: ignore[attr-defined]
+                downloaded = True
+                logger.debug(f"NLTK package '{package_name}' already available")
+            except LookupError:
+                # Not found, try to download
+                logger.info(f"Downloading NLTK package: {package_name}")
+                with contextlib.suppress(Exception):
+                    nltk.download(package_name, quiet=True)  # type: ignore[attr-defined]
+                    # Verify it was actually downloaded
+                    try:
+                        nltk.data.find(package_name)  # type: ignore[attr-defined]
+                        downloaded = True
+                        logger.info(f"Successfully downloaded NLTK package: {package_name}")
+                    except LookupError:
+                        logger.debug(f"Download of {package_name} did not make it available")
+
+        if not downloaded:
+            logger.warning(
+                f"Could not download any variant of {package_variants}. "
+                "NLTK functionality may be limited."
+            )
+
+
+def strip_before_transcript(text: str, marker: str = "Transcript:") -> str:
+    """
+    If `marker` is present, remove everything before it (keep the marker).
+    If not present, return the text unchanged.
+    """
+    idx = text.find(marker)
+    if idx == -1:
+        return text
+    start = idx + len(marker)
+    return text[start:].lstrip()
+
+
+def extract_person_names_from_text(text: str, existing_names: set[Name]) -> set[Name]:
+    """
+    Extract unique person names from a single text string using NLTK.
+
+    Performs matching against existing names to avoid duplicates. For example,
+    if "Dan Moisan" is in existing_names and "Dan" is extracted, they will be
+    matched and "Dan" will not be added as a separate entry.
+
+    If NLTK data is not available, returns the existing_names unchanged rather
+    than crashing.
+
+    Args:
+        text: The text to extract names from
+        existing_names: Set of Name objects already identified
+
+    Returns:
+        Set of Name objects (existing + newly extracted non-matching names)
+    """
+    from typing import Any
+
+    # Import at runtime to avoid type-checking issues with untyped library
+    try:
+        from nltk import sent_tokenize, word_tokenize  # type: ignore[import-untyped]
+        from nltk.chunk import ne_chunk  # type: ignore[import-untyped]
+        from nltk.tag import pos_tag  # type: ignore[import-untyped]
+        from nltk.tree import Tree  # type: ignore[import-untyped]
+    except ImportError:
+        logger.warning("NLTK library not available. Cannot extract names from text using NER.")
+        return existing_names.copy()
+
+    # Ensure NLTK data is available before processing
+    _ensure_nltk_data()
+
+    # Start with existing names
+    result_names: set[Name] = existing_names.copy()
+
+    text = strip_before_transcript(text, marker="Transcript:")
+
+    try:
+        # Split text into sentences
+        sentences: Any = sent_tokenize(text)
+        for sent in sentences:
+            # Tokenize and POS-tag
+            tokens: Any = word_tokenize(sent)
+            tagged: Any = pos_tag(tokens)  # type: ignore[assignment]
+
+            # Named entity chunking
+            chunks: Any = ne_chunk(tagged, binary=False)
+
+            # Traverse chunks to find PERSON entities
+            for chunk in chunks:
+                if isinstance(chunk, Tree) and chunk.label() == "PERSON":
+                    # type: ignore on next line: NLTK Tree.leaves() returns untyped tuples
+                    name_str = " ".join(token for token, _pos in chunk.leaves())  # type: ignore[misc]
+
+                    # Parse the extracted name string into a Name object
+                    try:
+                        extracted_name = Name.from_string(name_str)
+
+                        # Check if this name matches any existing name
+                        already_exists = any(
+                            extracted_name.matches(existing) for existing in result_names
+                        )
+
+                        # Only add if it doesn't match an existing name
+                        if not already_exists:
+                            result_names.add(extracted_name)
+                            logger.debug(f"Added new name from NLTK: {extracted_name.full_name}")
+                        else:
+                            logger.debug(f"Skipping '{name_str}': matches existing name in set")
+                    except ValueError as e:
+                        # Name.from_string() can raise ValueError for invalid formats
+                        logger.debug(f"Skipping '{name_str}': {e}")
+    except LookupError as e:
+        # NLTK data not available - log and return existing names
+        logger.warning(
+            f"NLTK data not available for name extraction: {e}. " "Returning existing names only."
+        )
+        return existing_names.copy()
+    except Exception as e:
+        # Any other error - log and return existing names
+        logger.error(f"Error during NLTK name extraction: {e}. Returning existing names only.")
+        return existing_names.copy()
+
+    return result_names
 
 
 def _extract_names_from_dialogue(text: str) -> set[Name]:

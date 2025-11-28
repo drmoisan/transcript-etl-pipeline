@@ -126,9 +126,9 @@ class TestIdentifyDanMoisan:
     def test_dan_referenced_in_dialogue(self) -> None:
         """Test identifying Dan when referenced in dialogue."""
         text = (
-            "Speaker A: Michael what do you think?\r\n"
+            "Speaker A: Dan what do you think?\r\n"
             "Speaker B: I think it's good.\r\n"
-            "Speaker A: Thanks Michael."
+            "Speaker A: Thanks Dan."
         )
         labels = ["Speaker A", "Speaker B"]
         dan_label = _identify_dan_moisan(text, labels)
@@ -143,7 +143,7 @@ class TestIdentifyDanMoisan:
         assert dan_label is None
 
     def test_hypothetical_dan_reference(self) -> None:
-        """Test that hypothetical references to Michael don't trigger identification."""
+        """Test that hypothetical references to Dan don't trigger identification."""
         text = (
             "Speaker A: Hello\r\n"
             "Speaker B: If you were to say, is Dan a functional sales leader? "
@@ -176,7 +176,7 @@ class TestIdentifyDanMoisan:
 
     def test_vocative_comma_direct_address(self) -> None:
         """Test detection of vocative comma pattern: 'Dan, ...'"""
-        text = "Speaker A: Michael could you explain that?\r\n" "Speaker B: Sure, let me clarify."
+        text = "Speaker A: Dan, could you explain that?\r\n" "Speaker B: Sure, let me clarify."
         labels = ["Speaker A", "Speaker B"]
         dan_label = _identify_dan_moisan(text, labels)
         assert dan_label == "Speaker B"
@@ -192,8 +192,8 @@ class TestIdentifyDanMoisan:
         assert dan_label == "Speaker B"
 
     def test_thanks_dan_pattern(self) -> None:
-        """Test 'Thanks Michael' pattern."""
-        text = "Speaker A: Thanks Michael.\r\n" "Speaker B: You're welcome."
+        """Test 'Thanks Dan' pattern."""
+        text = "Speaker A: Thanks, Dan.\r\n" "Speaker B: You're welcome."
         labels = ["Speaker A", "Speaker B"]
         dan_label = _identify_dan_moisan(text, labels)
         assert dan_label == "Speaker B"
@@ -254,17 +254,15 @@ class TestIdentifyDanMoisan:
         assert dan_label == "Speaker B"
 
     def test_dan_mentioned_attribution(self) -> None:
-        """Test attributive references: 'Michael mentioned', 'Michael said'."""
-        text = "Speaker A: Michael mentioned this earlier.\r\n" "Speaker B: What was it?"
+        """Test attributive references: 'Dan mentioned', 'Dan said'."""
+        text = "Speaker A: Dan mentioned this earlier.\r\n" "Speaker B: What was it?"
         labels = ["Speaker A", "Speaker B"]
         dan_label = _identify_dan_moisan(text, labels)
         assert dan_label == "Speaker B"
 
     def test_dan_said_attribution(self) -> None:
-        """Test 'Michael said' attribution."""
-        text = (
-            "Speaker A: Michael said we should proceed.\r\n" "Speaker B: I'm not sure about that."
-        )
+        """Test 'Dan said' attribution."""
+        text = "Speaker A: Dan said we should proceed.\r\n" "Speaker B: I'm not sure about that."
         labels = ["Speaker A", "Speaker B"]
         dan_label = _identify_dan_moisan(text, labels)
         assert dan_label == "Speaker B"
@@ -385,7 +383,7 @@ class TestIdentifyDanMoisan:
     def test_multiple_speakers_one_addresses_dan(self) -> None:
         """Test with multiple speakers where only one addresses Dan."""
         text = (
-            "Speaker A: Michael what's your opinion?\r\n"
+            "Speaker A: Dan, what's your opinion?\r\n"
             "Speaker B: I agree.\r\n"
             "Speaker C: Me too.\r\n"
             "Speaker A: Thanks for asking Dan."
@@ -399,7 +397,7 @@ class TestIdentifyDanMoisan:
 
     def test_dan_as_speaker_label_ignored(self) -> None:
         """Test that 'Dan:' as speaker label is properly ignored."""
-        text = "Dan: Hello everyone.\r\n" "Speaker A: Hi Michael, how are you?\r\n" "Dan: I'm good."
+        text = "Dan: Hello everyone.\r\n" "Speaker A: Hi Dan, how are you?\r\n" "Dan: I'm good."
         labels = ["Dan", "Speaker A"]
         dan_label = _identify_dan_moisan(text, labels)
         # "Dan" as a label is excluded; Speaker A addresses Dan, so Dan must be the other speaker
@@ -502,9 +500,9 @@ class TestResolveSpeakers:
     def test_dan_moisan_identification(self) -> None:
         """Test Dan Moisan identification in resolution."""
         text = (
-            "Speaker A: Michael what do you think?\r\n"
+            "Speaker A: Dan, what do you think?\r\n"
             "Speaker B: I think it's great.\r\n"
-            "Speaker A: Thanks Michael."
+            "Speaker A: Thanks, Dan."
         )
         _result, _mapping = resolve_speakers(text)
         # Should identify Speaker B as Dan Moisan
@@ -557,6 +555,8 @@ class TestResolveSpeakers:
         the speaker, even without a UI callback.
         """
         text = (
+            "Attendees: Alice\r\n"
+            "Transcript:\r\n"
             "Speaker A: Alice what do you think?\r\n"
             "Speaker B: Good idea.\r\n"
             "Speaker C: I agree.\r\n"

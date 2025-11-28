@@ -114,19 +114,26 @@ def _extract_label(line: str) -> Label | None:
     if not line:
         return None
 
-    parts = line.split(" ", 1)
-    if not parts:
-        return None
+    import re
 
-    potential_label = parts[0]
+    m = re.match(r"^([A-Z][a-z]+(?:[ -][A-Z][a-z]+)*):", line)
 
-    # Check if it ends with colon, is capitalized, and is a single word
-    if (
-        potential_label.endswith(":")
-        and potential_label[0].isupper()
-        and " " not in potential_label[:-1]
-    ):
-        return Label(text=potential_label)
+    if m:
+        return Label(text=m.group(1) + ":")
+
+    # parts = line.split(" ", 1)
+    # if not parts:
+    #     return None
+
+    # potential_label = parts[0]
+
+    # # Check if it ends with colon, is capitalized, and is a single word
+    # if (
+    #     potential_label.endswith(":")
+    #     and potential_label[0].isupper()
+    #     and " " not in potential_label[:-1]
+    # ):
+    #     return Label(text=potential_label)
 
     return None
 
@@ -140,5 +147,13 @@ def _is_metadata_label(label_text: str) -> bool:
     Returns:
         True if it's a metadata label
     """
-    metadata_labels = {"date:", "time:", "attendees:", "participants:", "location:", "subject:"}
+    metadata_labels = {
+        "date:",
+        "time:",
+        "attendees:",
+        "participants:",
+        "location:",
+        "subject:",
+        "meeting title",
+    }
     return label_text.lower() in metadata_labels
