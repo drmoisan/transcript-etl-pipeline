@@ -62,10 +62,10 @@ function Resolve-Repo {
 
 function Write-Section { param([string]$Title) "`n===== $Title =====`n" }
 
-function Count-Items { param($x) if ($null -eq $x) { 0 } else { @($x).Count } }
+function Measure-Item { param($x) if ($null -eq $x) { 0 } else { @($x).Count } }
 
 
-function Pick-Default-Base {
+function Select-DefaultBase {
     $candidates = @('origin/main','origin/master','main','master','origin/develop','develop')
     foreach ($ref in $candidates) {
         $res = Invoke-Git -Args @('rev-parse','--verify','--quiet',$ref) -AllowNonZeroExit
@@ -82,14 +82,14 @@ function Get-Branch {
     return $Ref
 }
 
-function Collect-Remotes {
+function Get-RemoteInfo {
 @"
 $(Write-Section "Repository remotes")
 $((Invoke-Git -Args @('remote','-v')).Out)
 "@
 }
 
-function Collect-BranchMeta {
+function Get-BranchMeta {
     $current = (Invoke-Git -Args @('rev-parse','--abbrev-ref','HEAD')).Out
     $upstream = (Invoke-Git -Args @('rev-parse','--abbrev-ref','--symbolic-full-name','@{u}') -AllowNonZeroExit).Out
     $upDisplay = if (-not [string]::IsNullOrWhiteSpace($upstream)) { $upstream } else { '(none)' }
@@ -102,7 +102,7 @@ $upDisplay
 "@
 }
 
-function Collect-Status {
+function Get-StatusInfo {
     param([switch]$NoUntracked)
     $short = (Invoke-Git -Args @('status','-sb')).Out
     $untracked = $null
@@ -119,7 +119,7 @@ $unDisplay
 "@
 }
 
-function Collect-WorkingTreeDiff {
+function Get-WorkingTreeDiff {
     $stagedNameStatus = (Invoke-Git -Args @('diff','--cached','--name-status') -AllowNonZeroExit).Out
     $stagedDiff       = (Invoke-Git -Args @('diff','--cached') -AllowNonZeroExit).Out
     $unstagedNameStat = (Invoke-Git -Args @('diff','--name-status') -AllowNonZeroExit).Out
@@ -139,7 +139,7 @@ $($unstagedDiff)
 "@
 }
 
-function Parse-Numstat {
+function ConvertFrom-Numstat {
     param([string]$NumstatText)
     $adds = 0
     $dels = 0
@@ -157,7 +157,7 @@ function Parse-Numstat {
     return @{ Additions = $adds; Deletions = $dels; Files = $files }
 }
 
-function Normalize-DiffPath {
+function Convert-DiffPath {
     param([string]$PathText)
     if ([string]::IsNullOrWhiteSpace($PathText)) { return $PathText }
     $t = $PathText.Trim('"').Trim()
@@ -168,11 +168,11 @@ function Normalize-DiffPath {
     return $t
 }
 
-function Count-By-Ext {
+function Measure-FileByExtension {
     param([string[]]$Files)
     $map = @{}
     foreach ($f in $Files) {
-        $name = Normalize-DiffPath -PathText $f
+        $name = Convert-DiffPath -PathText $f
         $ext = "(unknown)"
         try {
             $e = [System.IO.Path]::GetExtension($name)
@@ -189,7 +189,7 @@ function Count-By-Ext {
     return ($lines -join "`n")
 }
 
-function Extract-IssueRefs {
+function Get-IssueRef {
     param([string]$Text)
     $set = New-Object System.Collections.Generic.HashSet[string]
     if ($Text) {
@@ -199,7 +199,7 @@ function Extract-IssueRefs {
     return ($set | Sort-Object)
 }
 
-function Summarize-ConventionalCommitTypes {
+function Get-ConventionalCommitType {
     param([string]$SubjectsText)
     $counts = [ordered]@{ feat=0; fix=0; refactor=0; perf=0; docs=0; test=0; chore=0; build=0; ci=0; style=0; other=0 }
     foreach ($line in ($SubjectsText -split "`n")) {
@@ -217,7 +217,7 @@ function Summarize-ConventionalCommitTypes {
     ($pairs | ForEach-Object { "{0,-9} : {1}" -f $_.Name, $_.Value }) -join "`n"
 }
 
-function Collect-PRContext {
+function Get-PRContext {
     param([string]$BaseRef, [string]$HeadRef)
 
     $base = (Invoke-Git -Args @('rev-parse','--verify',$BaseRef)).Out
@@ -233,17 +233,17 @@ function Collect-PRContext {
     $shortstat  = (Invoke-Git -Args @('diff','--shortstat',$mergeBase,$head)).Out
     $stat       = (Invoke-Git -Args @('diff','--stat',$mergeBase,$head)).Out
 
-    $num = Parse-Numstat -NumstatText $numstat
-    $extSummary = Count-By-Ext -Files $num.Files
-    $issues = Extract-IssueRefs -Text ($oneline + "`n" + $subjects)
-    $typeSummary = Summarize-ConventionalCommitTypes -SubjectsText $subjects
+    $num = ConvertFrom-Numstat -NumstatText $numstat
+    $extSummary = Measure-FileByExtension -Files $num.Files
+    $issues = Get-IssueRef -Text ($oneline + "`n" + $subjects)
+    $typeSummary = Get-ConventionalCommitType -SubjectsText $subjects
 
     $onelineDisplay  = if (-not [string]::IsNullOrWhiteSpace($oneline)) { $oneline } else { "(none)" }
-    $authorsDisplay  = if ((Count-Items $authors) -gt 0) { (@($authors) -join "`n") } else { "(none)" }
+    $authorsDisplay  = if ((Measure-Item $authors) -gt 0) { (@($authors) -join "`n") } else { "(none)" }
     $nameStatDisplay = if (-not [string]::IsNullOrWhiteSpace($nameStatus)) { $nameStatus } else { "(none)" }
     $shortDisplay    = if (-not [string]::IsNullOrWhiteSpace($shortstat)) { $shortstat } else { "(none)" }
     $extDisplay      = if (-not [string]::IsNullOrWhiteSpace($extSummary)) { $extSummary } else { "(none)" }
-    $issuesDisplay   = if ((Count-Items $issues) -gt 0) { (@($issues) -join ", ") } else { "(none)" }
+    $issuesDisplay   = if ((Measure-Item $issues) -gt 0) { (@($issues) -join ", ") } else { "(none)" }
     $statDisplay     = if (-not [string]::IsNullOrWhiteSpace($stat)) { $stat } else { "(none)" }
 
 @"
@@ -295,21 +295,21 @@ $timestamp
 
 "@
 
-$remotes   = Collect-Remotes
-$branchMet = Collect-BranchMeta
-$status    = Collect-Status -NoUntracked:$NoUntracked
-$wtDiff    = Collect-WorkingTreeDiff
+$remotes   = Get-RemoteInfo
+$branchMet = Get-BranchMeta
+$status    = Get-StatusInfo -NoUntracked:$NoUntracked
+$wtDiff    = Get-WorkingTreeDiff
 
 $pr = ""
 $baseRef = $Base
 $headRef = $Head
 
-if (-not $baseRef) { $baseRef = Pick-Default-Base }
+if (-not $baseRef) { $baseRef = Select-DefaultBase }
 $headRef = Get-Branch -Ref $headRef
 
 if ($baseRef -and $headRef) {
     try {
-        $pr = Collect-PRContext -BaseRef $baseRef -HeadRef $headRef
+        $pr = Get-PRContext -BaseRef $baseRef -HeadRef $headRef
     } catch {
         $pr = "$(Write-Section "PR Comparison")`n(FAILED to compute PR context: $($_.Exception.Message))"
     }

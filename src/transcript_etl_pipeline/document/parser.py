@@ -105,6 +105,12 @@ def parse_enhanced_text(text: str) -> Document:
 def _extract_label(line: str) -> Label | None:
     """Extract a label from a line if it starts with one.
 
+    A label is defined as:
+    - Starts at the beginning of the line
+    - Single word (no whitespace) ending with ':'
+    - First character is uppercase
+    - Matches the definition in normalize.py
+
     Args:
         line: Line to check
 
@@ -116,24 +122,12 @@ def _extract_label(line: str) -> Label | None:
 
     import re
 
-    m = re.match(r"^([A-Z][a-z]+(?:[ -][A-Z][a-z]+)*):", line)
+    # Match: start of line, uppercase letter, any non-whitespace chars, colon
+    # This matches the normalize.py definition: single word, starts with capital, ends with :
+    m = re.match(r"^([A-Z][^\s:]*?):", line)
 
     if m:
         return Label(text=m.group(1) + ":")
-
-    # parts = line.split(" ", 1)
-    # if not parts:
-    #     return None
-
-    # potential_label = parts[0]
-
-    # # Check if it ends with colon, is capitalized, and is a single word
-    # if (
-    #     potential_label.endswith(":")
-    #     and potential_label[0].isupper()
-    #     and " " not in potential_label[:-1]
-    # ):
-    #     return Label(text=potential_label)
 
     return None
 

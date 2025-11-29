@@ -431,8 +431,8 @@ class TestRunWithCallgraph:
 
                 debug_callgraph.run_with_callgraph(simple_func)
 
-                dot_path = Path(tmpdir) / "callgraph.dot"
-                mmd_path = Path(tmpdir) / "callgraph.mmd"
+                dot_path = Path(tmpdir) / "artifacts" / "callgraph.dot"
+                mmd_path = Path(tmpdir) / "artifacts" / "callgraph.mmd"
 
                 assert dot_path.exists()
                 assert mmd_path.exists()
@@ -522,7 +522,7 @@ class TestIntegrationScenario:
                 assert result == 11
 
                 # Verify files were created (even if empty due to namespace filtering)
-                assert Path(tmpdir, "callgraph.dot").exists()
-                assert Path(tmpdir, "callgraph.mmd").exists()
+                assert Path(tmpdir, "artifacts", "callgraph.dot").exists()
+                assert Path(tmpdir, "artifacts", "callgraph.mmd").exists()
             finally:
                 os.chdir(original_cwd)

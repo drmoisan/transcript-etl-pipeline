@@ -8,33 +8,53 @@ import logging
 import re
 from typing import Protocol
 
-from english_words import get_english_words_set
-
+from transcript_etl_pipeline.transform import dialogue_names_deprecated
 from transcript_etl_pipeline.transform.name import Name
 
 logger = logging.getLogger(__name__)
 
-# Load English dictionary once at module level for performance
-# Currently unused but available for future dictionary-based checks
-_english_words: set[str] | None = None
+# Legacy dialogue name extraction helpers are re-exported for backward compatibility.
+# Preferred approach is extract_person_names_from_text.
 
 
-def _get_english_words() -> set[str]:  # pyright: ignore[reportUnusedFunction]
-    """Get English words dictionary, loading it once and caching.
+def _extract_names_from_dialogue(text: str) -> set[Name]:
+    """Deprecated: delegate to legacy dialogue name extractor."""
 
-    Returns:
-        Set of lowercase English words
-    """
-    global _english_words
-    if _english_words is None:
-        _english_words = get_english_words_set(["web2"], lower=True)
-    return _english_words
+    return dialogue_names_deprecated._extract_names_from_dialogue(  # pyright: ignore[reportPrivateUsage]
+        text
+    )
+
+
+def _extract_title_case_chains(text: str) -> list[tuple[str, int]]:
+    """Deprecated: delegate to legacy dialogue title-case chain extractor."""
+
+    return (
+        dialogue_names_deprecated._extract_title_case_chains(  # pyright: ignore[reportPrivateUsage]
+            text
+        )
+    )
+
+
+def _is_likely_person_name(word_group: str) -> bool:
+    """Deprecated: delegate to legacy likelihood heuristic."""
+
+    return dialogue_names_deprecated._is_likely_person_name(  # pyright: ignore[reportPrivateUsage]
+        word_group
+    )
+
+
+def _is_proper_noun(word_group: str) -> bool:
+    """Deprecated: delegate to legacy proper-noun heuristic."""
+
+    return dialogue_names_deprecated._is_proper_noun(  # pyright: ignore[reportPrivateUsage]
+        word_group
+    )
 
 
 __all__ = [
     "SpeakerResolutionUI",
     "resolve_speakers",
-    "_extract_speaker_labels",
+    "_extract_generic_speaker_labels",
     "_identify_speaker_by_name",
     "_identify_dan_moisan",
     "_extract_names_from_metadata",
@@ -89,7 +109,7 @@ def resolve_speakers(
         return text, {}
 
     # Find all unique speaker labels
-    speaker_labels = _extract_speaker_labels(text)
+    speaker_labels = _extract_generic_speaker_labels(text)
     logger.debug(f"Found speaker labels: {speaker_labels}")
 
     # Build mapping of speaker labels to resolved names
@@ -97,30 +117,42 @@ def resolve_speakers(
 
     # Extract all potential names from metadata and dialogue
     metadata_names = _extract_names_from_metadata(text, speaker_labels)
+    metadata_names.add(Name.from_string("Dan Moisan"))
     # dialogue_names = _extract_names_from_dialogue(text)
     # available_names = metadata_names | dialogue_names
-    available_names = extract_person_names_from_text(text, metadata_names)
-    logger.debug(f"Metadata names: {[n.full_name for n in metadata_names]}")
+    # available_names = extract_person_names_from_text(text, metadata_names)
+    available_names = metadata_names.copy()
+    # logger.debug(f"Metadata names: {[n.full_name for n in metadata_names]}")
     # logger.debug(f"Dialogue names: {[n.full_name for n in dialogue_names]}")
     logger.debug(f"Available names: {[n.full_name for n in available_names]}")
 
     # Build a mapping of Name -> possible speakers
     name_to_speakers: dict[Name, list[str]] = {}
+    names_actively_ruled_out: set[Name] = set()  # Names where all speakers were excluded
+
     for name in available_names:
         candidates = _identify_speaker_by_name(text, speaker_labels, name)
         if candidates:
             name_to_speakers[name] = candidates
             logger.debug(f"Name '{name.full_name}' matched to speakers: {candidates}")
+        else:
+            # Check if name was addressed/referenced (actively ruled out)
+            # vs just not mentioned
+            if _was_name_referenced(text, name):
+                names_actively_ruled_out.add(name)
+                logger.debug(f"Name '{name.full_name}' was referenced but all speakers excluded")
 
     # Handle Dan Moisan specially - always use full name
     # Find any Name with first_name Dan/Daniel (using variants)
     dan_name = Name(first_name="Dan")
+    resolved_dan_name: Name | None = None
     for name in list(name_to_speakers.keys()):
         if dan_name.matches(name):
             dan_candidates = name_to_speakers[name]
             if len(dan_candidates) == 1:
                 speaker_map[dan_candidates[0]] = "Dan Moisan"
                 logger.debug(f"Mapped Dan Moisan: {dan_candidates[0]} -> Dan Moisan")
+                resolved_dan_name = name
             # Remove from further processing
             del name_to_speakers[name]
             break
@@ -138,35 +170,40 @@ def resolve_speakers(
     logger.debug(f"Unresolved speakers: {unresolved_speakers}")
 
     # FALLBACK: For metadata names that had no dialogue matches,
-    # try process of elimination with remaining speakers
+    # try process of elimination ONLY if counts match exactly
     if unresolved_speakers and metadata_names:
-        unused_metadata_names = [name for name in metadata_names if name not in name_to_speakers]
+        # Exclude names that were actively ruled out (all speakers excluded)
+        # Also exclude Dan if he was already resolved
+        # These names should not be available for elimination
+        unused_metadata_names = [
+            name
+            for name in metadata_names
+            if name not in name_to_speakers
+            and name not in names_actively_ruled_out
+            and name != resolved_dan_name
+        ]
         unused_full_names = [n.full_name for n in unused_metadata_names]
         logger.debug(f"Unused metadata names (no dialogue match): {unused_full_names}")
 
-        # Prefer names with last names (more specific) over first-name-only
-        preferred_names = [name for name in unused_metadata_names if name.last_name]
-        if not preferred_names:
-            # If no names with last names, use all unused names
-            preferred_names = unused_metadata_names
-        logger.debug(f"Preferred names: {[n.full_name for n in preferred_names]}")
+        ruled_out_names = [n.full_name for n in names_actively_ruled_out]
+        if ruled_out_names:
+            logger.debug(f"Names actively ruled out (all speakers excluded): {ruled_out_names}")
 
-        # If we have exactly 1 unresolved speaker and at least 1 preferred name
-        if len(unresolved_speakers) == 1 and len(preferred_names) >= 1:
-            # Use the first preferred name as a fallback
-            chosen_name = preferred_names[0]
-            speaker_map[unresolved_speakers[0]] = chosen_name.full_name
-            logger.debug(
-                f"Matched by elimination (first available): "
-                f"{unresolved_speakers[0]} -> {chosen_name.full_name}"
-            )
-            unresolved_speakers = []  # All resolved
-        # Otherwise, if exactly 1 unused name total, use that
-        elif len(unresolved_speakers) == 1 and len(unused_metadata_names) == 1:
+        # Only use elimination if we have EXACTLY matching counts
+        # This prevents incorrect automatic assignment
+        if len(unresolved_speakers) == 1 and len(unused_metadata_names) == 1:
+            # Exact 1:1 match - safe to map
             unused_name = unused_metadata_names[0].full_name
             speaker_map[unresolved_speakers[0]] = unused_name
-            logger.debug(f"Matched by elimination: {unresolved_speakers[0]} -> {unused_name}")
+            logger.debug(f"Matched by elimination (1:1): {unresolved_speakers[0]} -> {unused_name}")
             unresolved_speakers = []  # All resolved
+        else:
+            # Multiple possibilities or ambiguous - DO NOT auto-assign
+            # Let the UI callback handle these cases
+            logger.debug(
+                f"Cannot auto-resolve {len(unresolved_speakers)} speaker(s) "
+                f"with {len(unused_metadata_names)} unused name(s) - requiring UI input"
+            )
 
     # For any still-unresolved speakers, use UI callback if provided
     if ui_callback:
@@ -177,6 +214,9 @@ def resolve_speakers(
                 resolved = ui_callback(speaker, samples)
                 if resolved:
                     speaker_map[speaker] = resolved
+                    logger.debug(f"Resolved via UI callback: {speaker} -> {resolved}")
+                else:
+                    logger.debug(f"UI callback returned None for {speaker} - leaving unresolved")
 
     # Apply the mappings to the text
     modified_text = _apply_speaker_mappings(text, speaker_map)
@@ -184,7 +224,7 @@ def resolve_speakers(
     return modified_text, speaker_map
 
 
-def _extract_speaker_labels(text: str) -> list[str]:
+def _extract_generic_speaker_labels(text: str) -> list[str]:
     """Extract all unique speaker labels from text.
 
     Args:
@@ -225,6 +265,37 @@ def _extract_speaker_labels(text: str) -> list[str]:
     return labels
 
 
+def _was_name_referenced(text: str, name: Name) -> bool:
+    """Check if a name was referenced or addressed in the dialogue.
+
+    This helps distinguish between:
+    - Names actively ruled out (referenced but all speakers excluded)
+    - Names simply not mentioned (no dialogue match)
+
+    Args:
+        text: The dialogue text to check
+        name: The Name object to search for
+
+    Returns:
+        True if the name was referenced/addressed in dialogue
+    """
+    dialog = strip_before_transcript(text)
+    dialog_lower = dialog.lower()
+
+    # Check if any name variant appears in the dialogue (not just as a speaker label)
+    for variant in name.shortened_variants:
+        variant_lower = variant.lower()
+        # Look for the name in dialogue content (not as speaker label at line start)
+        if variant_lower in dialog_lower:
+            # Check that it's not just the speaker label
+            lines = dialog.split("\r\n")
+            for line in lines:
+                line_lower = line.lower()
+                if not line_lower.startswith(f"{variant_lower}:") and variant_lower in line_lower:
+                    return True
+    return False
+
+
 def _identify_speaker_by_name(text: str, speaker_labels: list[str], name: Name) -> list[str]:
     """Identify which speaker label(s) could correspond to a person.
 
@@ -246,14 +317,38 @@ def _identify_speaker_by_name(text: str, speaker_labels: list[str], name: Name) 
         List of possible speaker labels for the named person
         (may be empty or contain multiple candidates)
     """
-    lines = text.split("\r\n")
+    dialog = strip_before_transcript(text)
+    lines = dialog.split("\r\n")
+
+    # Check all name variants (first name, shortened forms)
+    name_variants = name.shortened_variants
+
+    # PASS 0: Check for self-identification patterns FIRST
+    # Patterns like "this is Alice" or "Sorry, this is Alice"
+    self_identifying_speakers: list[str] = []
+    for line in lines:
+        line_lower = line.lower()
+        speaker = _extract_speaker_from_line(line)
+
+        if speaker:
+            # Check if speaker self-identifies as this person
+            for variant in name_variants:
+                variant_lower = variant.lower()
+                # Self-identification patterns:
+                # "this is <Name>", "sorry, this is <Name>", "hi, this is <Name>"
+                pattern_match = re.search(rf"\bthis\s+is\s+{variant_lower}\b", line_lower)
+                if pattern_match and speaker not in name_variants:
+                    self_identifying_speakers.append(speaker)
+                    break
+
+    # If someone self-identifies, return them immediately
+    if self_identifying_speakers:
+        # Return first self-identifying speaker (most common case is one)
+        return [self_identifying_speakers[0]]
 
     # PASS 1: Direct inference - find who addresses the person
     speakers_addressing_person: list[str] = []
     direct_address_locations: list[int] = []  # Track where direct addresses occur
-
-    # Check all name variants (first name, shortened forms)
-    name_variants = name.shortened_variants
 
     for i, line in enumerate(lines):
         # Look for any variant of the name in dialogue (not as a speaker label)
@@ -290,6 +385,10 @@ def _identify_speaker_by_name(text: str, speaker_labels: list[str], name: Name) 
             if speaker not in speakers_addressing_person_set and speaker not in name_variants
         ]
 
+        # Also exclude speakers who use third-person references (she/he/her/his)
+        # These speakers are definitively NOT the person, regardless of other evidence
+        possible_speakers = _exclude_third_person_speakers(lines, name, possible_speakers)
+
         # PASS 2: Proximity heuristics if multiple candidates remain
         if len(possible_speakers) > 1:
             refined_candidates = _apply_proximity_heuristics(
@@ -301,6 +400,68 @@ def _identify_speaker_by_name(text: str, speaker_labels: list[str], name: Name) 
         return possible_speakers
 
     return []
+
+
+def _exclude_third_person_speakers(
+    lines: list[str], name: Name, candidates: list[str]
+) -> list[str]:
+    """Exclude speakers who refer to the person using third-person pronouns or constructions.
+
+    Third-person indicators include:
+    - Pronouns: she, he, her, his, she's, he's
+    - Possessives: her screen, his audio, Alice's microphone
+    - Status references: Alice is muted, she is frozen
+
+    Args:
+        lines: Lines of dialogue to analyze
+        name: The Name object to check for third-person references
+        candidates: List of candidate speakers to filter
+
+    Returns:
+        Filtered list of candidates with third-person speakers removed
+    """
+    name_variants_lower = [v.lower() for v in name.shortened_variants]
+
+    # Build third-person patterns
+    third_person_patterns: list[str] = []
+    for variant_lower in name_variants_lower:
+        third_person_patterns.extend(
+            [
+                # Gendered pronouns with name
+                rf"\b(her|she|she'?s)\b.*{variant_lower}",
+                rf"{variant_lower}.*\b(her|she|she'?s)\b",
+                rf"\b(his|he|he'?s)\b.*{variant_lower}",
+                rf"{variant_lower}.*\b(his|he|he'?s)\b",
+                # Possession with name
+                rf"{variant_lower}'?s\s+(screen|audio|connection|microphone)",
+                # Status references with name
+                rf"{variant_lower}\s+is\s+(muted?|frozen|disconnected)",
+            ]
+        )
+    # Add generic third-person patterns (when no name variant is mentioned)
+    third_person_patterns.extend(
+        [
+            # Generic third-person tech references
+            r"\b(her|his)\s+(screen|audio|connection|microphone|video)\b",
+            r"\b(she|he)\s+is\s+(muted?|frozen|disconnected)\b",
+            # Generic third-person pronouns
+            r"\b(she|he)\b",
+        ]
+    )
+
+    # Find speakers who use third-person references
+    speakers_using_third_person: set[str] = set()
+    for line in lines:
+        line_lower = line.lower()
+        speaker = _extract_speaker_from_line(line)
+        if speaker and speaker in candidates:
+            for pattern in third_person_patterns:
+                if re.search(pattern, line_lower):
+                    speakers_using_third_person.add(speaker)
+                    break
+
+    # Filter out speakers who used third-person references
+    return [c for c in candidates if c not in speakers_using_third_person]
 
 
 def _apply_proximity_heuristics(
@@ -565,6 +726,18 @@ def _is_direct_address_to_person(line: str, name: str) -> bool:
     if re.search(rf"\b(to|with|for|about|from)\s+{name_lower}\b", line_lower):
         return True
 
+    # Questions asking about someone: "Can Name...", "Does Name...", "Will Name..."
+    # These indicate the speaker is asking ABOUT the person, so speaker is NOT that person
+    if re.search(
+        rf"\b(can|could|does|did|will|would|should|has|have)\s+{name_lower}\b", line_lower
+    ):
+        return True
+
+    # Possessive references: "Name's screen", "Name's audio"
+    # These indicate talking ABOUT the person, not TO them
+    if re.search(rf"\b{name_lower}'?s\s+(screen|audio|connection|microphone|video)\b", line_lower):
+        return True
+
     # "Name mentioned" or "Name said" (third person but attributive)
     return bool(
         re.search(rf"\b{name_lower}\s+(mentioned|said|thinks|believes|suggested)\b", line_lower)
@@ -601,1529 +774,6 @@ def _extract_names_from_metadata(text: str, speaker_labels: list[str] | None = N
     return names
 
 
-def _extract_title_case_chains(text: str) -> list[tuple[str, int]]:
-    """Extract chains of consecutive title-cased words from text.
-
-    Identifies sequences of title-cased words (e.g., "Dan Moisan", "New York")
-    and returns them as word groups along with their position.
-
-    Args:
-        text: The text to analyze
-
-    Returns:
-        List of tuples (word_group, start_position) where word_group is the
-        space-joined title-cased words
-    """
-    # Pattern to match title-cased words
-    title_case_pattern = r"\b[A-Z][a-z]+\b"
-
-    chains: list[tuple[str, int]] = []
-    words = list(re.finditer(title_case_pattern, text))
-
-    if not words:
-        return chains
-
-    # Group consecutive title-cased words
-    current_chain = [words[0]]
-
-    for i in range(1, len(words)):
-        prev_end = words[i - 1].end()
-        curr_start = words[i].start()
-
-        # Check if words are consecutive (only whitespace between)
-        between = text[prev_end:curr_start]
-        if between.strip() == "":
-            current_chain.append(words[i])
-        else:
-            # Save current chain if it exists
-            if current_chain:
-                chain_text = " ".join(m.group() for m in current_chain)
-                chains.append((chain_text, current_chain[0].start()))
-            current_chain = [words[i]]
-
-    # Don't forget the last chain
-    if current_chain:
-        chain_text = " ".join(m.group() for m in current_chain)
-        chains.append((chain_text, current_chain[0].start()))
-
-    return chains
-
-
-def _is_proper_noun(word_group: str) -> bool:
-    """Check if a word or word group is a proper noun.
-
-    Enhanced logic:
-    - Looks for title case chains (consecutive title-cased words are entities)
-    - For single words, checks against English dictionary
-    - Whitelists common first names that are in the dictionary
-    - Word groups >3 tokens are rejected (unlikely to be names)
-
-    Args:
-        word_group: The word or phrase to check (may be multiple words)
-
-    Returns:
-        True if the word group appears to be a proper noun
-    """
-    if not word_group or not word_group.strip():
-        return False
-
-    tokens = word_group.strip().split()
-
-    # Word groups >3 tokens are unlikely to be names
-    if len(tokens) > 3:
-        return False
-
-    # All tokens must be title-cased
-    for token in tokens:
-        if len(token) < 2:
-            return False
-        if not token[0].isupper():
-            return False
-        if token.isupper():  # All caps (acronym)
-            return False
-        if not any(c.islower() for c in token):
-            return False
-
-    # For single-word groups, check if it's in the English dictionary
-    # However, whitelist common first names that are in the dictionary
-    if len(tokens) == 1:
-        word_lower = tokens[0].lower()
-
-        # Whitelist of common first names that should not be filtered
-        # even though they're in the English dictionary
-        common_first_names = {
-            "dan",
-            "john",
-            "alice",
-            "bob",
-            "jane",
-            "mary",
-            "james",
-            "michael",
-            "david",
-            "robert",
-            "william",
-            "richard",
-            "joseph",
-            "thomas",
-            "charles",
-            "christopher",
-            "daniel",
-            "matthew",
-            "anthony",
-            "mark",
-            "donald",
-            "steven",
-            "paul",
-            "andrew",
-            "joshua",
-            "kenneth",
-            "kevin",
-            "brian",
-            "george",
-            "edward",
-            "ronald",
-            "timothy",
-            "jason",
-            "jeffrey",
-            "ryan",
-            "jacob",
-            "gary",
-            "nicholas",
-            "eric",
-            "jonathan",
-            "stephen",
-            "larry",
-            "justin",
-            "scott",
-            "brandon",
-            "benjamin",
-            "samuel",
-            "frank",
-            "gregory",
-            "raymond",
-            "patrick",
-            "alexander",
-            "jack",
-            "dennis",
-            "jerry",
-            "tyler",
-            "aaron",
-            "jose",
-            "henry",
-            "adam",
-            "douglas",
-            "nathan",
-            "peter",
-            "zachary",
-            "kyle",
-            "walter",
-            "harold",
-            "jeremy",
-            "ethan",
-            "carl",
-            "keith",
-            "roger",
-            "gerald",
-            "christian",
-            "terry",
-            "sean",
-            "arthur",
-            "austin",
-            "noah",
-            "lawrence",
-            "jesse",
-            "joe",
-            "bryan",
-            "billy",
-            "jordan",
-            "albert",
-            "dylan",
-            "bruce",
-            "willie",
-            "gabriel",
-            "logan",
-            "alan",
-            "juan",
-            "ralph",
-            "roy",
-            "eugene",
-            "randy",
-            "vincent",
-            "russell",
-            "louis",
-            "philip",
-            "bobby",
-            "johnny",
-            "bradley",
-            # Common female names
-            "sarah",
-            "jennifer",
-            "lisa",
-            "michelle",
-            "nancy",
-            "karen",
-            "betty",
-            "helen",
-            "sandra",
-            "donna",
-            "carol",
-            "ruth",
-            "sharon",
-            "laura",
-            "kimberly",
-            "deborah",
-            "jessica",
-            "shirley",
-            "cynthia",
-            "angela",
-            "melissa",
-            "brenda",
-            "amy",
-            "anna",
-            "rebecca",
-            "virginia",
-            "kathleen",
-            "pamela",
-            "martha",
-            "debra",
-            "amanda",
-            "stephanie",
-            "carolyn",
-            "christine",
-            "marie",
-            "janet",
-            "catherine",
-            "frances",
-            "ann",
-            "joyce",
-            "diane",
-            "julie",
-            "heather",
-            "teresa",
-            "doris",
-            "gloria",
-            "evelyn",
-            "jean",
-            "cheryl",
-            "mildred",
-            "katherine",
-            "joan",
-            "ashley",
-            "judith",
-            "rose",
-            "janice",
-            "kelly",
-            "nicole",
-            "judy",
-            "christina",
-            "kathy",
-            "theresa",
-            "beverly",
-            "denise",
-            "tammy",
-            "irene",
-            "lori",
-            "rachel",
-            "marilyn",
-            "andrea",
-            "kathryn",
-            "louise",
-            "sara",
-            "anne",
-            "jacqueline",
-            "wanda",
-            "bonnie",
-            "julia",
-            "ruby",
-            "lois",
-            "tina",
-            "phyllis",
-            "norma",
-            "paula",
-            "diana",
-            "annie",
-            "lillian",
-            "emily",
-            "robin",
-            "peggy",
-            "crystal",
-            "gladys",
-            "rita",
-            "dawn",
-            "connie",
-            "florence",
-            "tracy",
-            "edna",
-            "tiffany",
-            "carmen",
-            "rosa",
-            "cindy",
-            "grace",
-            "wendy",
-            "victoria",
-            "edith",
-            "kim",
-            "sherry",
-            "sylvia",
-            "josephine",
-            "thelma",
-            "shannon",
-            "sheila",
-            "ethel",
-            "ellen",
-            "elaine",
-            "marjorie",
-            "carrie",
-            "charlotte",
-            "monica",
-            "esther",
-            "pauline",
-            "emma",
-            "juanita",
-            "anita",
-            "rhonda",
-            "hazel",
-            "amber",
-            "eva",
-            "debbie",
-            "april",
-            "leslie",
-            "clara",
-            "lucille",
-            "jamie",
-            "joanne",
-            "eleanor",
-            "valerie",
-            "danielle",
-            "megan",
-            "alicia",
-            "suzanne",
-            "michele",
-            "gail",
-            "bertha",
-            "darlene",
-            "veronica",
-            "jill",
-            "erin",
-            "geraldine",
-            "lauren",
-            "cathy",
-            "joann",
-            "lorraine",
-            "lynn",
-            "sally",
-            "regina",
-            "erica",
-            "beatrice",
-            "dolores",
-            "bernice",
-            "audrey",
-            "yvonne",
-            "annette",
-            "june",
-            "samantha",
-            "marion",
-            "dana",
-            "stacy",
-            "ana",
-            "renee",
-            "ida",
-            "vivian",
-            "roberta",
-            "holly",
-            "brittany",
-            "melanie",
-            "loretta",
-            "yolanda",
-            "jeanette",
-            "laurie",
-            "katie",
-            "kristen",
-            "vanessa",
-            "alma",
-            "sue",
-            "elsie",
-            "beth",
-            "jeanne",
-            "vicki",
-            "carla",
-            "tara",
-            "rosemary",
-            "eileen",
-            "terri",
-            "gertrude",
-            "lucy",
-            "tonya",
-            "ella",
-            "stacey",
-            "wilma",
-            "gina",
-            "kristin",
-            "jessie",
-            "natalie",
-            "agnes",
-            "vera",
-            "charlene",
-            "bessie",
-            "delores",
-            "melinda",
-            "pearl",
-            "arlene",
-            "maureen",
-            "colleen",
-            "allison",
-            "tamara",
-            "joy",
-            "georgia",
-            "constance",
-            "lillie",
-            "claudia",
-            "jackie",
-            "marcia",
-            "tanya",
-            "nellie",
-            "minnie",
-            "marlene",
-            "heidi",
-            "glenda",
-            "lydia",
-            "viola",
-            "courtney",
-            "marian",
-            "stella",
-            "caroline",
-            "dora",
-            "jo",
-            "vickie",
-            "mattie",
-            "maxine",
-            "irma",
-            "mabel",
-            "marsha",
-            "myrtle",
-            "lena",
-            "christy",
-            "deanna",
-            "patsy",
-            "hilda",
-            "gwendolyn",
-            "jennie",
-            "nora",
-            "margie",
-            "nina",
-            "cassandra",
-            "leah",
-            "penny",
-            "kay",
-            "priscilla",
-            "naomi",
-            "carole",
-            "brandy",
-            "olga",
-            "billie",
-            "dianne",
-            "tracey",
-            "leona",
-            "jenny",
-            "felicia",
-            "sonia",
-            "miriam",
-            "velma",
-            "becky",
-            "bobbie",
-            "violet",
-            "kristina",
-            "toni",
-            "misty",
-            "mae",
-            "shelly",
-            "daisy",
-            "ramona",
-            "sherri",
-            "erika",
-            "katrina",
-        }
-
-        # If it's a common first name, treat it as a proper noun
-        if word_lower in common_first_names:
-            logger.debug(f"'{word_group}' is a whitelisted common first name")
-            return True
-
-        # Otherwise check against dictionary
-        english_words = _get_english_words()
-        english_words.add("okay")
-        if word_lower in english_words:
-            logger.debug(f"Skipping '{word_group}': found in English dictionary")
-            return False
-
-    return True
-
-
-def _is_likely_person_name(word_group: str) -> bool:
-    """Determine if a proper noun is likely a person name vs. place/thing.
-
-    Enhanced logic:
-    - Multi-token groups with English words are likely company names/titles
-    - Exception: honorifics like "Mr.", "Mrs.", "Dr." are not company names
-    - Single-token groups are checked against exclusion lists
-
-    Args:
-        word_group: The proper noun to classify (may be multiple words)
-
-    Returns:
-        True if the word group is likely a person name
-    """
-    tokens = word_group.strip().split()
-
-    # Honorifics that indicate a person name follows
-    honorifics = {"mr", "mrs", "ms", "dr", "prof", "sir", "dame", "lord", "lady"}
-
-    # Whitelist of common first names (same as in _is_proper_noun)
-    common_first_names = {
-        "dan",
-        "john",
-        "alice",
-        "bob",
-        "jane",
-        "mary",
-        "james",
-        "michael",
-        "david",
-        "robert",
-        "william",
-        "richard",
-        "joseph",
-        "thomas",
-        "charles",
-        "christopher",
-        "daniel",
-        "matthew",
-        "anthony",
-        "mark",
-        "donald",
-        "steven",
-        "paul",
-        "andrew",
-        "joshua",
-        "kenneth",
-        "kevin",
-        "brian",
-        "george",
-        "edward",
-        "ronald",
-        "timothy",
-        "jason",
-        "jeffrey",
-        "ryan",
-        "jacob",
-        "gary",
-        "nicholas",
-        "eric",
-        "jonathan",
-        "stephen",
-        "larry",
-        "justin",
-        "scott",
-        "brandon",
-        "benjamin",
-        "samuel",
-        "frank",
-        "gregory",
-        "raymond",
-        "patrick",
-        "alexander",
-        "jack",
-        "dennis",
-        "jerry",
-        "tyler",
-        "aaron",
-        "jose",
-        "henry",
-        "adam",
-        "douglas",
-        "nathan",
-        "peter",
-        "zachary",
-        "kyle",
-        "walter",
-        "harold",
-        "jeremy",
-        "ethan",
-        "carl",
-        "keith",
-        "roger",
-        "gerald",
-        "christian",
-        "terry",
-        "sean",
-        "arthur",
-        "austin",
-        "noah",
-        "lawrence",
-        "jesse",
-        "joe",
-        "bryan",
-        "billy",
-        "jordan",
-        "albert",
-        "dylan",
-        "bruce",
-        "willie",
-        "gabriel",
-        "logan",
-        "alan",
-        "juan",
-        "ralph",
-        "roy",
-        "eugene",
-        "randy",
-        "vincent",
-        "russell",
-        "louis",
-        "philip",
-        "bobby",
-        "johnny",
-        "bradley",
-        # Common female names
-        "sarah",
-        "jennifer",
-        "lisa",
-        "michelle",
-        "nancy",
-        "karen",
-        "betty",
-        "helen",
-        "sandra",
-        "donna",
-        "carol",
-        "ruth",
-        "sharon",
-        "laura",
-        "kimberly",
-        "deborah",
-        "jessica",
-        "shirley",
-        "cynthia",
-        "angela",
-        "melissa",
-        "brenda",
-        "amy",
-        "anna",
-        "rebecca",
-        "virginia",
-        "kathleen",
-        "pamela",
-        "martha",
-        "debra",
-        "amanda",
-        "stephanie",
-        "carolyn",
-        "christine",
-        "marie",
-        "janet",
-        "catherine",
-        "frances",
-        "ann",
-        "joyce",
-        "diane",
-        "julie",
-        "heather",
-        "teresa",
-        "doris",
-        "gloria",
-        "evelyn",
-        "jean",
-        "cheryl",
-        "mildred",
-        "katherine",
-        "joan",
-        "ashley",
-        "judith",
-        "rose",
-        "janice",
-        "kelly",
-        "nicole",
-        "judy",
-        "christina",
-        "kathy",
-        "theresa",
-        "beverly",
-        "denise",
-        "tammy",
-        "irene",
-        "lori",
-        "rachel",
-        "marilyn",
-        "andrea",
-        "kathryn",
-        "louise",
-        "sara",
-        "anne",
-        "jacqueline",
-        "wanda",
-        "bonnie",
-        "julia",
-        "ruby",
-        "lois",
-        "tina",
-        "phyllis",
-        "norma",
-        "paula",
-        "diana",
-        "annie",
-        "lillian",
-        "emily",
-        "robin",
-        "peggy",
-        "crystal",
-        "gladys",
-        "rita",
-        "dawn",
-        "connie",
-        "florence",
-        "tracy",
-        "edna",
-        "tiffany",
-        "carmen",
-        "rosa",
-        "cindy",
-        "grace",
-        "wendy",
-        "victoria",
-        "edith",
-        "kim",
-        "sherry",
-        "sylvia",
-        "josephine",
-        "thelma",
-        "shannon",
-        "sheila",
-        "ethel",
-        "ellen",
-        "elaine",
-        "marjorie",
-        "carrie",
-        "charlotte",
-        "monica",
-        "esther",
-        "pauline",
-        "emma",
-        "juanita",
-        "anita",
-        "rhonda",
-        "hazel",
-        "amber",
-        "eva",
-        "debbie",
-        "april",
-        "leslie",
-        "clara",
-        "lucille",
-        "jamie",
-        "joanne",
-        "eleanor",
-        "valerie",
-        "danielle",
-        "megan",
-        "alicia",
-        "suzanne",
-        "michele",
-        "gail",
-        "bertha",
-        "darlene",
-        "veronica",
-        "jill",
-        "erin",
-        "geraldine",
-        "lauren",
-        "cathy",
-        "joann",
-        "lorraine",
-        "lynn",
-        "sally",
-        "regina",
-        "erica",
-        "beatrice",
-        "dolores",
-        "bernice",
-        "audrey",
-        "yvonne",
-        "annette",
-        "june",
-        "samantha",
-        "marion",
-        "dana",
-        "stacy",
-        "ana",
-        "renee",
-        "ida",
-        "vivian",
-        "roberta",
-        "holly",
-        "brittany",
-        "melanie",
-        "loretta",
-        "yolanda",
-        "jeanette",
-        "laurie",
-        "katie",
-        "kristen",
-        "vanessa",
-        "alma",
-        "sue",
-        "elsie",
-        "beth",
-        "jeanne",
-        "vicki",
-        "carla",
-        "tara",
-        "rosemary",
-        "eileen",
-        "terri",
-        "gertrude",
-        "lucy",
-        "tonya",
-        "ella",
-        "stacey",
-        "wilma",
-        "gina",
-        "kristin",
-        "jessie",
-        "natalie",
-        "agnes",
-        "vera",
-        "charlene",
-        "bessie",
-        "delores",
-        "melinda",
-        "pearl",
-        "arlene",
-        "maureen",
-        "colleen",
-        "allison",
-        "tamara",
-        "joy",
-        "georgia",
-        "constance",
-        "lillie",
-        "claudia",
-        "jackie",
-        "marcia",
-        "tanya",
-        "nellie",
-        "minnie",
-        "marlene",
-        "heidi",
-        "glenda",
-        "lydia",
-        "viola",
-        "courtney",
-        "marian",
-        "stella",
-        "caroline",
-        "dora",
-        "jo",
-        "vickie",
-        "mattie",
-        "maxine",
-        "irma",
-        "mabel",
-        "marsha",
-        "myrtle",
-        "lena",
-        "christy",
-        "deanna",
-        "patsy",
-        "hilda",
-        "gwendolyn",
-        "jennie",
-        "nora",
-        "margie",
-        "nina",
-        "cassandra",
-        "leah",
-        "penny",
-        "kay",
-        "priscilla",
-        "naomi",
-        "carole",
-        "brandy",
-        "olga",
-        "billie",
-        "dianne",
-        "tracey",
-        "leona",
-        "jenny",
-        "felicia",
-        "sonia",
-        "miriam",
-        "velma",
-        "becky",
-        "bobbie",
-        "violet",
-        "kristina",
-        "toni",
-        "misty",
-        "mae",
-        "shelly",
-        "daisy",
-        "ramona",
-        "sherri",
-        "erika",
-        "katrina",
-    }
-
-    # Whitelist of common last names that are also in the dictionary
-    common_last_names = {
-        "smith",
-        "johnson",
-        "williams",
-        "jones",
-        "brown",
-        "davis",
-        "miller",
-        "wilson",
-        "moore",
-        "taylor",
-        "anderson",
-        "thomas",
-        "jackson",
-        "white",
-        "harris",
-        "martin",
-        "thompson",
-        "garcia",
-        "martinez",
-        "robinson",
-        "clark",
-        "rodriguez",
-        "lewis",
-        "lee",
-        "walker",
-        "hall",
-        "allen",
-        "young",
-        "hernandez",
-        "king",
-        "wright",
-        "lopez",
-        "hill",
-        "scott",
-        "green",
-        "adams",
-        "baker",
-        "gonzalez",
-        "nelson",
-        "carter",
-        "mitchell",
-        "perez",
-        "roberts",
-        "turner",
-        "phillips",
-        "campbell",
-        "parker",
-        "evans",
-        "edwards",
-        "collins",
-        "stewart",
-        "sanchez",
-        "morris",
-        "rogers",
-        "reed",
-        "cook",
-        "morgan",
-        "bell",
-        "murphy",
-        "bailey",
-        "rivera",
-        "cooper",
-        "richardson",
-        "cox",
-        "howard",
-        "ward",
-        "torres",
-        "peterson",
-        "gray",
-        "ramirez",
-        "james",
-        "watson",
-        "brooks",
-        "kelly",
-        "sanders",
-        "price",
-        "bennett",
-        "wood",
-        "barnes",
-        "ross",
-        "henderson",
-        "coleman",
-        "jenkins",
-        "perry",
-        "powell",
-        "long",
-        "patterson",
-        "hughes",
-        "flores",
-        "washington",
-        "butler",
-        "simmons",
-        "foster",
-        "gonzales",
-        "bryant",
-        "alexander",
-        "russell",
-        "griffin",
-        "diaz",
-        "hayes",
-        "myers",
-        "ford",
-        "hamilton",
-        "graham",
-        "sullivan",
-        "wallace",
-        "woods",
-        "cole",
-        "west",
-        "jordan",
-        "owens",
-        "reynolds",
-        "fisher",
-        "ellis",
-        "harrison",
-        "gibson",
-        "mcdonald",
-        "cruz",
-        "marshall",
-        "ortiz",
-        "gomez",
-        "murray",
-        "freeman",
-        "wells",
-        "webb",
-        "simpson",
-        "stevens",
-        "tucker",
-        "porter",
-        "hunter",
-        "hicks",
-        "crawford",
-        "henry",
-        "boyd",
-        "mason",
-        "morales",
-        "kennedy",
-        "warren",
-        "dixon",
-        "ramos",
-        "reyes",
-        "burns",
-        "gordon",
-        "shaw",
-        "holmes",
-        "rice",
-        "robertson",
-        "hunt",
-        "black",
-        "daniels",
-        "palmer",
-        "mills",
-        "nichols",
-        "grant",
-        "knight",
-        "ferguson",
-        "rose",
-        "stone",
-        "hawkins",
-        "dunn",
-        "perkins",
-        "hudson",
-        "spencer",
-        "gardner",
-        "stephens",
-        "payne",
-        "pierce",
-        "berry",
-        "matthews",
-        "arnold",
-        "wagner",
-        "willis",
-        "ray",
-        "watkins",
-        "olson",
-        "carroll",
-        "duncan",
-        "snyder",
-        "hart",
-        "cunningham",
-        "bradley",
-        "lane",
-        "andrews",
-        "ruiz",
-        "harper",
-        "fox",
-        "riley",
-        "armstrong",
-        "carpenter",
-        "weaver",
-        "greene",
-        "lawrence",
-        "elliott",
-        "chavez",
-        "sims",
-        "austin",
-        "peters",
-        "kelley",
-        "franklin",
-        "lawson",
-        "fields",
-        "gutierrez",
-        "ryan",
-        "schmidt",
-        "carr",
-        "vasquez",
-        "castillo",
-        "wheeler",
-        "chapman",
-        "oliver",
-        "montgomery",
-        "richards",
-        "williamson",
-        "johnston",
-        "banks",
-        "meyer",
-        "bishop",
-        "mccoy",
-        "howell",
-        "alvarez",
-        "morrison",
-        "hansen",
-        "fernandez",
-        "garza",
-        "harvey",
-        "little",
-        "burton",
-        "stanley",
-        "nguyen",
-        "george",
-        "jacobs",
-        "reid",
-        "kim",
-        "fuller",
-        "lynch",
-        "dean",
-        "gilbert",
-        "garrett",
-        "romero",
-        "welch",
-        "larson",
-        "frazier",
-        "burke",
-        "hanson",
-        "day",
-        "mendoza",
-        "moreno",
-        "bowman",
-        "medina",
-        "fowler",
-        "brewer",
-        "hoffman",
-        "carlson",
-        "silva",
-        "pearson",
-        "holland",
-        "douglas",
-        "fleming",
-        "jensen",
-        "vargas",
-        "byrd",
-        "davidson",
-        "hopkins",
-        "may",
-        "terry",
-        "herrera",
-        "wade",
-        "soto",
-        "walters",
-        "curtis",
-        "neal",
-        "caldwell",
-        "lowe",
-        "jennings",
-        "barnett",
-        "graves",
-        "jimenez",
-        "horton",
-        "shelton",
-        "barrett",
-        "obrien",
-        "castro",
-        "sutton",
-        "gregory",
-        "mckinney",
-        "lucas",
-        "miles",
-        "craig",
-        "rodriquez",
-        "chambers",
-        "holt",
-        "lambert",
-        "fletcher",
-        "watts",
-        "bates",
-        "hale",
-        "rhodes",
-        "pena",
-        "beck",
-        "newman",
-        "haynes",
-        "mcdaniel",
-        "mendez",
-        "bush",
-        "vaughn",
-        "parks",
-        "dawson",
-        "santiago",
-        "norris",
-        "hardy",
-        "love",
-        "steele",
-        "curry",
-        "powers",
-        "schultz",
-        "barker",
-        "guzman",
-        "page",
-        "munoz",
-        "ball",
-        "keller",
-        "chandler",
-        "weber",
-        "leonard",
-        "walsh",
-        "lyons",
-        "ramsey",
-        "wolfe",
-        "schneider",
-        "mullins",
-        "benson",
-        "sharp",
-        "bowen",
-        "daniel",
-        "barber",
-        "cummings",
-        "hines",
-        "baldwin",
-        "griffith",
-        "valdez",
-        "hubbard",
-        "salazar",
-        "reeves",
-        "warner",
-        "stevenson",
-        "burgess",
-        "santos",
-        "tate",
-        "cross",
-        "garner",
-        "mann",
-        "mack",
-        "moss",
-        "thornton",
-        "dennis",
-        "mcgee",
-        "farmer",
-        "delgado",
-        "aguilar",
-        "vega",
-        "glover",
-        "manning",
-        "cohen",
-        "harmon",
-        "rodgers",
-        "robbins",
-        "newton",
-        "todd",
-        "blair",
-        "higgins",
-        "ingram",
-        "reese",
-        "cannon",
-        "strickland",
-        "townsend",
-        "potter",
-        "goodman",
-        "walton",
-        "rowe",
-        "hampton",
-        "ortega",
-        "patton",
-        "swanson",
-        "joseph",
-        "francis",
-        "goodwin",
-        "maldonado",
-        "yates",
-        "becker",
-        "erickson",
-        "hodges",
-        "rios",
-        "conner",
-        "adkins",
-        "webster",
-        "norman",
-        "malone",
-        "hammond",
-        "flowers",
-        "cobb",
-        "moody",
-        "quinn",
-        "blake",
-        "maxwell",
-        "pope",
-        "floyd",
-        "osborne",
-        "paul",
-        "mccarthy",
-        "guerrero",
-        "lindsey",
-        "estrada",
-        "sandoval",
-        "gibbs",
-        "tyler",
-        "gross",
-        "fitzgerald",
-        "stokes",
-        "doyle",
-        "sherman",
-        "saunders",
-        "wise",
-        "colon",
-        "gill",
-        "alvarado",
-        "greer",
-        "padilla",
-        "simon",
-        "waters",
-        "nunez",
-        "ballard",
-        "schwartz",
-        "mcbride",
-        "houston",
-        "christensen",
-        "klein",
-        "pratt",
-        "briggs",
-        "parsons",
-        "mclaughlin",
-        "zimmerman",
-        "french",
-        "buchanan",
-        "moran",
-        "copeland",
-        "roy",
-        "pittman",
-        "brady",
-        "mccormick",
-        "holloway",
-        "brock",
-        "poole",
-        "frank",
-        "logan",
-        "owen",
-        "bass",
-        "marsh",
-        "drake",
-        "wong",
-        "jefferson",
-        "park",
-        "morton",
-        "abbott",
-        "sparks",
-        "patrick",
-        "norton",
-        "huff",
-        "clayton",
-        "massey",
-        "lloyd",
-        "figueroa",
-        "carson",
-        "bowers",
-        "roberson",
-        "barton",
-        "tran",
-        "lamb",
-        "harrington",
-        "casey",
-        "boone",
-        "cortez",
-        "clarke",
-        "mathis",
-        "singleton",
-        "wilkins",
-        "cain",
-        "bryan",
-        "underwood",
-        "hogan",
-        "mckenzie",
-        "collier",
-        "luna",
-        "phelps",
-        "mcguire",
-        "allison",
-        "bridges",
-        "wilkerson",
-        "nash",
-        "summers",
-        "atkins",
-    }
-
-    # Check if multi-token group contains English words
-    # This likely indicates a company name or title
-    # Exception: Common first/last names are whitelisted
-    if len(tokens) > 1:
-        english_words = _get_english_words()
-
-        # Check each token (excluding honorifics and common names)
-        for token in tokens:
-            token_lower = token.lower().rstrip(".")
-
-            # Skip honorifics
-            if token_lower in honorifics:
-                continue
-
-            # Skip common first/last names (whitelisted)
-            if token_lower in common_first_names or token_lower in common_last_names:
-                continue
-
-            # If we find an English word (not a name), it's likely a company/title
-            if token_lower in english_words:
-                logger.debug(f"Skipping '{word_group}': multi-token with English word '{token}'")
-                return False
-
-    # For single tokens, check exclusion lists
-    if len(tokens) == 1:
-        word_lower = tokens[0].lower()
-
-        # Common places to exclude
-        places = {
-            "america",
-            "north",
-            "south",
-            "east",
-            "west",
-            "africa",
-            "asia",
-            "europe",
-            "australia",
-            "canada",
-            "mexico",
-            "california",
-            "texas",
-            "florida",
-            "york",
-            "london",
-            "paris",
-            "tokyo",
-            "beijing",
-            "moscow",
-            "boston",
-            "chicago",
-            "seattle",
-            "atlanta",
-            "denver",
-            "portland",
-            "austin",
-        }
-
-        # Temporal words to exclude
-        temporal = {
-            "monday",
-            "tuesday",
-            "wednesday",
-            "thursday",
-            "friday",
-            "saturday",
-            "sunday",
-            "january",
-            "february",
-            "march",
-            "april",
-            "may",
-            "june",
-            "july",
-            "august",
-            "september",
-            "october",
-            "november",
-            "december",
-        }
-
-        # Organizations/products to exclude
-        organizations = {
-            "microsoft",
-            "apple",
-            "google",
-            "amazon",
-            "facebook",
-            "twitter",
-            "linkedin",
-            "github",
-            "windows",
-            "linux",
-            "android",
-            "iphone",
-            "internet",
-            "email",
-        }
-
-        if word_lower in places or word_lower in temporal or word_lower in organizations:
-            logger.debug(f"Skipping '{word_group}': in exclusion list")
-            return False
-
-    return True
-
-
 def _ensure_nltk_data() -> None:
     """Ensure required NLTK data packages are downloaded.
 
@@ -2139,41 +789,57 @@ def _ensure_nltk_data() -> None:
 
     import nltk  # type: ignore[import-untyped]
 
-    # For each package, try common names in order of preference
-    packages_to_try = [
-        ["punkt_tab", "punkt"],  # Sentence tokenizer
-        ["averaged_perceptron_tagger_eng", "averaged_perceptron_tagger"],  # POS tagger
-        ["maxent_ne_chunker"],  # NER chunker
-        ["words"],  # Word corpus
+    def resource_available(resource_path: str) -> bool:
+        try:
+            nltk.data.find(resource_path)  # type: ignore[attr-defined]
+            return True
+        except LookupError:
+            return False
+
+    def download_package(package_name: str, resource_path: str) -> bool:
+        logger.info(f"Downloading NLTK package: {package_name}")
+        with contextlib.suppress(Exception):
+            nltk.download(package_name, quiet=True)  # type: ignore[attr-defined]
+            if resource_available(resource_path):
+                logger.info(f"Successfully downloaded NLTK package: {package_name}")
+                return True
+        logger.debug(f"Download of {package_name} did not make it available at {resource_path}")
+        return False
+
+    resource_variants: list[list[tuple[str, str]]] = [
+        [
+            ("punkt_tab", "tokenizers/punkt_tab"),  # Sentence tokenizer (newer name)
+            ("punkt", "tokenizers/punkt"),  # Legacy name
+        ],
+        [
+            (
+                "averaged_perceptron_tagger_eng",
+                "taggers/averaged_perceptron_tagger_eng",
+            ),  # Newer tagger
+            ("averaged_perceptron_tagger", "taggers/averaged_perceptron_tagger"),  # Legacy
+        ],
+        [
+            ("maxent_ne_chunker_tab", "chunkers/maxent_ne_chunker_tab"),  # Newer chunker data
+            ("maxent_ne_chunker", "chunkers/maxent_ne_chunker"),  # Legacy chunker
+        ],
+        [("words", "corpora/words")],  # Word corpus
     ]
 
-    for package_variants in packages_to_try:
+    for variants in resource_variants:
         downloaded = False
-        for package_name in package_variants:
-            if downloaded:
-                break
-            try:
-                # Try to find the package
-                nltk.data.find(package_name)  # type: ignore[attr-defined]
+        for package_name, resource_path in variants:
+            if resource_available(resource_path):
                 downloaded = True
-                logger.debug(f"NLTK package '{package_name}' already available")
-            except LookupError:
-                # Not found, try to download
-                logger.info(f"Downloading NLTK package: {package_name}")
-                with contextlib.suppress(Exception):
-                    nltk.download(package_name, quiet=True)  # type: ignore[attr-defined]
-                    # Verify it was actually downloaded
-                    try:
-                        nltk.data.find(package_name)  # type: ignore[attr-defined]
-                        downloaded = True
-                        logger.info(f"Successfully downloaded NLTK package: {package_name}")
-                    except LookupError:
-                        logger.debug(f"Download of {package_name} did not make it available")
+                break
+
+            if download_package(package_name, resource_path):
+                downloaded = True
+                break
 
         if not downloaded:
             logger.warning(
-                f"Could not download any variant of {package_variants}. "
-                "NLTK functionality may be limited."
+                "Could not download any variant of %s. NLTK functionality may be limited.",
+                [pkg for pkg, _ in variants],
             )
 
 
@@ -2230,9 +896,10 @@ def extract_person_names_from_text(text: str, existing_names: set[Name]) -> set[
     try:
         # Split text into sentences
         sentences: Any = sent_tokenize(text)
-        for sent in sentences:
+        for sentence in sentences:
             # Tokenize and POS-tag
-            tokens: Any = word_tokenize(sent)
+            excluding_label = re.sub(r"([A-Za-z0-9 ]+: )", r"", sentence)
+            tokens: Any = word_tokenize(excluding_label)
             tagged: Any = pos_tag(tokens)  # type: ignore[assignment]
 
             # Named entity chunking
@@ -2274,75 +941,6 @@ def extract_person_names_from_text(text: str, existing_names: set[Name]) -> set[
         return existing_names.copy()
 
     return result_names
-
-
-def _extract_names_from_dialogue(text: str) -> set[Name]:
-    """Extract names mentioned in dialogue through direct address patterns.
-
-    Enhanced to properly identify proper nouns and distinguish between
-    person names vs. places/things. Uses title case chain detection to
-    identify multi-word names.
-
-    Only extracts names from clear direct address contexts like:
-    - "Hi, Dan"
-    - "Thanks, Anne"
-    - "Dan, what do you think?"
-    - "Hi, Dan Moisan" (multi-word names)
-
-    The function:
-    1. Extracts title case chains (e.g., "Dan Moisan", "New York")
-    2. Checks if each chain is a proper noun (English dictionary check)
-    3. Filters out places, organizations, and common words
-    4. Only captures words/chains that are likely person names
-
-    Args:
-        text: The text to analyze
-
-    Returns:
-        Set of Name objects mentioned in direct address
-    """
-    names: set[Name] = set()
-
-    # Direct address patterns - capturing one or more title-cased words (non-greedy)
-    # Use [ ] instead of \s to prevent matching across lines (\s includes \r and \n)
-    # Pattern captures consecutive title-cased words up to 3 words
-    name_pattern = r"[A-Z][a-z]+(?:[ ][A-Z][a-z]+){0,2}"
-
-    patterns = [
-        rf"(?:Hi|Hey|Hello|Thanks|Thank you),[ ]+({name_pattern})",  # "Hi, Dan"
-        rf"(?:Hi|Hey|Hello|Thanks|Thank you)[ ]+({name_pattern})",  # "Hello Alice"
-        rf"\b({name_pattern}),[ ]+(?:what|how|can|could|would|do|did|thanks)",  # "Dan, what..."
-        rf"(?:As|So)[ ]+({name_pattern})[ ]+(?:mentioned|said|noted)",  # "As Dan mentioned"
-        rf"(?i)(?:how|where)[ ]+is[ ]+({name_pattern})",  # "How is Alice?"
-    ]
-
-    for pattern in patterns:
-        matches = re.findall(pattern, text, re.MULTILINE)
-        for match in matches:
-            match = match.strip()
-
-            # Skip if match contains newlines (captured across lines)
-            if "\r" in match or "\n" in match:
-                continue
-
-            # First check: Must be a proper noun (checks dictionary for single words)
-            if not _is_proper_noun(match):
-                continue
-
-            # Second check: Must be likely a person name (not place/thing/company)
-            if not _is_likely_person_name(match):
-                continue
-
-            # Passed all checks, create Name object
-            logger.debug(f"Extracted name from dialogue: {match}")
-            try:
-                # Parse multi-word names properly
-                name = Name.from_string(match)
-                names.add(name)
-            except ValueError:
-                logger.debug(f"Skipping invalid name: {match}")
-
-    return names
 
 
 def _extract_speaker_samples(speaker: str, text: str, count: int = 3) -> list[str]:
@@ -2456,10 +1054,13 @@ def _extract_names_from_line(line: str) -> set[Name]:
     for part in parts:
         # Clean and check if it looks like a name
         cleaned = part.strip()
-        if cleaned and cleaned[0].isupper():
+        if cleaned and cleaned[0].isalpha():
+            # Normalize to title case for proper name format
+            # This handles cases like "alice" -> "Alice" or "ALICE" -> "Alice"
+            normalized = cleaned.title()
             # Parse as full name using Name.from_string
             try:
-                name = Name.from_string(cleaned)
+                name = Name.from_string(normalized)
                 names.add(name)
             except ValueError:
                 # Skip invalid names (e.g., too many tokens)

@@ -45,7 +45,7 @@ def _find_roots(adj: dict[Node, list[Node]]) -> list[Node]:
     return roots or sorted(all_callers)
 
 
-def write_outline(path: str = "callgraph_outline.txt") -> None:
+def write_outline(path: str = "artifacts/callgraph_outline.txt") -> None:
     """
     Write a text outline of the call graph:
 
@@ -79,6 +79,8 @@ def write_outline(path: str = "callgraph_outline.txt") -> None:
     for root in roots:
         _dfs(root, depth=0)
 
+    # Ensure parent directory exists
+    os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
         f.write("\n")
@@ -150,10 +152,12 @@ def _iter_sorted_edges() -> Iterable[Edge]:
     return sorted(EDGES)
 
 
-def write_dot(path: str = "callgraph.dot") -> None:
+def write_dot(path: str = "artifacts/callgraph.dot") -> None:
     """
     Optional: keep Graphviz DOT output around if you still want it.
     """
+    # Ensure parent directory exists
+    os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         f.write("digraph G {\n")
         f.write("  graph [rankdir=LR];\n")
@@ -177,7 +181,7 @@ def _build_node_id_map() -> dict[Node, str]:
     return mapping
 
 
-def write_mermaid(path: str = "callgraph.mmd") -> None:
+def write_mermaid(path: str = "artifacts/callgraph.mmd") -> None:
     """
     Write the recorded call graph as a Mermaid flowchart definition.
 
@@ -189,6 +193,8 @@ def write_mermaid(path: str = "callgraph.mmd") -> None:
     """
     node_ids = _build_node_id_map()
 
+    # Ensure parent directory exists
+    os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         f.write("flowchart LR\n")
 
@@ -230,7 +236,7 @@ def run_with_callgraph(func: Callable[..., T], *args: object, **kwargs: object) 
         result = func(*args, **kwargs)
     finally:
         sys.settrace(None)
-        write_dot("callgraph.dot")  # optional, keep if you like
-        write_mermaid("callgraph.mmd")  # Mermaid output
-        write_outline("callgraph_outline.txt")
+        write_dot("artifacts/callgraph.dot")  # optional, keep if you like
+        write_mermaid("artifacts/callgraph.mmd")  # Mermaid output
+        write_outline("artifacts/callgraph_outline.txt")
     return result
