@@ -6,6 +6,7 @@ Dan Moisan and provide UI fallback for unresolved speakers.
 
 import logging
 import re
+from collections.abc import Iterable
 from typing import Protocol
 
 from transcript_etl_pipeline.transform import dialogue_names_deprecated
@@ -307,13 +308,17 @@ def was_name_referenced(text: str, name: Name) -> bool:
     # Check if any name variant appears in the dialogue (not just as a speaker label)
     for variant in name.shortened_variants:
         variant_lower = variant.lower()
+        # Use word boundaries to avoid matching substrings inside other words
+        word_pattern = re.compile(rf"\b{re.escape(variant_lower)}\b")
+
         # Look for the name in dialogue content (not as speaker label at line start)
-        if variant_lower in dialog_lower:
-            # Check that it's not just the speaker label
+        if word_pattern.search(dialog_lower):
             lines = dialog.split("\r\n")
             for line in lines:
                 line_lower = line.lower()
-                if not line_lower.startswith(f"{variant_lower}:") and variant_lower in line_lower:
+                if not line_lower.startswith(f"{variant_lower}:") and word_pattern.search(
+                    line_lower
+                ):
                     return True
     return False
 
@@ -350,9 +355,10 @@ def find_direct_reference(
         found_variant = None
         for variant in name_variants:
             variant_lower = variant.lower()
+            variant_pattern = re.compile(rf"\b{re.escape(variant_lower)}\b")
             if (
                 not line_lower.startswith(f"{variant_lower}:")
-                and variant_lower in line_lower
+                and variant_pattern.search(line_lower)
                 and is_direct_address_to_person(line, variant)
             ):
                 found_variant = variant
@@ -370,6 +376,30 @@ def find_direct_reference(
                     break
 
     return (speakers_addressing_person, direct_address_locations)
+
+
+def _third_person_patterns_for_variants(name_variants_lower: Iterable[str]) -> list[str]:
+    """Build third-person reference regex patterns for provided name variants."""
+
+    patterns: list[str] = []
+    for variant_lower in name_variants_lower:
+        escaped_variant = re.escape(variant_lower)
+        patterns.extend(
+            [
+                # Gendered pronouns with name positioned after pronoun
+                rf"\b(her|she|she'?s)\b.*\b{escaped_variant}\b",
+                # Gendered pronouns with name preceding pronoun
+                rf"\b{escaped_variant}\b.*\b(her|she|she'?s)\b",
+                # Masculine pronouns with name
+                rf"\b(his|he|he'?s)\b.*\b{escaped_variant}\b",
+                rf"\b{escaped_variant}\b.*\b(his|he|he'?s)\b",
+                # Possessive with name
+                rf"\b{escaped_variant}'?s\s+(screen|audio|connection|microphone)",
+                # Status references with name
+                rf"\b{escaped_variant}\b\s+is\s+(muted?|frozen|disconnected)",
+            ]
+        )
+    return patterns
 
 
 def calculate_possible_speakers(
@@ -467,21 +497,7 @@ def exclude_third_person_speakers(lines: list[str], name: Name, candidates: list
     name_variants_lower = [v.lower() for v in name.shortened_variants]
 
     # Build third-person patterns
-    third_person_patterns: list[str] = []
-    for variant_lower in name_variants_lower:
-        third_person_patterns.extend(
-            [
-                # Gendered pronouns with name
-                rf"\b(her|she|she'?s)\b.*{variant_lower}",
-                rf"{variant_lower}.*\b(her|she|she'?s)\b",
-                rf"\b(his|he|he'?s)\b.*{variant_lower}",
-                rf"{variant_lower}.*\b(his|he|he'?s)\b",
-                # Possession with name
-                rf"{variant_lower}'?s\s+(screen|audio|connection|microphone)",
-                # Status references with name
-                rf"{variant_lower}\s+is\s+(muted?|frozen|disconnected)",
-            ]
-        )
+    third_person_patterns: list[str] = _third_person_patterns_for_variants(name_variants_lower)
     # Add generic third-person patterns (when no name variant is mentioned)
     third_person_patterns.extend(
         [
@@ -539,21 +555,7 @@ def apply_proximity_heuristics(
     # FIRST: Exclude speakers who use third-person references
     # These speakers are definitively NOT the person
     # Check for any name variant in third-person context
-    third_person_patterns: list[str] = []
-    for variant_lower in name_variants_lower:
-        third_person_patterns.extend(
-            [
-                # Gendered pronouns with name
-                rf"\b(her|she|she'?s)\b.*{variant_lower}",
-                rf"{variant_lower}.*\b(her|she|she'?s)\b",
-                rf"\b(his|he|he'?s)\b.*{variant_lower}",
-                rf"{variant_lower}.*\b(his|he|he'?s)\b",
-                # Possession with name
-                rf"{variant_lower}'?s\s+(screen|audio|connection|microphone)",
-                # Status references with name
-                rf"{variant_lower}\s+is\s+(muted?|frozen|disconnected)",
-            ]
-        )
+    third_person_patterns: list[str] = _third_person_patterns_for_variants(name_variants_lower)
     # Add generic third-person patterns
     third_person_patterns.extend(
         [

@@ -182,6 +182,19 @@ class TestWasNameReferenced:
 
         assert was_referenced is True
 
+    def test_does_not_match_name_as_substring(self) -> None:
+        """Ensure name variants embedded inside other words do not count as references."""
+        text = (
+            "Attendees: Anne Winters\r\n"
+            "Transcript:\r\n"
+            "Speaker A: We should review the new channels dashboard today.\r\n"
+            "Speaker B: Agree, let's proceed."
+        )
+
+        was_referenced = was_name_referenced(text, Name.from_string("Anne Winters"))
+
+        assert was_referenced is False
+
 
 class TestIsDirectAddressToPerson:
     """Test detection of direct addresses vs third-person references."""
@@ -291,6 +304,22 @@ class TestFindDirectReference:
         assert speakers == []
         assert locations == []
 
+    def test_ignores_name_embedded_in_other_words(self) -> None:
+        """Ensure direct reference detection does not trigger on substring matches."""
+        lines = [
+            "Speaker A: Let's review the new channels dashboard today.",
+            "Speaker B: Sounds good.",
+        ]
+
+        speakers, locations = find_direct_reference(
+            lines,
+            ["Speaker A", "Speaker B"],
+            {"Anne"},
+        )
+
+        assert speakers == []
+        assert locations == []
+
 
 class TestCalculatePossibleSpeakers:
     """Test filtering of possible speakers after direct references."""
@@ -323,6 +352,21 @@ class TestExcludeThirdPersonSpeakers:
         )
 
         assert filtered == ["Speaker C"]
+
+    def test_does_not_remove_speaker_on_substring_match(self) -> None:
+        """Ensure substring overlaps inside other words do not trigger third-person filtering."""
+        lines = [
+            "Speaker B: The channels initiative is on track.",
+            "Speaker C: Copy that.",
+        ]
+
+        filtered = exclude_third_person_speakers(
+            lines,
+            Name.from_string("Anne"),
+            ["Speaker B", "Speaker C"],
+        )
+
+        assert filtered == ["Speaker B", "Speaker C"]
 
 
 class TestApplyProximityHeuristics:
