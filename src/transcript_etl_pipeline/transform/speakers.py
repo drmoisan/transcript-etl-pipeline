@@ -55,17 +55,18 @@ __all__ = [
     "SpeakerResolutionUI",
     "resolve_speakers",
     "_extract_generic_speaker_labels",
-    "_identify_speaker_by_name",
+    "identify_speaker_by_name",
     "_identify_dan_moisan",
     "_extract_names_from_metadata",
     "_extract_names_from_dialogue",
     "_extract_speaker_samples",
     "_apply_speaker_mappings",
     "_is_speaker_line",
-    "_extract_speaker_from_line",
-    "_is_direct_address_to_person",
+    "_extract_generic_speaker_from_line",
+    "is_direct_address_to_person",
     "_extract_names_from_line",
-    "_apply_proximity_heuristics",
+    "apply_proximity_heuristics",
+    "was_name_referenced",
     "_extract_title_case_chains",
     "_is_proper_noun",
     "_is_likely_person_name",
@@ -75,12 +76,15 @@ __all__ = [
 class SpeakerResolutionUI(Protocol):
     """Protocol for UI callback to resolve unknown speakers."""
 
-    def __call__(self, speaker_label: str, sample_utterances: list[str]) -> str | None:
+    def __call__(
+        self, speaker_label: str, sample_utterances: list[str], candidates: list[str]
+    ) -> str | None:
         """Prompt user to resolve a speaker.
 
         Args:
             speaker_label: The original speaker label (e.g., "Speaker B")
             sample_utterances: List of 2-3 sample utterances from this speaker
+            candidates: List of candidate names from metadata (may be empty)
 
         Returns:
             The resolved name, or None if user cancelled
@@ -131,14 +135,14 @@ def resolve_speakers(
     names_actively_ruled_out: set[Name] = set()  # Names where all speakers were excluded
 
     for name in available_names:
-        candidates = _identify_speaker_by_name(text, speaker_labels, name)
+        candidates = identify_speaker_by_name(text, speaker_labels, name)
         if candidates:
             name_to_speakers[name] = candidates
             logger.debug(f"Name '{name.full_name}' matched to speakers: {candidates}")
         else:
             # Check if name was addressed/referenced (actively ruled out)
             # vs just not mentioned
-            if _was_name_referenced(text, name):
+            if was_name_referenced(text, name):
                 names_actively_ruled_out.add(name)
                 logger.debug(f"Name '{name.full_name}' was referenced but all speakers excluded")
 
@@ -208,12 +212,30 @@ def resolve_speakers(
     # For any still-unresolved speakers, use UI callback if provided
     if ui_callback:
         unresolved_speakers = [s for s in speaker_labels if s not in speaker_map]
+        logger.info(f"Requesting UI input for {len(unresolved_speakers)} unresolved speaker(s)")
+
+        # Build candidate list from unused metadata names
+        unused_metadata_names = [
+            name.full_name
+            for name in metadata_names
+            if name not in name_to_speakers
+            and name not in names_actively_ruled_out
+            and name != resolved_dan_name
+        ]
+
         for speaker in unresolved_speakers:
             if speaker not in speaker_map:
+                logger.info(f"Showing UI dialog for: {speaker}")
                 samples = _extract_speaker_samples(speaker, text, count=3)
-                resolved = ui_callback(speaker, samples)
+                logger.debug(f"Sample utterances: {samples[:2]}")  # Log first 2
+                logger.info("Waiting for user input...")
+                resolved = ui_callback(speaker, samples, unused_metadata_names)
+                logger.info(f"User response received: {resolved}")
                 if resolved:
                     speaker_map[speaker] = resolved
+                    # Remove from unused list if it was selected
+                    if resolved in unused_metadata_names:
+                        unused_metadata_names.remove(resolved)
                     logger.debug(f"Resolved via UI callback: {speaker} -> {resolved}")
                 else:
                     logger.debug(f"UI callback returned None for {speaker} - leaving unresolved")
@@ -265,7 +287,7 @@ def _extract_generic_speaker_labels(text: str) -> list[str]:
     return labels
 
 
-def _was_name_referenced(text: str, name: Name) -> bool:
+def was_name_referenced(text: str, name: Name) -> bool:
     """Check if a name was referenced or addressed in the dialogue.
 
     This helps distinguish between:
@@ -296,7 +318,73 @@ def _was_name_referenced(text: str, name: Name) -> bool:
     return False
 
 
-def _identify_speaker_by_name(text: str, speaker_labels: list[str], name: Name) -> list[str]:
+def find_self_identifying_speaker(lines: list[str], name_variants: set[str]) -> list[str]:
+    self_identifying_speakers: list[str] = []
+    for line in lines:
+        line_lower = line.lower()
+        generic_speaker = _extract_generic_speaker_from_line(line)
+
+        if generic_speaker:
+            # Check if speaker self-identifies as this person
+            for variant in name_variants:
+                variant_lower = variant.lower()
+                # Self-identification patterns:
+                # "this is <Name>", "sorry, this is <Name>", "hi, this is <Name>"
+                pattern_match = re.search(rf"\bthis\s+is\s+{variant_lower}\b", line_lower)
+                if pattern_match and generic_speaker not in name_variants:
+                    self_identifying_speakers.append(generic_speaker)
+                    break
+    return self_identifying_speakers
+
+
+def find_direct_reference(
+    lines: list[str], speaker_labels: list[str], name_variants: set[str]
+) -> tuple[list[str], list[int]]:
+    speakers_addressing_person: list[str] = []
+    direct_address_locations: list[int] = []  # Track where direct addresses occur
+
+    for i, line in enumerate(lines):
+        # Look for any variant of the name in dialogue (not as a speaker label)
+        # Check if this is a direct address (not hypothetical/third-person)
+        line_lower = line.lower()
+        found_variant = None
+        for variant in name_variants:
+            variant_lower = variant.lower()
+            if (
+                not line_lower.startswith(f"{variant_lower}:")
+                and variant_lower in line_lower
+                and is_direct_address_to_person(line, variant)
+            ):
+                found_variant = variant
+                break
+
+        if found_variant:
+            # Found a direct address to the person
+            # Find which speaker said this (they are addressing the person)
+            for j in range(i, -1, -1):
+                if _is_speaker_line(lines[j], speaker_labels):
+                    generic_speaker = _extract_generic_speaker_from_line(lines[j])
+                    if generic_speaker and generic_speaker not in name_variants:
+                        speakers_addressing_person.append(generic_speaker)
+                        direct_address_locations.append(i)
+                    break
+
+    return (speakers_addressing_person, direct_address_locations)
+
+
+def calculate_possible_speakers(
+    speakers_addressing_person: list[str], speaker_labels: list[str], name_variants: set[str]
+) -> list[str]:
+    speakers_addressing_person_set: set[str] = set(speakers_addressing_person)
+    possible_speakers = [
+        speaker
+        for speaker in speaker_labels
+        if speaker not in speakers_addressing_person_set and speaker not in name_variants
+    ]
+    return possible_speakers
+
+
+def identify_speaker_by_name(text: str, speaker_labels: list[str], name: Name) -> list[str]:
     """Identify which speaker label(s) could correspond to a person.
 
     Uses a two-pass approach:
@@ -325,21 +413,7 @@ def _identify_speaker_by_name(text: str, speaker_labels: list[str], name: Name) 
 
     # PASS 0: Check for self-identification patterns FIRST
     # Patterns like "this is Alice" or "Sorry, this is Alice"
-    self_identifying_speakers: list[str] = []
-    for line in lines:
-        line_lower = line.lower()
-        speaker = _extract_speaker_from_line(line)
-
-        if speaker:
-            # Check if speaker self-identifies as this person
-            for variant in name_variants:
-                variant_lower = variant.lower()
-                # Self-identification patterns:
-                # "this is <Name>", "sorry, this is <Name>", "hi, this is <Name>"
-                pattern_match = re.search(rf"\bthis\s+is\s+{variant_lower}\b", line_lower)
-                if pattern_match and speaker not in name_variants:
-                    self_identifying_speakers.append(speaker)
-                    break
+    self_identifying_speakers: list[str] = find_self_identifying_speaker(lines, name_variants)
 
     # If someone self-identifies, return them immediately
     if self_identifying_speakers:
@@ -347,51 +421,23 @@ def _identify_speaker_by_name(text: str, speaker_labels: list[str], name: Name) 
         return [self_identifying_speakers[0]]
 
     # PASS 1: Direct inference - find who addresses the person
-    speakers_addressing_person: list[str] = []
-    direct_address_locations: list[int] = []  # Track where direct addresses occur
-
-    for i, line in enumerate(lines):
-        # Look for any variant of the name in dialogue (not as a speaker label)
-        # Check if this is a direct address (not hypothetical/third-person)
-        line_lower = line.lower()
-        found_variant = None
-        for variant in name_variants:
-            variant_lower = variant.lower()
-            if (
-                not line_lower.startswith(f"{variant_lower}:")
-                and variant_lower in line_lower
-                and _is_direct_address_to_person(line, variant)
-            ):
-                found_variant = variant
-                break
-
-        if found_variant:
-            # Found a direct address to the person
-            # Find which speaker said this (they are addressing the person)
-            for j in range(i, -1, -1):
-                if _is_speaker_line(lines[j], speaker_labels):
-                    speaker = _extract_speaker_from_line(lines[j])
-                    if speaker and speaker not in name_variants:
-                        speakers_addressing_person.append(speaker)
-                        direct_address_locations.append(i)
-                    break
+    (speakers_addressing_person, direct_address_locations) = find_direct_reference(
+        lines, speaker_labels, name_variants
+    )
 
     # Calculate possible speakers from direct inference
     if speakers_addressing_person:
-        speakers_addressing_person_set: set[str] = set(speakers_addressing_person)
-        possible_speakers = [
-            speaker
-            for speaker in speaker_labels
-            if speaker not in speakers_addressing_person_set and speaker not in name_variants
-        ]
+        possible_speakers = calculate_possible_speakers(
+            speakers_addressing_person, speaker_labels, name_variants
+        )
 
         # Also exclude speakers who use third-person references (she/he/her/his)
         # These speakers are definitively NOT the person, regardless of other evidence
-        possible_speakers = _exclude_third_person_speakers(lines, name, possible_speakers)
+        possible_speakers = exclude_third_person_speakers(lines, name, possible_speakers)
 
         # PASS 2: Proximity heuristics if multiple candidates remain
         if len(possible_speakers) > 1:
-            refined_candidates = _apply_proximity_heuristics(
+            refined_candidates = apply_proximity_heuristics(
                 lines, speaker_labels, name, possible_speakers, direct_address_locations
             )
             if refined_candidates:
@@ -402,9 +448,7 @@ def _identify_speaker_by_name(text: str, speaker_labels: list[str], name: Name) 
     return []
 
 
-def _exclude_third_person_speakers(
-    lines: list[str], name: Name, candidates: list[str]
-) -> list[str]:
+def exclude_third_person_speakers(lines: list[str], name: Name, candidates: list[str]) -> list[str]:
     """Exclude speakers who refer to the person using third-person pronouns or constructions.
 
     Third-person indicators include:
@@ -453,7 +497,7 @@ def _exclude_third_person_speakers(
     speakers_using_third_person: set[str] = set()
     for line in lines:
         line_lower = line.lower()
-        speaker = _extract_speaker_from_line(line)
+        speaker = _extract_generic_speaker_from_line(line)
         if speaker and speaker in candidates:
             for pattern in third_person_patterns:
                 if re.search(pattern, line_lower):
@@ -464,7 +508,7 @@ def _exclude_third_person_speakers(
     return [c for c in candidates if c not in speakers_using_third_person]
 
 
-def _apply_proximity_heuristics(
+def apply_proximity_heuristics(
     lines: list[str],
     speaker_labels: list[str],
     name: Name,
@@ -524,7 +568,7 @@ def _apply_proximity_heuristics(
     speakers_using_third_person: set[str] = set()
     for line in lines:
         line_lower = line.lower()
-        speaker = _extract_speaker_from_line(line)
+        speaker = _extract_generic_speaker_from_line(line)
         if speaker:
             for pattern in third_person_patterns:
                 if re.search(pattern, line_lower):
@@ -576,7 +620,7 @@ def _apply_proximity_heuristics(
         response_line = None
         for i in range(addr_line_idx + 1, len(lines)):
             if _is_speaker_line(lines[i], speaker_labels):
-                responding_speaker = _extract_speaker_from_line(lines[i])
+                responding_speaker = _extract_generic_speaker_from_line(lines[i])
                 response_line = lines[i].lower()
                 break
             # Stop if we hit another address or too many non-speaker lines
@@ -612,7 +656,7 @@ def _apply_proximity_heuristics(
 
     for line in lines:
         line_lower = line.lower()
-        speaker = _extract_speaker_from_line(line)
+        speaker = _extract_generic_speaker_from_line(line)
 
         if speaker and speaker in candidates:
             for pattern in self_id_patterns:
@@ -652,11 +696,11 @@ def _identify_dan_moisan(text: str, speaker_labels: list[str]) -> str | None:
         The speaker label for Dan Moisan, or None if not found
     """
     dan_name = Name(first_name="Dan")
-    candidates = _identify_speaker_by_name(text, speaker_labels, dan_name)
+    candidates = identify_speaker_by_name(text, speaker_labels, dan_name)
     return candidates[0] if candidates else None
 
 
-def _is_direct_address_to_person(line: str, name: str) -> bool:
+def is_direct_address_to_person(line: str, name: str) -> bool:
     """Check if a line contains a direct address to a person vs hypothetical/third-person reference.
 
     Direct address patterns:
@@ -1018,7 +1062,7 @@ def _is_speaker_line(line: str, speaker_labels: list[str] | None = None) -> bool
     return any(line.startswith(f"{speaker}:") for speaker in speaker_labels)
 
 
-def _extract_speaker_from_line(line: str) -> str | None:
+def _extract_generic_speaker_from_line(line: str) -> str | None:
     """Extract speaker label from a line.
 
     Args:

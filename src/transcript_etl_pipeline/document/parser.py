@@ -40,10 +40,10 @@ def parse_enhanced_text(text: str) -> Document:
             continue
 
         # Check if this is a label line
-        label = _extract_label(line)
+        label = extract_label(line)
 
         # If we find a non-metadata label, switch to transcript section
-        if in_metadata and label and not _is_metadata_label(label.text):
+        if in_metadata and label and not is_metadata_label(label.text):
             # Save metadata section
             if current_section.paragraphs:
                 doc.add_section(current_section)
@@ -76,7 +76,7 @@ def parse_enhanced_text(text: str) -> Document:
             next_line = lines[i]
 
             # Stop if we hit a blank line or another label
-            if not next_line.strip() or _extract_label(next_line):
+            if not next_line.strip() or extract_label(next_line):
                 break
 
             paragraph_lines.append(next_line)
@@ -102,7 +102,7 @@ def parse_enhanced_text(text: str) -> Document:
     return doc
 
 
-def _extract_label(line: str) -> Label | None:
+def extract_label(line: str) -> Label | None:
     """Extract a label from a line if it starts with one.
 
     A label is defined as:
@@ -132,7 +132,7 @@ def _extract_label(line: str) -> Label | None:
     return None
 
 
-def _is_metadata_label(label_text: str) -> bool:
+def is_metadata_label(label_text: str) -> bool:
     """Check if a label is a metadata label.
 
     Args:

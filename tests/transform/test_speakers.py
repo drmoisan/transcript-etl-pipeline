@@ -5,17 +5,24 @@ import pytest
 from transcript_etl_pipeline.transform.name import Name
 from transcript_etl_pipeline.transform.speakers import (
     _apply_speaker_mappings,  # pyright: ignore[reportPrivateUsage]
+    _extract_generic_speaker_from_line,  # pyright: ignore[reportPrivateUsage]
     _extract_generic_speaker_labels,  # pyright: ignore[reportPrivateUsage]
     _extract_names_from_dialogue,  # pyright: ignore[reportPrivateUsage]
     _extract_names_from_metadata,  # pyright: ignore[reportPrivateUsage]
-    _extract_speaker_from_line,  # pyright: ignore[reportPrivateUsage]
     _extract_speaker_samples,  # pyright: ignore[reportPrivateUsage]
     _identify_dan_moisan,  # pyright: ignore[reportPrivateUsage]
-    _identify_speaker_by_name,  # pyright: ignore[reportPrivateUsage]
     _is_likely_person_name,  # pyright: ignore[reportPrivateUsage]
     _is_proper_noun,  # pyright: ignore[reportPrivateUsage]
     _is_speaker_line,  # pyright: ignore[reportPrivateUsage]
+    apply_proximity_heuristics,  # pyright: ignore[reportPrivateUsage]
+    calculate_possible_speakers,  # pyright: ignore[reportPrivateUsage]
+    exclude_third_person_speakers,  # pyright: ignore[reportPrivateUsage]
+    find_direct_reference,  # pyright: ignore[reportPrivateUsage]
+    find_self_identifying_speaker,  # pyright: ignore[reportPrivateUsage]
+    identify_speaker_by_name,  # pyright: ignore[reportPrivateUsage]
+    is_direct_address_to_person,  # pyright: ignore[reportPrivateUsage]
     resolve_speakers,
+    was_name_referenced,  # pyright: ignore[reportPrivateUsage]
 )
 
 
@@ -43,15 +50,15 @@ class TestExtractSpeakerFromLine:
 
     def test_extract_simple_speaker(self) -> None:
         """Test extracting simple speaker."""
-        assert _extract_speaker_from_line("John: hello") == "John"
+        assert _extract_generic_speaker_from_line("John: hello") == "John"
 
     def test_extract_speaker_with_space(self) -> None:
         """Test extracting speaker with space."""
-        assert _extract_speaker_from_line("Speaker A: text") == "Speaker A"
+        assert _extract_generic_speaker_from_line("Speaker A: text") == "Speaker A"
 
     def test_no_speaker(self) -> None:
         """Test line without speaker."""
-        assert _extract_speaker_from_line("Just text") is None
+        assert _extract_generic_speaker_from_line("Just text") is None
 
 
 class TestExtractSpeakerLabels:
@@ -118,6 +125,272 @@ class TestExtractNamesFromDialogue:
         # Should not include "The" even though it's capitalized
         # Our filter might not be perfect but should avoid obvious ones
         assert Name(first_name="The") not in names or len(names) > 0  # Implementation dependent
+
+
+class TestWasNameReferenced:
+    """Test detection of attendee references inside dialogue."""
+
+    def test_detects_reference_in_dialogue_content(self) -> None:
+        """Ensure names mentioned in dialogue body count as referenced."""
+        text = (
+            "Attendees: Alice Johnson\r\n"
+            "Transcript:\r\n"
+            "Speaker A: I think Alice should lead the next phase.\r\n"
+            "Speaker B: Agreed, that's a great idea."
+        )
+
+        was_referenced = was_name_referenced(text, Name.from_string("Alice Johnson"))
+
+        assert was_referenced is True
+
+    def test_ignores_speaker_label_only_mentions(self) -> None:
+        """Ensure mere speaker labels do not count as references."""
+        text = (
+            "Transcript:\r\n"
+            "Alice: Hello team, thanks for joining.\r\n"
+            "Alice: Let's review the agenda."
+        )
+
+        was_referenced = was_name_referenced(text, Name.from_string("Alice"))
+
+        assert was_referenced is False
+
+    def test_ignores_metadata_only_mentions(self) -> None:
+        """Ensure metadata references before Transcript are ignored."""
+        text = (
+            "Attendees: Alice Johnson\r\n"
+            "Agenda: Weekly sync\r\n"
+            "Transcript:\r\n"
+            "Speaker A: Let's get started.\r\n"
+            "Speaker B: Sounds good."
+        )
+
+        was_referenced = was_name_referenced(text, Name.from_string("Alice Johnson"))
+
+        assert was_referenced is False
+
+    def test_matches_shortened_variants_in_dialogue(self) -> None:
+        """Ensure shortened name variants trigger a match."""
+        text = (
+            "Attendees: Katherine Doyle\r\n"
+            "Transcript:\r\n"
+            "Speaker A: Kate, can you walk us through the numbers?\r\n"
+            "Speaker B: Absolutely, here's what I'm seeing."
+        )
+
+        was_referenced = was_name_referenced(text, Name.from_string("Katherine Doyle"))
+
+        assert was_referenced is True
+
+
+class TestIsDirectAddressToPerson:
+    """Test detection of direct addresses vs third-person references."""
+
+    def test_vocative_comma_at_start(self) -> None:
+        """Ensure "Name, ..." pattern counts as direct address."""
+        assert is_direct_address_to_person("Alice, can you share your update?", "Alice") is True
+
+    def test_vocative_comma_at_end(self) -> None:
+        """Ensure ", Name" vocative endings count as direct address."""
+        assert is_direct_address_to_person("Thanks for the help, Alice.", "Alice") is True
+
+    def test_prepositional_phrase_matches(self) -> None:
+        """Ensure prepositional phrases like "to Name" are treated as addresses."""
+        assert is_direct_address_to_person("I need to speak to Alice today.", "Alice") is True
+
+    def test_question_about_person_detected(self) -> None:
+        """Ensure questions like "Can Name..." return True per heuristic."""
+        assert is_direct_address_to_person("Can Alice join the call?", "Alice") is True
+
+    def test_possessive_reference_detected(self) -> None:
+        """Ensure possessive references such as "Name's screen" return True."""
+        assert is_direct_address_to_person("Alice's screen is frozen.", "Alice") is True
+
+    def test_attribution_detected(self) -> None:
+        """Ensure "Name mentioned" attribution counts as True."""
+        assert is_direct_address_to_person("Alice mentioned this earlier.", "Alice") is True
+
+    def test_is_name_question_excluded(self) -> None:
+        """Ensure "Is Name a..." questions (third-person) return False."""
+        assert is_direct_address_to_person("Is Alice a strong leader?", "Alice") is False
+
+    def test_is_name_at_start_excluded(self) -> None:
+        """Ensure questions starting with "Is Name" return False."""
+        assert is_direct_address_to_person("Is Alice joining the call?", "Alice") is False
+
+    def test_hypothetical_marker_excluded(self) -> None:
+        """Ensure hypothetical framing phrases return False."""
+        assert (
+            is_direct_address_to_person(
+                "If you were to say Alice is ready, I'd agree.",
+                "Alice",
+            )
+            is False
+        )
+
+
+class TestFindSelfIdentifyingSpeaker:
+    """Test detection of self-identifying speakers."""
+
+    def test_detects_self_identification(self) -> None:
+        """Ensure speakers declaring "this is <name>" are returned."""
+        lines = [
+            "Speaker A: Hi, this is Alice.",
+            "Speaker B: Great to meet everyone.",
+        ]
+
+        result = find_self_identifying_speaker(lines, {"Alice"})
+
+        assert result == ["Speaker A"]
+
+    def test_returns_empty_when_no_self_identification(self) -> None:
+        """Ensure no matches are returned when pattern is absent."""
+        lines = [
+            "Speaker A: Hi team.",
+            "Speaker B: Glad to be here.",
+        ]
+
+        result = find_self_identifying_speaker(lines, {"Alice"})
+
+        assert result == []
+
+
+class TestFindDirectReference:
+    """Test locating direct references to a named attendee."""
+
+    def test_captures_multiple_direct_addresses(self) -> None:
+        """Ensure addressing speakers and line indexes are recorded."""
+        lines = [
+            "Speaker A: Alice, can you share an update?",
+            "Speaker B: Absolutely.",
+            "Speaker C: Alice, could you also walk us through the risks?",
+        ]
+
+        speakers, locations = find_direct_reference(
+            lines,
+            ["Speaker A", "Speaker B", "Speaker C"],
+            {"Alice"},
+        )
+
+        assert speakers == ["Speaker A", "Speaker C"]
+        assert locations == [0, 2]
+
+    def test_returns_empty_when_no_direct_references(self) -> None:
+        """Ensure no results when the name is never addressed."""
+        lines = [
+            "Speaker A: Great to see everyone.",
+            "Speaker B: Likewise.",
+        ]
+
+        speakers, locations = find_direct_reference(
+            lines,
+            ["Speaker A", "Speaker B"],
+            {"Alice"},
+        )
+
+        assert speakers == []
+        assert locations == []
+
+
+class TestCalculatePossibleSpeakers:
+    """Test filtering of possible speakers after direct references."""
+
+    def test_excludes_addressing_speakers_and_variants(self) -> None:
+        """Ensure addressing speakers and name variants are removed."""
+        candidates = calculate_possible_speakers(
+            ["Speaker A"],
+            ["Speaker A", "Speaker B", "Alice"],
+            {"Alice"},
+        )
+
+        assert candidates == ["Speaker B"]
+
+
+class TestExcludeThirdPersonSpeakers:
+    """Test removal of candidates who speak about the person in third person."""
+
+    def test_removes_third_person_reference(self) -> None:
+        """Ensure speakers describing someone in third person are filtered out."""
+        lines = [
+            "Speaker B: She is still on mute, Alice.",
+            "Speaker C: I'm ready when you are.",
+        ]
+
+        filtered = exclude_third_person_speakers(
+            lines,
+            Name.from_string("Alice"),
+            ["Speaker B", "Speaker C"],
+        )
+
+        assert filtered == ["Speaker C"]
+
+
+class TestApplyProximityHeuristics:
+    """Test scoring heuristics used to narrow candidates."""
+
+    def test_prefers_immediate_response(self) -> None:
+        """Ensure candidate responding right after address is selected."""
+        lines = [
+            "Speaker A: Alice, could you kick us off?",
+            "Speaker B: Sure, let me begin with the overview.",
+            "Speaker C: I can add detail later.",
+        ]
+        result = apply_proximity_heuristics(
+            lines,
+            ["Speaker A", "Speaker B", "Speaker C"],
+            Name.from_string("Alice"),
+            ["Speaker B", "Speaker C"],
+            [0],
+        )
+
+        assert result == ["Speaker B"]
+
+    def test_returns_empty_when_third_person_reference_detected(self) -> None:
+        """Ensure candidates are dropped when they describe the person in third person."""
+        lines = [
+            "Speaker A: Alice, can you share your update?",
+            "Speaker B: She is still muted, Alice.",
+        ]
+        result = apply_proximity_heuristics(
+            lines,
+            ["Speaker A", "Speaker B"],
+            Name.from_string("Alice"),
+            ["Speaker B"],
+            [0],
+        )
+
+        assert result == []
+
+
+class TestIdentifySpeakerByNamePublicPaths:
+    """Test identify_speaker_by_name leveraging newly public helpers."""
+
+    def test_self_identification_path(self) -> None:
+        """Ensure identify_speaker_by_name returns self-identifying speaker immediately."""
+        text = "Transcript:\r\n" "Speaker X: Hi, this is Alice.\r\n" "Speaker Y: Welcome aboard."
+
+        result = identify_speaker_by_name(
+            text, ["Speaker X", "Speaker Y"], Name.from_string("Alice")
+        )
+
+        assert result == ["Speaker X"]
+
+    def test_direct_reference_with_proximity_resolution(self) -> None:
+        """Ensure immediate responder after a direct address is selected."""
+        text = (
+            "Transcript:\r\n"
+            "Speaker A: Alice, could you share the plan?\r\n"
+            "Speaker B: Sure, let me start with the highlights.\r\n"
+            "Speaker C: I have follow-up questions."
+        )
+
+        result = identify_speaker_by_name(
+            text,
+            ["Speaker A", "Speaker B", "Speaker C"],
+            Name.from_string("Alice"),
+        )
+
+        assert result == ["Speaker B"]
 
 
 class TestIdentifyDanMoisan:
@@ -489,7 +762,9 @@ class TestResolveSpeakers:
         before UI callback is invoked.
         """
 
-        def mock_ui(speaker_label: str, sample_utterances: list[str]) -> str | None:
+        def mock_ui(
+            speaker_label: str, sample_utterances: list[str], candidates: list[str]
+        ) -> str | None:
             """Mock UI that would resolve speakers if called."""
             if speaker_label == "Speaker A":
                 return "Alice"
@@ -528,7 +803,9 @@ class TestResolveSpeakers:
         so elimination logic may still resolve the speaker.
         """
 
-        def mock_ui_cancel(speaker_label: str, sample_utterances: list[str]) -> str | None:
+        def mock_ui_cancel(
+            speaker_label: str, sample_utterances: list[str], candidates: list[str]
+        ) -> str | None:
             """Mock UI that always cancels."""
             return None
 
@@ -625,7 +902,7 @@ class TestIdentifySpeakerByName:
     ) -> None:
         """Test that identification works with various first names."""
         labels = ["Speaker A", "Speaker B"]
-        identified = _identify_speaker_by_name(direct_address, labels, name)
+        identified = identify_speaker_by_name(direct_address, labels, name)
         assert identified == [expected_speaker]
 
     @pytest.mark.parametrize(
@@ -649,7 +926,7 @@ class TestIdentifySpeakerByName:
     def test_various_names_hypothetical_excluded(self, name: Name, hypothetical_text: str) -> None:
         """Test that hypothetical references are correctly excluded for any name."""
         labels = ["Speaker A", "Speaker B"]
-        identified = _identify_speaker_by_name(hypothetical_text, labels, name)
+        identified = identify_speaker_by_name(hypothetical_text, labels, name)
         assert identified == []
 
     def test_case_insensitive_matching(self) -> None:
@@ -657,7 +934,7 @@ class TestIdentifySpeakerByName:
         text = "Speaker A: ALICE, can you help?\r\nSpeaker B: Sure."
         labels = ["Speaker A", "Speaker B"]
         # Should work with lowercase input name
-        identified = _identify_speaker_by_name(text, labels, Name(first_name="alice"))
+        identified = identify_speaker_by_name(text, labels, Name(first_name="alice"))
         assert identified == ["Speaker B"]
 
     def test_multiple_speakers_complex(self) -> None:
@@ -672,7 +949,7 @@ class TestIdentifySpeakerByName:
             "Speaker A: Thanks Alice."
         )
         labels = ["Speaker A", "Speaker B", "Speaker C"]
-        identified = _identify_speaker_by_name(text, labels, Name(first_name="Alice"))
+        identified = identify_speaker_by_name(text, labels, Name(first_name="Alice"))
         # Speaker B responds immediately after Alice is addressed
         assert identified == ["Speaker B"]
 
@@ -680,14 +957,14 @@ class TestIdentifySpeakerByName:
         """Test that no matches returns empty list."""
         text = "Speaker A: Hello\r\nSpeaker B: Hi"
         labels = ["Speaker A", "Speaker B"]
-        identified = _identify_speaker_by_name(text, labels, Name(first_name="Alice"))
+        identified = identify_speaker_by_name(text, labels, Name(first_name="Alice"))
         assert identified == []
 
     def test_name_as_speaker_label(self) -> None:
         """Test when the name itself appears as a speaker label."""
         text = "Alice: Hello everyone.\r\nSpeaker A: Hi Alice, how are you?"
         labels = ["Alice", "Speaker A"]
-        identified = _identify_speaker_by_name(text, labels, Name(first_name="Alice"))
+        identified = identify_speaker_by_name(text, labels, Name(first_name="Alice"))
         # Alice is not in the candidate list because she's not addressed
         # (Speaker A addresses Alice, so Alice could be in the other speakers,
         # but Alice is the one doing the addressing in the speaker line)
@@ -705,7 +982,7 @@ class TestIdentifySpeakerByName:
             "Speaker A: Thanks Alice for the input."
         )
         labels = ["Speaker A", "Speaker B", "Speaker C"]
-        identified = _identify_speaker_by_name(text, labels, Name(first_name="Alice"))
+        identified = identify_speaker_by_name(text, labels, Name(first_name="Alice"))
         # Speaker B responds immediately after Alice is addressed
         assert identified == ["Speaker B"]
 
@@ -723,7 +1000,7 @@ class TestProximityHeuristics:
         )
         labels = ["Speaker A", "Speaker B", "Speaker C"]
         # Alice is addressed, B responds immediately → B is likely Alice
-        identified = _identify_speaker_by_name(text, labels, Name(first_name="Alice"))
+        identified = identify_speaker_by_name(text, labels, Name(first_name="Alice"))
         assert identified == ["Speaker B"]
 
     def test_technical_difficulty_pattern(self) -> None:
@@ -737,7 +1014,7 @@ class TestProximityHeuristics:
         )
         labels = ["Speaker A", "Speaker B", "Speaker C"]
         # Speaker C self-identifies with "I'm here" and "Sorry I lost you"
-        identified = _identify_speaker_by_name(text, labels, Name(first_name="Alice"))
+        identified = identify_speaker_by_name(text, labels, Name(first_name="Alice"))
         assert identified == ["Speaker C"]
 
     def test_muted_speaker_pattern(self) -> None:
@@ -749,7 +1026,7 @@ class TestProximityHeuristics:
         )
         labels = ["Speaker A", "Speaker B", "Speaker C"]
         # Speaker C apologizes and uses self-identification
-        identified = _identify_speaker_by_name(text, labels, Name(first_name="Alice"))
+        identified = identify_speaker_by_name(text, labels, Name(first_name="Alice"))
         assert identified == ["Speaker C"]
 
     def test_third_person_reference_reinforcement(self) -> None:
@@ -763,7 +1040,7 @@ class TestProximityHeuristics:
         labels = ["Speaker A", "Speaker B", "Speaker C", "Speaker D"]
         # A, B, C all refer to Alice in third person → they are NOT Alice
         # D self-identifies → D is Alice
-        identified = _identify_speaker_by_name(text, labels, Name(first_name="Alice"))
+        identified = identify_speaker_by_name(text, labels, Name(first_name="Alice"))
         assert identified == ["Speaker D"]
 
     def test_no_clear_heuristic_returns_empty(self) -> None:
@@ -780,7 +1057,7 @@ class TestProximityHeuristics:
         # No direct address followed by response
         # No self-identification patterns
         # Should return empty list (heuristics inconclusive)
-        identified = _identify_speaker_by_name(text, labels, Name(first_name="Alice"))
+        identified = identify_speaker_by_name(text, labels, Name(first_name="Alice"))
         assert identified == []
 
     def test_multiple_direct_addresses_with_responses(self) -> None:
@@ -793,10 +1070,10 @@ class TestProximityHeuristics:
         )
         labels = ["Speaker A", "Speaker B", "Speaker C"]
         # Alice is addressed, B responds immediately → B is Alice
-        alice_identified = _identify_speaker_by_name(text, labels, Name(first_name="Alice"))
+        alice_identified = identify_speaker_by_name(text, labels, Name(first_name="Alice"))
         assert alice_identified == ["Speaker B"]
         # Bob is addressed, C responds → C is Bob
-        bob_identified = _identify_speaker_by_name(text, labels, Name(first_name="Bob"))
+        bob_identified = identify_speaker_by_name(text, labels, Name(first_name="Bob"))
         assert bob_identified == ["Speaker C"]
 
     def test_apology_pattern_self_identification(self) -> None:
@@ -808,7 +1085,7 @@ class TestProximityHeuristics:
         )
         labels = ["Speaker A", "Speaker B", "Speaker C"]
         # Speaker C uses "Apologies, I" pattern
-        identified = _identify_speaker_by_name(text, labels, Name(first_name="Alice"))
+        identified = identify_speaker_by_name(text, labels, Name(first_name="Alice"))
         assert identified == ["Speaker C"]
 
     def test_combined_heuristics_reinforce_identification(self) -> None:
@@ -822,7 +1099,7 @@ class TestProximityHeuristics:
         labels = ["Speaker A", "Speaker B", "Speaker C", "Speaker D"]
         # B and C refer to Alice in third person (reinforcement)
         # D self-identifies with apology and context
-        identified = _identify_speaker_by_name(text, labels, Name(first_name="Alice"))
+        identified = identify_speaker_by_name(text, labels, Name(first_name="Alice"))
         assert identified == ["Speaker D"]
 
     def test_building_on_question_pattern(self) -> None:
@@ -843,7 +1120,7 @@ class TestProximityHeuristics:
         # Speaker A addresses Alice
         # Speaker B builds on the question (not a response from Alice)
         # Speaker C responds with "Sure, let me begin" - this is Alice
-        identified = _identify_speaker_by_name(text, labels, Name(first_name="Alice"))
+        identified = identify_speaker_by_name(text, labels, Name(first_name="Alice"))
         assert identified == ["Speaker C"]
 
 
@@ -1190,7 +1467,9 @@ class TestSpeakerIdentificationScenarios:
     def test_ui_callback_invoked_for_ambiguous_speaker(self) -> None:
         """Test UI callback is invoked when speaker cannot be auto-resolved."""
 
-        def mock_ui(speaker_label: str, sample_utterances: list[str]) -> str | None:
+        def mock_ui(
+            speaker_label: str, sample_utterances: list[str], candidates: list[str]
+        ) -> str | None:
             """Mock UI that resolves ambiguous speakers."""
             if speaker_label == "Speaker A":
                 return "Bob"
@@ -1215,7 +1494,9 @@ class TestSpeakerIdentificationScenarios:
         """Test UI callback receives correct sample utterances for context."""
         callback_invocations: list[tuple[str, list[str]]] = []
 
-        def mock_ui(speaker_label: str, sample_utterances: list[str]) -> str | None:
+        def mock_ui(
+            speaker_label: str, sample_utterances: list[str], candidates: list[str]
+        ) -> str | None:
             """Mock UI that captures invocation details."""
             callback_invocations.append((speaker_label, sample_utterances))
             return "TestName"
@@ -1239,7 +1520,9 @@ class TestSpeakerIdentificationScenarios:
     def test_ui_callback_cancel_leaves_speaker_unresolved(self) -> None:
         """Test that canceling UI callback leaves speaker label unchanged."""
 
-        def mock_ui_cancel(speaker_label: str, sample_utterances: list[str]) -> str | None:
+        def mock_ui_cancel(
+            speaker_label: str, sample_utterances: list[str], candidates: list[str]
+        ) -> str | None:
             """Mock UI that cancels (returns None)."""
             return None
 
@@ -1279,7 +1562,9 @@ class TestSpeakerIdentificationScenarios:
         """Test that multiple ambiguous speakers require UI input."""
         ui_called_for: list[str] = []
 
-        def mock_ui(speaker_label: str, sample_utterances: list[str]) -> str | None:
+        def mock_ui(
+            speaker_label: str, sample_utterances: list[str], candidates: list[str]
+        ) -> str | None:
             """Track which speakers need UI resolution."""
             ui_called_for.append(speaker_label)
             if speaker_label == "Speaker A":
@@ -1304,7 +1589,9 @@ class TestSpeakerIdentificationScenarios:
         """Test scenario with both auto-resolved and UI-required speakers."""
         ui_invoked = False
 
-        def mock_ui(speaker_label: str, sample_utterances: list[str]) -> str | None:
+        def mock_ui(
+            speaker_label: str, sample_utterances: list[str], candidates: list[str]
+        ) -> str | None:
             """Mock UI for unresolved speakers."""
             nonlocal ui_invoked
             ui_invoked = True

@@ -29,7 +29,9 @@ class TestEnhanceText:
         so with only one speaker, elimination logic maps Speaker A -> Dan Moisan.
         """
 
-        def mock_ui(speaker_label: str, sample_utterances: list[str]) -> str | None:
+        def mock_ui(
+            speaker_label: str, sample_utterances: list[str], candidates: list[str]
+        ) -> str | None:
             """Mock UI that would resolve speakers if called."""
             if speaker_label == "Speaker A":
                 return "Alice"
@@ -56,7 +58,9 @@ class TestEnhanceText:
     def test_speaker_resolution_then_paragraphs(self) -> None:
         """Test that speaker resolution happens before paragraph detection."""
 
-        def mock_ui(speaker_label: str, sample_utterances: list[str]) -> str | None:
+        def mock_ui(
+            speaker_label: str, sample_utterances: list[str], candidates: list[str]
+        ) -> str | None:
             """Mock UI that resolves Speaker A."""
             if speaker_label == "Speaker A":
                 return "Alice"

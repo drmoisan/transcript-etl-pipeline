@@ -260,15 +260,21 @@ def main(args: list[str] | None = None) -> int:
 
     logger.debug(f"Use UI: {use_ui}")
 
-    if use_ui:
-        try:
-            logger.debug("Importing UI module")
-            from transcript_etl_pipeline import ui
+    # Try to import UI module (but don't create callback yet - do it lazily)
+    ui_module_available = False
+    ui_module = None
+    try:
+        logger.debug("Importing UI module")
+        from transcript_etl_pipeline import ui as ui_module
 
+        ui_module_available = True
+
+        # Only prompt for missing CLI arguments if use_ui is True
+        if use_ui:
             # Prompt for source if missing
             if not source:
                 logger.debug("Prompting for source selection")
-                source = ui.prompt_source_selection()
+                source = ui_module.prompt_source_selection()
                 if not source:
                     logger.warning("User cancelled source selection")
                     print("Operation cancelled by user.")
@@ -277,7 +283,7 @@ def main(args: list[str] | None = None) -> int:
             # Prompt for file if source is file and file_path is missing
             if source == "file" and not file_path:
                 logger.debug("Prompting for file selection")
-                file_path = ui.prompt_file_selection()
+                file_path = ui_module.prompt_file_selection()
                 if not file_path:
                     logger.warning("User cancelled file selection")
                     print("Operation cancelled by user.")
@@ -286,7 +292,7 @@ def main(args: list[str] | None = None) -> int:
             # Prompt for format if not specified (though it has a default)
             if not parsed_args.format:
                 logger.debug("Prompting for format selection")
-                fmt = ui.prompt_format_selection()
+                fmt = ui_module.prompt_format_selection()
                 if not fmt:
                     logger.warning("User cancelled format selection")
                     print("Operation cancelled by user.")
@@ -297,7 +303,7 @@ def main(args: list[str] | None = None) -> int:
             if not output_name:
                 default_name = generate_default_filename(output_format)
                 logger.debug(f"Generated default filename: {default_name}")
-                output_name = ui.prompt_output_name(default_name)
+                output_name = ui_module.prompt_output_name(default_name)
                 if not output_name:
                     logger.warning("User cancelled output name selection")
                     print("Operation cancelled by user.")
@@ -307,23 +313,36 @@ def main(args: list[str] | None = None) -> int:
             if not output_folder:
                 last_folder = config.load_last_output_folder()
                 logger.debug(f"Last output folder: {last_folder}")
-                output_folder = ui.prompt_output_folder(last_folder)
+                output_folder = ui_module.prompt_output_folder(last_folder)
                 if not output_folder:
                     logger.warning("User cancelled output folder selection")
                     print("Operation cancelled by user.")
                     return 1
 
-            # Create UI callback for speaker resolution
-            logger.debug("Creating speaker resolution UI callback")
-            ui_callback = ui.create_speaker_resolution_callback()
-
-        except RuntimeError as e:
-            logger.error(f"UI initialization failed: {e}")
-            logger.debug(traceback.format_exc())
+    except RuntimeError as e:
+        logger.error(f"UI initialization failed: {e}")
+        logger.debug(traceback.format_exc())
+        # If UI fails but we were only trying to get speaker callback, continue
+        if use_ui:
+            # UI was needed for CLI arguments - this is a hard error
             print(f"Error: {e}")
             print("Please provide all required CLI arguments.")
             parser.print_help()
             return 1
+        else:
+            # UI was only for speaker resolution - log warning and continue
+            logger.warning(f"UI unavailable for speaker resolution: {e}")
+            logger.info("Speaker resolution will be skipped if auto-detect fails")
+            ui_module_available = False
+            ui_module = None
+
+    # Create UI callback lazily - only if UI module is available
+    # This will be passed to run_pipeline and created just before use
+    if ui_module_available and ui_module is not None:
+        logger.debug("UI module available for speaker resolution")
+        ui_callback = ui_module.create_speaker_resolution_callback()
+    else:
+        logger.debug("UI module not available - speaker resolution will use auto-detection only")
 
     # If not using UI, check for missing required args
     if not use_ui:
@@ -375,6 +394,11 @@ def main(args: list[str] | None = None) -> int:
             logger.error(f"Output folder is not a directory: {output_folder}")
             print(f"Error: Output folder is not a directory: {output_folder}")
             return 1
+
+    # At this point, all required arguments must be present
+    assert source is not None, "source must be set"
+    assert output_name is not None, "output_name must be set"
+    assert output_folder is not None, "output_folder must be set"
 
     # Run the pipeline
     try:
