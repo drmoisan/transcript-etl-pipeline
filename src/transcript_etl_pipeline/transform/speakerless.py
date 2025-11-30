@@ -17,7 +17,6 @@ Detection heuristics:
 
 import logging
 import re
-from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -25,27 +24,7 @@ __all__ = [
     "has_speaker_labels",
     "detect_speaker_changes",
     "assign_speaker_labels",
-    "SpeakerSegment",
 ]
-
-
-@dataclass
-class SpeakerSegment:
-    """A segment of text attributed to a single speaker.
-
-    Attributes:
-        text: The text content of this segment
-        speaker_id: Numeric ID for the speaker (0-indexed)
-        start_line: Line number where this segment starts (0-indexed)
-        end_line: Line number where this segment ends (inclusive, 0-indexed)
-        confidence: Confidence score for the speaker attribution (0.0-1.0)
-    """
-
-    text: str
-    speaker_id: int
-    start_line: int
-    end_line: int
-    confidence: float = 0.5
 
 
 def has_speaker_labels(text: str) -> bool:
@@ -382,9 +361,10 @@ def assign_speaker_labels(text: str, num_speakers: int | None = None) -> str:
 
     # Determine number of speakers if not provided
     if num_speakers is None:
-        # Use heuristic: assume alternating speakers for simple cases
-        # More complex detection could analyze content patterns
-        num_speakers = min(len(set(i % 2 for i in range(len(change_points)))), 4)
+        # Use the number of change points as an indicator, capped at 4 speakers
+        # Each change point represents a potential speaker switch
+        # For simple dialogues, assume 2 speakers; for more complex ones, use detected count
+        num_speakers = min(len(change_points), 4)
         if num_speakers < 2:
             num_speakers = 2  # At least 2 speakers for a dialogue
 
@@ -392,18 +372,19 @@ def assign_speaker_labels(text: str, num_speakers: int | None = None) -> str:
     speaker_labels = [chr(ord("A") + i) for i in range(num_speakers)]
 
     # Build result with speaker labels
+    # Create a mapping from non-empty line index to speaker
     result_lines: list[str] = []
     current_speaker_idx = 0
     change_set = set(change_points)
 
-    line_idx = 0
+    non_empty_line_idx = 0
     for original_line in lines:
         if not original_line.strip():
             # Preserve blank lines
             result_lines.append(original_line)
             continue
 
-        if line_idx in change_set and line_idx > 0:
+        if non_empty_line_idx in change_set and non_empty_line_idx > 0:
             # Speaker change detected
             current_speaker_idx = (current_speaker_idx + 1) % num_speakers
 
@@ -411,7 +392,7 @@ def assign_speaker_labels(text: str, num_speakers: int | None = None) -> str:
         speaker_label = f"Speaker {speaker_labels[current_speaker_idx]}"
         result_lines.append(f"{speaker_label}: {original_line.strip()}")
 
-        line_idx += 1
+        non_empty_line_idx += 1
 
     # Convert back to CRLF for consistency with rest of pipeline
     return "\r\n".join(result_lines)
