@@ -38,30 +38,51 @@ class TestPureDialogueNoSpeakers:
         assert result is False, "Pure dialogue should not have speaker labels"
 
     def test_detect_speaker_changes(self) -> None:
-        """Verify speaker changes detection for single-line continuous dialogue.
+        """Verify speaker changes detection for continuous dialogue text.
 
         The pure_dialogue_no_speakers.txt fixture contains a continuous block
-        of dialogue on a single line. Since detect_speaker_changes operates
-        on a line-by-line basis, it will only detect the start of the first
-        (and only) line as a change point.
+        of dialogue WITHOUT line breaks. The detection now uses NLTK sentence
+        tokenization to identify speaker changes based on semantic cues, not
+        just newlines.
+
+        Expected speaker changes based on semantic analysis:
+        - Sentence 0: Start of dialogue
+        - Sentence 2: "Thank you." - gratitude indicates speaker change
+        - Sentence 3: "I've analyzed..." - first person after second person
+        - Sentence 5: "That's an important observation." - response pattern
+        - Sentence 7: "Yes!" - acknowledgment
+        - Sentence 11: "What are your thoughts..." - question
+        - Sentence 12: "From a technical standpoint..." - answer to question
+        - Sentence 15: "Can you provide..." - question
+        - Sentence 16: "Absolutely." - acknowledgment
+        - Sentence 21: "Just one thing..." - turn-taking
+        - Sentence 25: "Thanks everyone..." - gratitude
+        - Sentence 27: "Will do." - acknowledgment
         """
         fixture_path = FIXTURES_DIR / "pure_dialogue_no_speakers.txt"
         text = fixture_path.read_text()
 
-        # Verify this is indeed a single-line fixture
+        # Verify this is a single-line fixture (no newlines in text)
         lines = [line for line in text.split("\n") if line.strip()]
         assert len(lines) == 1, f"Expected single-line fixture, got {len(lines)} lines"
 
         changes = detect_speaker_changes(text)
 
-        # For a single-line text, expect exactly one change point at index 0
-        expected_changes = [0]
+        # With sentence-based detection, we now detect multiple speaker changes
+        # based on semantic cues even in continuous text
         assert (
-            changes == expected_changes
-        ), f"Expected exactly {expected_changes} for single-line input, got {changes}"
+            len(changes) >= 10
+        ), f"Expected at least 10 speaker changes in this dialogue, got {len(changes)}"
+        assert 0 in changes, "First sentence should always be a change point"
+
+        # Verify some key change points are detected
+        # Index 2 should be "Thank you." - a gratitude marker
+        assert 2 in changes, "Expected change at 'Thank you.' (sentence 2)"
+        # Index 7 should be "Yes!" - an acknowledgment
+        assert 7 in changes, "Expected change at 'Yes!' (sentence 7)"
 
     def test_assign_speaker_labels_produces_labeled_output(self) -> None:
-        """Verify speaker labels are assigned to all lines."""
+        """Verify speaker labels are assigned to all sentences in continuous text."""
         fixture_path = FIXTURES_DIR / "pure_dialogue_no_speakers.txt"
         text = fixture_path.read_text()
 
@@ -310,15 +331,20 @@ class TestSpeakerlessIntegrationComparison:
     def test_multi_speaker_meeting(self) -> None:
         """Test multi-speaker meeting scenario with complex dialogue.
 
-        Input (6 lines):
+        Input (6 lines, but sentence tokenizer produces 7 sentences):
         0: Good morning everyone.                     (start, greeting)
-        1: Thanks for organizing this meeting.        (no trigger)
+        1: Thanks for organizing this meeting.        (thanks triggers change)
         2: What's the first agenda item?              (question)
         3: Yes, let's discuss the Q3 results.         (acknowledgment triggers change)
         4: I've prepared a summary of the data.       (no trigger)
-        5: That's helpful. What are the key takeaways? (no trigger)
+        5: That's helpful.                            (That's triggers change)
+        6: What are the key takeaways?                (no trigger - continuation)
 
-        Expected changes at: [0, 3]
+        Expected changes at: [0, 1, 3, 5]
+        - 0: Start of dialogue
+        - 1: "Thanks" is a gratitude marker indicating speaker change
+        - 3: "Yes" is an acknowledgment
+        - 5: "That's helpful" is a response pattern
         """
         text = (
             "Good morning everyone.\n"
@@ -331,16 +357,16 @@ class TestSpeakerlessIntegrationComparison:
 
         changes = detect_speaker_changes(text)
 
-        # Verify exact expected speaker change points
-        expected_changes = [0, 3]
+        # Verify expected speaker change points with new heuristics
+        expected_changes = [0, 1, 3, 5]
         assert (
             changes == expected_changes
         ), f"Expected speaker changes at {expected_changes}, got {changes}"
 
-        # Verify all lines get labeled
+        # Verify all sentences get labeled (7 sentences due to tokenization)
         result = assign_speaker_labels(text)
         lines = [line for line in result.split("\r\n") if line.strip()]
-        assert len(lines) == 6
+        assert len(lines) == 7, f"Expected 7 labeled sentences, got {len(lines)}"
         assert all("Speaker" in line for line in lines)
 
         # Content should be preserved

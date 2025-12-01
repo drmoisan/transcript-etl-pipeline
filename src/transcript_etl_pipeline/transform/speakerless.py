@@ -4,19 +4,24 @@ This module provides tools to detect distinct speakers from contextual clues
 when no explicit speaker labels (e.g., "Speaker A:", "Speaker B:") are present.
 
 NLTK tools used for speaker detection:
+- Sentence tokenization (sent_tokenize) to split continuous text into sentences
 - Part-of-speech (POS) tagging to identify pronoun patterns
-- Sentence tokenization to split text into sentences
-- Named Entity Recognition (NER) to identify person names
+- Word tokenization for detailed analysis
 
-Detection heuristics:
+Detection heuristics (applied at sentence level, not line level):
 1. Pronoun shift patterns (I/you exchanges indicate speaker changes)
 2. Question-answer patterns (questions often followed by responses from different speaker)
 3. Dialogue markers (acknowledgments, greetings, turn-taking cues)
-4. Named entity context (self-references vs. third-person references)
+4. Semantic cues (thank you, response patterns)
+
+The detection works on both:
+- Multi-line text (traditional line-by-line)
+- Continuous text blocks (sentence-based detection)
 """
 
 import logging
 import re
+from typing import Any, cast
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +30,9 @@ __all__ = [
     "detect_speaker_changes",
     "assign_speaker_labels",
 ]
+
+# Flag to track if sentence tokenizer is ready
+_sent_tokenizer_ready = False
 
 
 def has_speaker_labels(text: str) -> bool:
@@ -116,6 +124,83 @@ def _ensure_nltk_data() -> bool:
                 return False
 
     return True
+
+
+def _ensure_sentence_tokenizer() -> None:
+    """Ensure the sentence tokenizer is ready for use."""
+    global _sent_tokenizer_ready
+    if _sent_tokenizer_ready:
+        return
+    import nltk  # type: ignore[import-untyped]
+
+    nltk_module = cast(Any, nltk)
+
+    try:
+        nltk_module.data.find("tokenizers/punkt_tab")
+    except LookupError:
+        try:
+            nltk_module.data.find("tokenizers/punkt")
+        except LookupError:
+            nltk_module.download("punkt_tab", quiet=True)
+    _sent_tokenizer_ready = True
+
+
+def _tokenize_into_sentences(text: str) -> list[str]:
+    """Split text into sentences using NLTK sentence tokenizer.
+
+    This handles both multi-line text and continuous text blocks.
+
+    Args:
+        text: The text to tokenize
+
+    Returns:
+        List of sentences
+    """
+    if not text or not text.strip():
+        return []
+
+    try:
+        from nltk.tokenize import sent_tokenize  # type: ignore[import-untyped]
+    except ImportError:
+        logger.warning("NLTK not available for sentence tokenization")
+        # Fallback: split on common sentence terminators
+        return _fallback_sentence_split(text)
+
+    _ensure_sentence_tokenizer()
+
+    # Normalize the text - replace line breaks with spaces
+    normalized = text.replace("\r\n", " ").replace("\r", " ").replace("\n", " ")
+    # Collapse multiple spaces
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+
+    try:
+        sentences = sent_tokenize(normalized)
+        return [s.strip() for s in sentences if s.strip()]
+    except Exception as e:
+        logger.warning(f"Sentence tokenization failed: {e}")
+        return _fallback_sentence_split(text)
+
+
+def _fallback_sentence_split(text: str) -> list[str]:
+    """Fallback sentence splitting when NLTK is not available.
+
+    Uses regex to split on common sentence terminators.
+
+    Args:
+        text: The text to split
+
+    Returns:
+        List of sentences
+    """
+    # Normalize line endings
+    normalized = text.replace("\r\n", " ").replace("\r", " ").replace("\n", " ")
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+
+    # Split on sentence terminators followed by space and capital letter
+    # This is a simple heuristic that works for most cases
+    pattern = r"(?<=[.!?])\s+(?=[A-Z])"
+    sentences = re.split(pattern, normalized)
+    return [s.strip() for s in sentences if s.strip()]
 
 
 def _analyze_pronoun_patterns(sentences: list[str]) -> list[dict[str, int]]:
@@ -242,78 +327,79 @@ def _detect_dialogue_markers(sentence: str) -> dict[str, bool]:
 def detect_speaker_changes(text: str) -> list[int]:
     """Detect potential speaker change points in unlabeled text.
 
-    Uses multiple heuristics to identify where speaker changes likely occur:
+    Uses sentence-based analysis to identify where speaker changes likely occur.
+    This works on both multi-line text AND continuous text blocks without newlines.
+
+    Heuristics applied at sentence level:
     1. Pronoun shift patterns (I/you exchanges)
     2. Question-answer sequences
     3. Dialogue markers (greetings, acknowledgments)
-    4. Paragraph/line boundaries
+    4. Thank you / appreciation patterns (often signal speaker change)
 
     Args:
         text: The transcript text without speaker labels
 
     Returns:
-        List of line indices where speaker changes are detected (0-indexed)
+        List of sentence indices where speaker changes are detected (0-indexed)
     """
     if not text or not text.strip():
         return []
 
-    # Normalize line endings and split into lines
-    text = text.replace("\r\n", "\n").replace("\r", "\n")
-    lines = [line.strip() for line in text.split("\n") if line.strip()]
+    # Use sentence tokenization to handle continuous text blocks
+    sentences = _tokenize_into_sentences(text)
 
-    if len(lines) < 2:
-        return [0] if lines else []
+    if len(sentences) < 2:
+        return [0] if sentences else []
 
-    # First line is always a speaker change (speaker 0 starts)
+    # First sentence is always a speaker change (speaker 0 starts)
     change_points = [0]
 
-    # Analyze pronoun patterns
-    pronoun_patterns = _analyze_pronoun_patterns(lines)
+    # Analyze pronoun patterns for all sentences
+    pronoun_patterns = _analyze_pronoun_patterns(sentences)
 
-    # Track previous line characteristics
+    # Track previous sentence characteristics
     prev_is_question = False
 
-    for i in range(1, len(lines)):
+    for i in range(1, len(sentences)):
         is_speaker_change = False
-        confidence_factors: list[float] = []
 
-        line = lines[i]
+        sentence = sentences[i]
         curr_patterns = pronoun_patterns[i] if i < len(pronoun_patterns) else {}
         prev_patterns = pronoun_patterns[i - 1] if i - 1 < len(pronoun_patterns) else {}
 
         # Heuristic 1: Pronoun shift
-        # If previous line had "I" and current has "you" or vice versa
+        # If previous sentence had "I" and current has "you" or vice versa
         curr_first = curr_patterns.get("first_person", 0)
         curr_second = curr_patterns.get("second_person", 0)
         prev_first = prev_patterns.get("first_person", 0)
         prev_second = prev_patterns.get("second_person", 0)
 
         if (prev_first > 0 and curr_second > 0) or (prev_second > 0 and curr_first > 0):
-            confidence_factors.append(0.7)
             is_speaker_change = True
 
         # Heuristic 2: Question-answer pattern
-        # If previous line was a question and current is not
+        # If previous sentence was a question and current is not
         curr_is_question = curr_patterns.get("is_question", 0) > 0
         if prev_is_question and not curr_is_question:
-            confidence_factors.append(0.8)
             is_speaker_change = True
 
         # Heuristic 3: Dialogue markers
-        markers = _detect_dialogue_markers(line)
+        markers = _detect_dialogue_markers(sentence)
         if markers["is_greeting"]:
-            confidence_factors.append(0.9)
             is_speaker_change = True
         if markers["is_acknowledgment"]:
-            confidence_factors.append(0.6)
             is_speaker_change = True
         if markers["is_response"] and prev_is_question:
-            confidence_factors.append(0.75)
             is_speaker_change = True
 
-        # Heuristic 4: Blank line separation (paragraph break)
-        # If there was a blank line before this (already stripped, so check original)
-        # This is handled implicitly by the line processing
+        # Heuristic 4: Thank you patterns often indicate speaker change
+        sentence_lower = sentence.lower().strip()
+        if sentence_lower.startswith("thank you") or sentence_lower.startswith("thanks"):
+            is_speaker_change = True
+
+        # Heuristic 5: "That's" patterns often respond to previous speaker
+        if sentence_lower.startswith("that's "):
+            is_speaker_change = True
 
         # Record change point if detected
         if is_speaker_change:
@@ -328,8 +414,10 @@ def detect_speaker_changes(text: str) -> list[int]:
 def assign_speaker_labels(text: str, num_speakers: int | None = None) -> str:
     """Assign speaker labels to unlabeled transcript text.
 
-    Uses speaker change detection to segment text and assign generic
-    speaker labels (Speaker A, Speaker B, etc.).
+    Uses sentence-based speaker change detection to segment text and assign
+    generic speaker labels (Speaker A, Speaker B, etc.).
+
+    Works on both multi-line text and continuous text blocks.
 
     Args:
         text: The transcript text without speaker labels
@@ -348,16 +436,18 @@ def assign_speaker_labels(text: str, num_speakers: int | None = None) -> str:
         logger.info("Text already has speaker labels, returning unchanged")
         return text
 
+    # Use sentence tokenization to handle continuous text blocks
+    sentences = _tokenize_into_sentences(text)
+
+    if not sentences:
+        return f"Speaker A: {text.strip()}"
+
     # Detect speaker changes
     change_points = detect_speaker_changes(text)
 
     if not change_points:
         # No changes detected, return with single speaker label
         return f"Speaker A: {text.strip()}"
-
-    # Normalize line endings
-    text = text.replace("\r\n", "\n").replace("\r", "\n")
-    lines = text.split("\n")
 
     # Determine number of speakers if not provided
     if num_speakers is None:
@@ -372,27 +462,18 @@ def assign_speaker_labels(text: str, num_speakers: int | None = None) -> str:
     speaker_labels = [chr(ord("A") + i) for i in range(num_speakers)]
 
     # Build result with speaker labels
-    # Create a mapping from non-empty line index to speaker
     result_lines: list[str] = []
     current_speaker_idx = 0
     change_set = set(change_points)
 
-    non_empty_line_idx = 0
-    for original_line in lines:
-        if not original_line.strip():
-            # Preserve blank lines
-            result_lines.append(original_line)
-            continue
-
-        if non_empty_line_idx in change_set and non_empty_line_idx > 0:
+    for i, sentence in enumerate(sentences):
+        if i in change_set and i > 0:
             # Speaker change detected
             current_speaker_idx = (current_speaker_idx + 1) % num_speakers
 
-        # Add speaker label to the line
+        # Add speaker label to the sentence
         speaker_label = f"Speaker {speaker_labels[current_speaker_idx]}"
-        result_lines.append(f"{speaker_label}: {original_line.strip()}")
+        result_lines.append(f"{speaker_label}: {sentence.strip()}")
 
-        non_empty_line_idx += 1
-
-    # Convert back to CRLF for consistency with rest of pipeline
+    # Convert to CRLF for consistency with rest of pipeline
     return "\r\n".join(result_lines)
