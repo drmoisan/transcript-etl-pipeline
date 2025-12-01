@@ -6,6 +6,7 @@ according to the transcript formatting rules using string-based RTF generation.
 
 from transcript_etl_pipeline.document.formatting_rules import (
     BODY_FONT,
+    NOTES_HEADER_FONT,
     SPACING_RULES,
 )
 from transcript_etl_pipeline.document.model import (
@@ -26,6 +27,8 @@ def format_to_rtf(doc: Document, output_path: str) -> None:
     - No extra spacing for metadata
     - 12pt spacing above Transcript: label and speaker paragraphs
     - 6pt spacing above regular paragraphs
+    - Notes headers in bold 14pt
+    - Notes body with bullet support
 
     Args:
         doc: The transcript document to format
@@ -97,6 +100,35 @@ def _format_paragraph(paragraph: Paragraph, section_type: SectionType) -> list[s
     # space_before in points * 20 = twips
     space_before_twips = int(spacing.before_pt * 20)
     space_after_twips = int(spacing.after_pt * 20)
+
+    # Handle notes header (bold, larger font)
+    if section_type == SectionType.NOTES_HEADER:
+        line_spacing_twips = int(NOTES_HEADER_FONT.size_pt * 20 * spacing.line_spacing)
+        rtf_parts.append(
+            rf"\pard\sb{space_before_twips}\sa{space_after_twips}"
+            rf"\f0\fs{int(NOTES_HEADER_FONT.size_pt * 2)}\sl{line_spacing_twips}\slmult1"
+        )
+        escaped_text = _escape_rtf(paragraph.text)
+        rtf_parts.append(rf"{{\b {escaped_text}}}")
+        rtf_parts.append(r"\par")
+        return rtf_parts
+
+    # Handle notes body
+    if section_type == SectionType.NOTES_BODY:
+        line_spacing_twips = int(BODY_FONT.size_pt * 20 * spacing.line_spacing)
+        rtf_parts.append(
+            rf"\pard\sb{space_before_twips}\sa{space_after_twips}"
+            rf"\f0\fs{int(BODY_FONT.size_pt * 2)}\sl{line_spacing_twips}\slmult1"
+        )
+        if paragraph.is_bullet:
+            # Add bullet character
+            escaped_text = _escape_rtf(paragraph.text)
+            rtf_parts.append(rf"\u8226  {escaped_text}")  # Unicode bullet: •
+        else:
+            escaped_text = _escape_rtf(paragraph.text)
+            rtf_parts.append(escaped_text)
+        rtf_parts.append(r"\par")
+        return rtf_parts
 
     # RTF paragraph formatting:
     # \sb<n> = space before in twips

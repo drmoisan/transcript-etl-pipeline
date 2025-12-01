@@ -20,6 +20,8 @@ def format_to_md(doc: Document, output_path: str) -> None:
     - Normal body text
     - Blank lines approximate spacing (no precise point-based spacing)
     - Preserves paragraph structure
+    - Notes headers as # heading
+    - Notes body with bullet prefix for bullets
 
     Args:
         doc: The transcript document to format
@@ -78,6 +80,24 @@ def _format_paragraph(paragraph: Paragraph, section_type: SectionType, is_first:
         List of Markdown strings for the paragraph
     """
     md_parts: list[str] = []
+
+    # Handle notes header (use # heading)
+    if section_type == SectionType.NOTES_HEADER:
+        if not is_first:
+            md_parts.append("")
+        md_parts.append(f"# {paragraph.text}")
+        return md_parts
+
+    # Handle notes body
+    if section_type == SectionType.NOTES_BODY:
+        if not is_first:
+            # No blank line between consecutive bullets, blank line otherwise
+            pass
+        if paragraph.is_bullet:
+            md_parts.append(f"- {paragraph.text}")
+        else:
+            md_parts.append(paragraph.text)
+        return md_parts
 
     # Add spacing approximation using blank lines
     # Metadata: no extra blank lines

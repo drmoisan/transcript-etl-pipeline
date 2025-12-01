@@ -30,6 +30,7 @@ class SpacingRule:
 # Font definitions
 LABEL_FONT = FontStyle(name="Calibri", size_pt=10.0, bold=True)
 BODY_FONT = FontStyle(name="Calibri", size_pt=10.0, bold=False)
+NOTES_HEADER_FONT = FontStyle(name="Calibri", size_pt=14.0, bold=True)
 
 # Spacing rules by section type
 SPACING_RULES = {

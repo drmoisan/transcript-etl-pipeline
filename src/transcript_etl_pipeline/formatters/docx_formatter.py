@@ -13,6 +13,7 @@ from docx.shared import Pt  # type: ignore[import-untyped]
 from transcript_etl_pipeline.document.formatting_rules import (
     BODY_FONT,
     LABEL_FONT,
+    NOTES_HEADER_FONT,
     SPACING_RULES,
     FontStyle,
     SpacingRule,
@@ -46,6 +47,8 @@ def format_to_docx(doc: Document, output_path: str) -> None:
     - No extra spacing for metadata
     - 12pt spacing above Transcript: label and speaker paragraphs
     - 6pt spacing above regular paragraphs
+    - Notes headers in bold 14pt
+    - Notes body with bullet support
 
     Args:
         doc: The transcript document to format
@@ -86,6 +89,22 @@ def _format_paragraph(docx_doc: Any, paragraph: Paragraph, section_type: Section
     # Get spacing based on section type
     spacing = SPACING_RULES[section_type]
     _apply_spacing(docx_paragraph, spacing)
+
+    # Handle notes header specially (bold, larger font)
+    if section_type == SectionType.NOTES_HEADER:
+        run = docx_paragraph.add_run(paragraph.text)
+        _apply_font(run, NOTES_HEADER_FONT)
+        return
+
+    # Handle notes body with bullet support
+    if section_type == SectionType.NOTES_BODY:
+        if paragraph.is_bullet:
+            # Add bullet prefix for bullets
+            bullet_run = docx_paragraph.add_run("• ")
+            _apply_font(bullet_run, BODY_FONT)
+        run = docx_paragraph.add_run(paragraph.text)
+        _apply_font(run, BODY_FONT)
+        return
 
     # Add label if present (bold)
     if paragraph.label:
