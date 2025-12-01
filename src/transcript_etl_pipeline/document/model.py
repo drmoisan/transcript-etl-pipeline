@@ -50,6 +50,8 @@ class Paragraph:
     text: str = ""
     section_type: SectionType = SectionType.REGULAR_PARAGRAPH
     is_bullet: bool = False  # True if this paragraph is a bullet point (for notes)
+    heading_level: int = 0  # 1, 2, or 3 for markdown headers; 0 for non-headers
+    bullet_level: int = 1  # 1 for top-level bullets, 2 for nested bullets
 
     def full_text(self) -> str:
         """Return the complete paragraph text including label if present."""

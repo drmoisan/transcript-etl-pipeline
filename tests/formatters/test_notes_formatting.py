@@ -22,13 +22,13 @@ from transcript_etl_pipeline.formatters.rtf_formatter import format_to_rtf
 class TestNotesFormattingDocx:
     """Tests for notes formatting in DOCX output."""
 
-    def test_notes_header_is_bold(self, tmp_path: Path) -> None:
-        """Notes header paragraph is formatted with bold text."""
+    def test_notes_header_uses_heading_style(self, tmp_path: Path) -> None:
+        """Notes header paragraph uses Heading 2 Word style by default."""
         doc = Document()
         doc.add_section(
             DocumentSection(
                 section_type=SectionType.NOTES_HEADER,
-                paragraphs=[Paragraph(text="Notes – 2025-01-01")],
+                paragraphs=[Paragraph(text="Notes – 2025-01-01", heading_level=2)],
             )
         )
 
@@ -39,18 +39,34 @@ class TestNotesFormattingDocx:
         docx_doc = DocxDocument(str(output_path))  # type: ignore[no-untyped-call]
         para = docx_doc.paragraphs[0]
         assert para.text == "Notes – 2025-01-01"
-        # Check that the run is bold
-        assert para.runs[0].bold is True
+        # Check that the style is Heading 2
+        assert para.style.name == "Heading 2"
 
-    def test_notes_body_with_bullets(self, tmp_path: Path) -> None:
-        """Notes body with bullet paragraphs includes bullet prefix."""
+    def test_notes_header_h1_uses_heading1_style(self, tmp_path: Path) -> None:
+        """Notes header with heading_level=1 uses Heading 1 Word style."""
+        doc = Document()
+        doc.add_section(
+            DocumentSection(
+                section_type=SectionType.NOTES_HEADER,
+                paragraphs=[Paragraph(text="Document Title", heading_level=1)],
+            )
+        )
+
+        output_path = tmp_path / "test.docx"
+        format_to_docx(doc, str(output_path))
+
+        docx_doc = DocxDocument(str(output_path))  # type: ignore[no-untyped-call]
+        assert docx_doc.paragraphs[0].style.name == "Heading 1"
+
+    def test_notes_body_with_bullets_uses_list_style(self, tmp_path: Path) -> None:
+        """Notes body with bullet paragraphs uses List Bullet style."""
         doc = Document()
         doc.add_section(
             DocumentSection(
                 section_type=SectionType.NOTES_BODY,
                 paragraphs=[
-                    Paragraph(text="First bullet", is_bullet=True),
-                    Paragraph(text="Second bullet", is_bullet=True),
+                    Paragraph(text="First bullet", is_bullet=True, bullet_level=1),
+                    Paragraph(text="Nested bullet", is_bullet=True, bullet_level=2),
                     Paragraph(text="Regular text", is_bullet=False),
                 ],
             )
@@ -64,11 +80,11 @@ class TestNotesFormattingDocx:
         paras = docx_doc.paragraphs
 
         assert len(paras) == 3
-        # First two should have bullet prefix
-        assert paras[0].text.startswith("•")
-        assert paras[1].text.startswith("•")
-        # Third should not have bullet prefix
-        assert not paras[2].text.startswith("•")
+        # First should use List Bullet style
+        assert paras[0].style.name == "List Bullet"
+        # Second should use List Bullet 2 style
+        assert paras[1].style.name == "List Bullet 2"
+        # Third should be regular paragraph
 
 
 class TestNotesFormattingMd:
@@ -237,7 +253,7 @@ class TestFullDocumentWithNotes:
         doc.add_section(
             DocumentSection(
                 section_type=SectionType.NOTES_HEADER,
-                paragraphs=[Paragraph(text="Notes")],
+                paragraphs=[Paragraph(text="Notes", heading_level=2)],
             )
         )
         doc.add_section(

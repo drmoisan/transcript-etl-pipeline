@@ -11,7 +11,7 @@ from unittest.mock import patch
 from transcript_etl_pipeline.document.model import SectionType
 from transcript_etl_pipeline.transform.notes import (
     _generate_notes_label,  # pyright: ignore[reportPrivateUsage]
-    _parse_notes_body,  # pyright: ignore[reportPrivateUsage]
+    _parse_markdown,  # pyright: ignore[reportPrivateUsage]
     transform_notes,
 )
 
@@ -19,122 +19,114 @@ from transcript_etl_pipeline.transform.notes import (
 class TestTransformNotes:
     """Tests for transform_notes function."""
 
-    def test_transform_notes_creates_header_and_body(self) -> None:
-        """transform_notes creates both header and body sections."""
+    def test_transform_notes_simple_text_no_header(self) -> None:
+        """transform_notes creates body section for text without headings."""
         text = "This is a note."
-        sections = transform_notes(text, label="Notes – 2025-01-01")
+        sections = transform_notes(text)
 
-        assert len(sections) == 2
-        assert sections[0].section_type == SectionType.NOTES_HEADER
-        assert sections[1].section_type == SectionType.NOTES_BODY
+        # Without a label, should just create body section
+        assert len(sections) == 1
+        assert sections[0].section_type == SectionType.NOTES_BODY
+        assert sections[0].paragraphs[0].text == "This is a note."
 
-    def test_transform_notes_uses_provided_label(self) -> None:
-        """transform_notes uses the provided label for header."""
+    def test_transform_notes_with_label_no_heading(self) -> None:
+        """transform_notes with label but no heading just creates body (label only used with H1)."""
         text = "Note content"
-        label = "Meeting Notes – 2025-01-15"
+        label = "Meeting Notes"
         sections = transform_notes(text, label=label)
 
-        assert sections[0].paragraphs[0].text == label
+        # Label is only used after H1, so without H1 just creates body
+        assert len(sections) == 1
+        assert sections[0].section_type == SectionType.NOTES_BODY
 
-    def test_transform_notes_generates_label_when_none(self) -> None:
-        """transform_notes generates timestamp label when none provided."""
-        text = "Note content"
+    def test_transform_notes_with_h1_title(self) -> None:
+        """transform_notes adds 'Notes' H2 after H1 title."""
+        text = "# Document Title\n\nSome content"
+        sections = transform_notes(text)
 
-        with patch("transcript_etl_pipeline.transform.notes.datetime") as mock_datetime:
-            mock_datetime.now.return_value = datetime(2025, 1, 20, 14, 30)
-            sections = transform_notes(text, label=None)
+        # Should have: H1 title, Notes H2, body
+        assert len(sections) == 3
+        assert sections[0].section_type == SectionType.NOTES_HEADER
+        assert sections[0].paragraphs[0].text == "Document Title"
+        assert sections[0].paragraphs[0].heading_level == 1
+        assert sections[1].section_type == SectionType.NOTES_HEADER
+        assert sections[1].paragraphs[0].text == "Notes"
+        assert sections[1].paragraphs[0].heading_level == 2
+        assert sections[2].section_type == SectionType.NOTES_BODY
 
-        assert sections[0].paragraphs[0].text == "Notes – 2025-01-20 14:30"
-
-    def test_transform_notes_empty_text_returns_header_only(self) -> None:
-        """transform_notes returns only header when text is empty."""
+    def test_transform_notes_empty_text_with_label(self) -> None:
+        """transform_notes returns only header when text is empty with label."""
         sections = transform_notes("", label="Notes")
 
         assert len(sections) == 1
         assert sections[0].section_type == SectionType.NOTES_HEADER
 
-    def test_transform_notes_whitespace_only_returns_header_only(self) -> None:
-        """transform_notes returns only header when text is whitespace only."""
-        sections = transform_notes("   \n  \n   ", label="Notes")
+    def test_transform_notes_empty_text_no_label(self) -> None:
+        """transform_notes returns empty when text is empty and no label."""
+        sections = transform_notes("")
 
-        assert len(sections) == 1
-        assert sections[0].section_type == SectionType.NOTES_HEADER
+        assert len(sections) == 0
 
-    def test_transform_notes_simple_text(self) -> None:
-        """transform_notes correctly parses simple text."""
-        text = "This is a simple note."
-        sections = transform_notes(text, label="Notes")
+    def test_transform_notes_whitespace_only_returns_empty(self) -> None:
+        """transform_notes returns empty when text is whitespace only."""
+        sections = transform_notes("   \n  \n   ")
 
-        body = sections[1]
-        assert len(body.paragraphs) == 1
-        assert body.paragraphs[0].text == "This is a simple note."
-        assert body.paragraphs[0].is_bullet is False
+        assert len(sections) == 0
 
     def test_transform_notes_bullet_points(self) -> None:
         """transform_notes correctly detects bullet points."""
         text = """- First bullet
 - Second bullet
 - Third bullet"""
-        sections = transform_notes(text, label="Notes")
+        sections = transform_notes(text)
 
-        body = sections[1]
+        body = sections[0]
+        assert body.section_type == SectionType.NOTES_BODY
         assert len(body.paragraphs) == 3
         assert all(p.is_bullet for p in body.paragraphs)
         assert body.paragraphs[0].text == "First bullet"
         assert body.paragraphs[1].text == "Second bullet"
         assert body.paragraphs[2].text == "Third bullet"
 
+    def test_transform_notes_nested_bullets(self) -> None:
+        """transform_notes correctly detects nested bullets."""
+        text = """- Top level
+  - Nested level"""
+        sections = transform_notes(text)
+
+        body = sections[0]
+        assert len(body.paragraphs) == 2
+        assert body.paragraphs[0].bullet_level == 1
+        assert body.paragraphs[1].bullet_level == 2
+
     def test_transform_notes_asterisk_bullets(self) -> None:
         """transform_notes correctly detects asterisk bullets."""
         text = """* First item
 * Second item"""
-        sections = transform_notes(text, label="Notes")
+        sections = transform_notes(text)
 
-        body = sections[1]
+        body = sections[0]
         assert len(body.paragraphs) == 2
         assert all(p.is_bullet for p in body.paragraphs)
 
-    def test_transform_notes_mixed_content(self) -> None:
-        """transform_notes handles mixed bullets and regular text."""
-        text = """Introduction paragraph.
+    def test_transform_notes_h3_section_headers(self) -> None:
+        """transform_notes creates separate sections for H3 headers."""
+        text = """### Section One
 
 - Bullet one
-- Bullet two
 
-Conclusion paragraph."""
-        sections = transform_notes(text, label="Notes")
+### Section Two
 
-        body = sections[1]
-        assert len(body.paragraphs) == 4
-        assert body.paragraphs[0].is_bullet is False
-        assert body.paragraphs[0].text == "Introduction paragraph."
-        assert body.paragraphs[1].is_bullet is True
-        assert body.paragraphs[1].text == "Bullet one"
-        assert body.paragraphs[2].is_bullet is True
-        assert body.paragraphs[2].text == "Bullet two"
-        assert body.paragraphs[3].is_bullet is False
-        assert body.paragraphs[3].text == "Conclusion paragraph."
+- Bullet two"""
+        sections = transform_notes(text)
 
-    def test_transform_notes_multiline_paragraph(self) -> None:
-        """transform_notes joins multiple lines into single paragraph."""
-        text = """This is a paragraph
-that spans multiple lines
-and should be joined."""
-        sections = transform_notes(text, label="Notes")
-
-        body = sections[1]
-        assert len(body.paragraphs) == 1
-        expected = "This is a paragraph that spans multiple lines and should be joined."
-        assert body.paragraphs[0].text == expected
-
-    def test_transform_notes_crlf_line_endings(self) -> None:
-        """transform_notes handles Windows CRLF line endings."""
-        text = "Line one\r\nLine two\r\nLine three"
-        sections = transform_notes(text, label="Notes")
-
-        body = sections[1]
-        assert len(body.paragraphs) == 1
-        assert body.paragraphs[0].text == "Line one Line two Line three"
+        # Should have: H3, body, H3, body
+        assert len(sections) == 4
+        assert sections[0].section_type == SectionType.NOTES_HEADER
+        assert sections[0].paragraphs[0].heading_level == 3
+        assert sections[1].section_type == SectionType.NOTES_BODY
+        assert sections[2].section_type == SectionType.NOTES_HEADER
+        assert sections[3].section_type == SectionType.NOTES_BODY
 
 
 class TestGenerateNotesLabel:
@@ -160,97 +152,80 @@ class TestGenerateNotesLabel:
         assert re.match(date_pattern, label)
 
 
-class TestParseNotesBody:
-    """Tests for _parse_notes_body helper function."""
+class TestParseMarkdown:
+    """Tests for _parse_markdown helper function."""
 
-    def test_parse_notes_body_empty_returns_empty_list(self) -> None:
-        """_parse_notes_body returns empty list for empty input."""
-        result = _parse_notes_body("")
+    def test_parse_markdown_empty_returns_empty_list(self) -> None:
+        """_parse_markdown returns empty list for empty input."""
+        result = _parse_markdown("")
         assert result == []
 
-    def test_parse_notes_body_single_line(self) -> None:
-        """_parse_notes_body handles single line."""
-        result = _parse_notes_body("Single line")
+    def test_parse_markdown_single_line(self) -> None:
+        """_parse_markdown handles single line."""
+        result = _parse_markdown("Single line")
         assert len(result) == 1
         assert result[0].text == "Single line"
         assert result[0].is_bullet is False
 
-    def test_parse_notes_body_multiple_paragraphs(self) -> None:
-        """_parse_notes_body splits on blank lines."""
-        text = """First paragraph.
+    def test_parse_markdown_h1_heading(self) -> None:
+        """_parse_markdown detects H1 heading."""
+        result = _parse_markdown("# Title")
+        assert len(result) == 1
+        assert result[0].heading_level == 1
+        assert result[0].text == "Title"
 
-Second paragraph."""
-        result = _parse_notes_body(text)
-        assert len(result) == 2
-        assert result[0].text == "First paragraph."
-        assert result[1].text == "Second paragraph."
+    def test_parse_markdown_h2_heading(self) -> None:
+        """_parse_markdown detects H2 heading."""
+        result = _parse_markdown("## Section")
+        assert len(result) == 1
+        assert result[0].heading_level == 2
+        assert result[0].text == "Section"
 
-    def test_parse_notes_body_bullet_continuation(self) -> None:
-        """_parse_notes_body handles indented bullet continuation."""
-        text = """- This is a bullet
-  that continues on the next line"""
-        result = _parse_notes_body(text)
+    def test_parse_markdown_h3_heading(self) -> None:
+        """_parse_markdown detects H3 heading."""
+        result = _parse_markdown("### Subsection")
+        assert len(result) == 1
+        assert result[0].heading_level == 3
+        assert result[0].text == "Subsection"
+
+    def test_parse_markdown_bullet_level_1(self) -> None:
+        """_parse_markdown detects top-level bullets."""
+        result = _parse_markdown("- Item")
         assert len(result) == 1
         assert result[0].is_bullet is True
-        assert result[0].text == "This is a bullet that continues on the next line"
+        assert result[0].bullet_level == 1
+        assert result[0].text == "Item"
 
-    def test_parse_notes_body_strips_whitespace(self) -> None:
-        """_parse_notes_body strips leading/trailing whitespace."""
-        text = "  Line with spaces  "
-        result = _parse_notes_body(text)
+    def test_parse_markdown_bullet_level_2(self) -> None:
+        """_parse_markdown detects nested bullets."""
+        result = _parse_markdown("  - Nested item")
         assert len(result) == 1
-        assert result[0].text == "Line with spaces"
+        assert result[0].is_bullet is True
+        assert result[0].bullet_level == 2
 
-    def test_parse_notes_body_consecutive_bullets(self) -> None:
-        """_parse_notes_body creates separate paragraphs for consecutive bullets."""
+    def test_parse_markdown_consecutive_bullets(self) -> None:
+        """_parse_markdown creates separate paragraphs for consecutive bullets."""
         text = """- First
 - Second
 - Third"""
-        result = _parse_notes_body(text)
+        result = _parse_markdown(text)
         assert len(result) == 3
         assert all(p.is_bullet for p in result)
 
-    def test_parse_notes_body_bullet_after_text(self) -> None:
-        """_parse_notes_body correctly transitions from text to bullet."""
-        text = """Regular text
-- Bullet point"""
-        result = _parse_notes_body(text)
-        assert len(result) == 2
-        assert result[0].is_bullet is False
-        assert result[0].text == "Regular text"
-        assert result[1].is_bullet is True
-        assert result[1].text == "Bullet point"
+    def test_parse_markdown_mixed_bullet_levels(self) -> None:
+        """_parse_markdown handles mixed bullet levels."""
+        text = """- Top
+  - Nested
+- Top again"""
+        result = _parse_markdown(text)
+        assert len(result) == 3
+        assert result[0].bullet_level == 1
+        assert result[1].bullet_level == 2
+        assert result[2].bullet_level == 1
 
-    def test_parse_notes_body_text_after_bullet(self) -> None:
-        """_parse_notes_body correctly transitions from bullet to text."""
-        text = """- Bullet point
-Regular text"""
-        result = _parse_notes_body(text)
-        assert len(result) == 2
-        assert result[0].is_bullet is True
-        assert result[0].text == "Bullet point"
-        assert result[1].is_bullet is False
-        assert result[1].text == "Regular text"
-
-    def test_parse_notes_body_empty_bullet_ignored(self) -> None:
-        """_parse_notes_body handles bullet with just whitespace after marker."""
-        text = """- First bullet
--
-- Third bullet"""
-        result = _parse_notes_body(text)
-        # Empty bullet line ("-" alone) should be treated as non-bullet text
-        # The result depends on how we handle transition from bullet
-        assert len(result) >= 2
-        # First bullet should be captured
-        assert result[0].text == "First bullet"
-        assert result[0].is_bullet is True
-
-    def test_parse_notes_body_multiple_blank_lines(self) -> None:
-        """_parse_notes_body handles multiple consecutive blank lines."""
-        text = """First paragraph.
-
-
-
-Second paragraph."""
-        result = _parse_notes_body(text)
-        assert len(result) == 2
+    def test_parse_markdown_strips_whitespace(self) -> None:
+        """_parse_markdown strips leading/trailing whitespace."""
+        text = "  Line with spaces  "
+        result = _parse_markdown(text)
+        assert len(result) == 1
+        assert result[0].text == "Line with spaces"
