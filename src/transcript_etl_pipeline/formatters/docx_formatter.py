@@ -13,7 +13,6 @@ from docx.shared import Pt  # type: ignore[import-untyped]
 from transcript_etl_pipeline.document.formatting_rules import (
     BODY_FONT,
     LABEL_FONT,
-    NOTES_HEADER_FONT,
     SPACING_RULES,
     FontStyle,
     SpacingRule,

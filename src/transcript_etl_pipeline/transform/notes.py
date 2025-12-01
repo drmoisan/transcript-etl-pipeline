@@ -4,6 +4,7 @@ This module provides functionality to transform raw Markdown notes
 into DocumentSection objects that can be merged into a Document.
 """
 
+import re
 from datetime import datetime
 
 from transcript_etl_pipeline.document.model import (
@@ -184,8 +185,6 @@ def _clean_markdown_text(text: str) -> str:
     Returns:
         Cleaned text
     """
-    import re
-
     # Remove escaped dollar signs
     cleaned = text.replace("\\$", "$")
 
