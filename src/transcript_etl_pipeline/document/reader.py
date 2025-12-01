@@ -105,7 +105,9 @@ def _parse_markdown_content(content: str) -> Document:
             in_transcript = False
             current_section_type = SectionType.NOTES_HEADER
             # Remove the # prefix for the paragraph
-            header_text = stripped[2:].strip() if stripped.startswith("# ") else stripped[1:].strip()
+            header_text = (
+                stripped[2:].strip() if stripped.startswith("# ") else stripped[1:].strip()
+            )
             current_paragraphs = [Paragraph(text=header_text)]
             continue
 
@@ -123,7 +125,9 @@ def _parse_markdown_content(content: str) -> Document:
 
             # Create paragraph with label
             label = Label(text="Transcript:", is_speaker=False)
-            current_paragraphs = [Paragraph(label=label, text="", section_type=SectionType.TRANSCRIPT_LABEL)]
+            current_paragraphs = [
+                Paragraph(label=label, text="", section_type=SectionType.TRANSCRIPT_LABEL)
+            ]
             continue
 
         # Handle content based on current state
@@ -162,11 +166,14 @@ def _parse_markdown_content(content: str) -> Document:
                 current_paragraphs = []
 
             para, section_type = _parse_transcript_line(stripped)
-            if section_type == SectionType.SPEAKER_PARAGRAPH and current_paragraphs:
+            if (
+                section_type == SectionType.SPEAKER_PARAGRAPH
+                and current_paragraphs
+                and current_section_type
+            ):
                 # Speaker paragraph starts a new section
-                if current_section_type and current_paragraphs:
-                    _add_section_to_doc(doc, current_section_type, current_paragraphs)
-                    current_paragraphs = []
+                _add_section_to_doc(doc, current_section_type, current_paragraphs)
+                current_paragraphs = []
             current_section_type = section_type
             current_paragraphs.append(para)
         elif current_section_type is None or current_section_type == SectionType.METADATA:
@@ -197,7 +204,9 @@ def _is_transcript_label(line: str) -> bool:
     """
     lower = line.lower()
     # Check for "**Transcript:**" or "Transcript:"
-    return lower == "transcript:" or lower == "**transcript:**" or lower.startswith("**transcript:**")
+    return (
+        lower == "transcript:" or lower == "**transcript:**" or lower.startswith("**transcript:**")
+    )
 
 
 def _parse_notes_line(line: str) -> Paragraph:
@@ -210,10 +219,7 @@ def _parse_notes_line(line: str) -> Paragraph:
         Paragraph with is_bullet set if line starts with bullet marker
     """
     is_bullet = line.startswith("- ") or line.startswith("* ")
-    if is_bullet:
-        text = line[2:].strip()
-    else:
-        text = line
+    text = line[2:].strip() if is_bullet else line
     return Paragraph(text=text, is_bullet=is_bullet, section_type=SectionType.NOTES_BODY)
 
 
@@ -262,17 +268,17 @@ def _extract_speaker_label(line: str) -> tuple[str, str] | None:
         if end_bold > 2:
             potential_label = line[2:end_bold]
             if potential_label.endswith(":"):
-                remaining = line[end_bold + 2:].strip()
+                remaining = line[end_bold + 2 :].strip()
                 return (potential_label, remaining)
 
     # Pattern for Name: format (word followed by colon)
     colon_idx = line.find(":")
     if colon_idx > 0:
-        potential_label = line[:colon_idx + 1]
+        potential_label = line[: colon_idx + 1]
         # Check if it looks like a name (capitalize words, no special chars)
         name_part = potential_label[:-1].strip()
         if name_part and _looks_like_name(name_part):
-            remaining = line[colon_idx + 1:].strip()
+            remaining = line[colon_idx + 1 :].strip()
             return (potential_label, remaining)
 
     return None
@@ -296,11 +302,7 @@ def _looks_like_name(text: str) -> bool:
     if not words:
         return False
 
-    for word in words:
-        if not word[0].isupper():
-            return False
-
-    return True
+    return all(word[0].isupper() for word in words)
 
 
 def _add_section_to_doc(
@@ -372,7 +374,9 @@ def _read_docx(path: Path) -> Document:
             in_transcript = True
             current_section_type = SectionType.TRANSCRIPT_LABEL
             label = Label(text="Transcript:", is_speaker=False)
-            current_paragraphs = [Paragraph(label=label, text="", section_type=SectionType.TRANSCRIPT_LABEL)]
+            current_paragraphs = [
+                Paragraph(label=label, text="", section_type=SectionType.TRANSCRIPT_LABEL)
+            ]
             continue
 
         # Parse based on current state
@@ -395,19 +399,20 @@ def _read_docx(path: Path) -> Document:
                 current_paragraphs = []
 
             para_obj, section_type = _parse_transcript_line(text)
-            if section_type == SectionType.SPEAKER_PARAGRAPH:
+            if (
+                section_type == SectionType.SPEAKER_PARAGRAPH
+                and current_paragraphs
+                and current_section_type
+            ):
                 # Speaker starts new section
-                if current_paragraphs and current_section_type:
-                    _add_section_to_doc(doc, current_section_type, current_paragraphs)
-                    current_paragraphs = []
+                _add_section_to_doc(doc, current_section_type, current_paragraphs)
+                current_paragraphs = []
             current_section_type = section_type
             current_paragraphs.append(para_obj)
         else:
             # Initial content - metadata
             current_section_type = SectionType.METADATA
-            current_paragraphs.append(
-                Paragraph(text=text, section_type=SectionType.METADATA)
-            )
+            current_paragraphs.append(Paragraph(text=text, section_type=SectionType.METADATA))
 
     # Flush final section
     if current_paragraphs:
@@ -437,7 +442,9 @@ def _is_docx_bullet(para: Any) -> bool:
 
     # Check for numbering (XML-level check)
     try:
-        if para._element.pPr is not None and para._element.pPr.numPr is not None:  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType]
+        if (
+            para._element.pPr is not None and para._element.pPr.numPr is not None
+        ):  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType]
             return True
     except (AttributeError, TypeError):
         pass

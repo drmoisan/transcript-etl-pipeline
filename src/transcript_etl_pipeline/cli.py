@@ -246,9 +246,7 @@ def run_unified_pipeline(
         if update_action in ("add-notes", "replace-notes"):
             if not notes_source:
                 raise ValueError("--notes-source is required for notes update")
-            _process_notes_update(
-                document, notes_source, notes_file, notes_label, update_action
-            )
+            _process_notes_update(document, notes_source, notes_file, notes_label, update_action)
         elif update_action in ("add-transcript", "replace-transcript"):
             if not transcript_source:
                 raise ValueError("--source is required for transcript update")
@@ -275,9 +273,7 @@ def run_unified_pipeline(
         if transcript_source:
             logger.info(f"PROCESSING TRANSCRIPT from {transcript_source}")
             print(f"Processing transcript from {transcript_source}...")
-            transcript_doc = _process_transcript(
-                transcript_source, transcript_file, ui_callback
-            )
+            transcript_doc = _process_transcript(transcript_source, transcript_file, ui_callback)
             # Merge transcript sections into document
             for section in transcript_doc.sections:
                 document.add_section(section)
