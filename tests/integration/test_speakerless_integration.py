@@ -38,15 +38,27 @@ class TestPureDialogueNoSpeakers:
         assert result is False, "Pure dialogue should not have speaker labels"
 
     def test_detect_speaker_changes(self) -> None:
-        """Verify speaker changes are detected in the pure dialogue."""
+        """Verify speaker changes detection for single-line continuous dialogue.
+
+        The pure_dialogue_no_speakers.txt fixture contains a continuous block
+        of dialogue on a single line. Since detect_speaker_changes operates
+        on a line-by-line basis, it will only detect the start of the first
+        (and only) line as a change point.
+        """
         fixture_path = FIXTURES_DIR / "pure_dialogue_no_speakers.txt"
         text = fixture_path.read_text()
 
+        # Verify this is indeed a single-line fixture
+        lines = [line for line in text.split("\n") if line.strip()]
+        assert len(lines) == 1, f"Expected single-line fixture, got {len(lines)} lines"
+
         changes = detect_speaker_changes(text)
 
-        # Should detect at least one change point (start of dialogue)
-        assert len(changes) >= 1, "Should detect at least one speaker change"
-        assert 0 in changes, "First line should always be a change point"
+        # For a single-line text, expect exactly one change point at index 0
+        expected_changes = [0]
+        assert (
+            changes == expected_changes
+        ), f"Expected exactly {expected_changes} for single-line input, got {changes}"
 
     def test_assign_speaker_labels_produces_labeled_output(self) -> None:
         """Verify speaker labels are assigned to all lines."""
@@ -169,7 +181,16 @@ class TestSpeakerlessIntegrationComparison:
     """Tests comparing expected vs actual output for common use cases."""
 
     def test_simple_qa_dialogue(self) -> None:
-        """Test simple question-answer dialogue produces alternating speakers."""
+        """Test simple question-answer dialogue produces expected speaker changes.
+
+        Input (4 lines):
+        0: What time is the meeting?  (question)
+        1: It starts at 3 PM.         (no change triggers)
+        2: Where is it being held?    (no change triggers)
+        3: Conference room B.         (no change triggers)
+
+        Expected changes at: [0, 3] - start, then after two non-triggering lines
+        """
         text = (
             "What time is the meeting?\n"
             "It starts at 3 PM.\n"
@@ -177,18 +198,31 @@ class TestSpeakerlessIntegrationComparison:
             "Conference room B."
         )
 
+        changes = detect_speaker_changes(text)
+
+        # Verify exact expected speaker change points
+        expected_changes = [0, 3]
+        assert (
+            changes == expected_changes
+        ), f"Expected speaker changes at {expected_changes}, got {changes}"
+
+        # Also verify labeling produces valid output
         result = assign_speaker_labels(text)
         lines = [line for line in result.split("\r\n") if line.strip()]
-
-        # Should have 4 lines with speaker labels
         assert len(lines) == 4, f"Expected 4 lines, got {len(lines)}"
-
-        # All lines should have speaker labels
-        for line in lines:
-            assert "Speaker" in line, f"Line missing speaker label: {line}"
+        assert all("Speaker" in line for line in lines)
 
     def test_acknowledgment_pattern(self) -> None:
-        """Test that acknowledgments trigger speaker changes."""
+        """Test that acknowledgments trigger speaker changes at exact positions.
+
+        Input (4 lines):
+        0: Can you confirm the project status?  (question)
+        1: Yes, everything is on track.         (acknowledgment triggers change)
+        2: What about the budget?               (no trigger)
+        3: No issues there either.              (acknowledgment triggers change)
+
+        Expected changes at: [0, 1, 3]
+        """
         text = (
             "Can you confirm the project status?\n"
             "Yes, everything is on track.\n"
@@ -196,19 +230,31 @@ class TestSpeakerlessIntegrationComparison:
             "No issues there either."
         )
 
+        changes = detect_speaker_changes(text)
+
+        # Verify exact expected speaker change points
+        expected_changes = [0, 1, 3]
+        assert (
+            changes == expected_changes
+        ), f"Expected speaker changes at {expected_changes}, got {changes}"
+
+        # Verify content preserved in output
         result = assign_speaker_labels(text)
-        lines = [line for line in result.split("\r\n") if line.strip()]
-
-        # Should have alternating speakers for Q&A
-        assert len(lines) == 4, f"Expected 4 lines, got {len(lines)}"
-
-        # Content should be preserved
         assert "project status" in result
         assert "on track" in result
         assert "budget" in result
 
     def test_greeting_pattern(self) -> None:
-        """Test that greetings are detected as speaker changes."""
+        """Test that greetings are detected as speaker changes at exact positions.
+
+        Input (4 lines):
+        0: Let's start the meeting.              (start)
+        1: Hello everyone, thanks for joining.   (greeting triggers change)
+        2: Hi there, glad to be here.            (greeting triggers change)
+        3: Great, let's begin.                   (no trigger)
+
+        Expected changes at: [0, 1, 2]
+        """
         text = (
             "Let's start the meeting.\n"
             "Hello everyone, thanks for joining.\n"
@@ -216,18 +262,30 @@ class TestSpeakerlessIntegrationComparison:
             "Great, let's begin."
         )
 
+        changes = detect_speaker_changes(text)
+
+        # Verify exact expected speaker change points
+        expected_changes = [0, 1, 2]
+        assert (
+            changes == expected_changes
+        ), f"Expected speaker changes at {expected_changes}, got {changes}"
+
+        # Verify greetings preserved in output
         result = assign_speaker_labels(text)
-        lines = [line for line in result.split("\r\n") if line.strip()]
-
-        # All lines should have labels
-        assert all("Speaker" in line for line in lines)
-
-        # Greetings should be preserved
         assert "Hello everyone" in result
         assert "Hi there" in result
 
     def test_pronoun_shift_detection(self) -> None:
-        """Test that pronoun shifts (I/you) indicate speaker changes."""
+        """Test that pronoun shifts (I/you) are detected at exact positions.
+
+        Input (4 lines):
+        0: I think we should proceed with the plan.  (start, first-person)
+        1: You make an excellent point.              (I->you shift triggers change)
+        2: I agree with your assessment.             (you->I shift triggers change)
+        3: You've done great work on this.           (I->you shift triggers change)
+
+        Expected changes at: [0, 1, 2, 3] - every line due to I/you alternation
+        """
         text = (
             "I think we should proceed with the plan.\n"
             "You make an excellent point.\n"
@@ -235,15 +293,33 @@ class TestSpeakerlessIntegrationComparison:
             "You've done great work on this."
         )
 
+        changes = detect_speaker_changes(text)
+
+        # Verify exact expected speaker change points
+        expected_changes = [0, 1, 2, 3]
+        assert (
+            changes == expected_changes
+        ), f"Expected speaker changes at {expected_changes}, got {changes}"
+
+        # Verify all lines get labeled
         result = assign_speaker_labels(text)
         lines = [line for line in result.split("\r\n") if line.strip()]
-
-        # Should detect speaker changes based on pronoun shifts
         assert len(lines) == 4
         assert all("Speaker" in line for line in lines)
 
     def test_multi_speaker_meeting(self) -> None:
-        """Test multi-speaker meeting scenario with complex dialogue."""
+        """Test multi-speaker meeting scenario with complex dialogue.
+
+        Input (6 lines):
+        0: Good morning everyone.                     (start, greeting)
+        1: Thanks for organizing this meeting.        (no trigger)
+        2: What's the first agenda item?              (question)
+        3: Yes, let's discuss the Q3 results.         (acknowledgment triggers change)
+        4: I've prepared a summary of the data.       (no trigger)
+        5: That's helpful. What are the key takeaways? (no trigger)
+
+        Expected changes at: [0, 3]
+        """
         text = (
             "Good morning everyone.\n"
             "Thanks for organizing this meeting.\n"
@@ -253,10 +329,17 @@ class TestSpeakerlessIntegrationComparison:
             "That's helpful. What are the key takeaways?"
         )
 
+        changes = detect_speaker_changes(text)
+
+        # Verify exact expected speaker change points
+        expected_changes = [0, 3]
+        assert (
+            changes == expected_changes
+        ), f"Expected speaker changes at {expected_changes}, got {changes}"
+
+        # Verify all lines get labeled
         result = assign_speaker_labels(text)
         lines = [line for line in result.split("\r\n") if line.strip()]
-
-        # All lines should be labeled
         assert len(lines) == 6
         assert all("Speaker" in line for line in lines)
 
