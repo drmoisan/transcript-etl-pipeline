@@ -20,12 +20,15 @@ def transform_notes(text: str, label: str | None = None) -> list[DocumentSection
     Parses markdown headers (# ## ###) and bullet points (- *) with nesting support.
     Creates appropriate DocumentSection objects for each element.
 
-    If the input starts with a H1 heading, adds a "Notes" H2 heading after it.
+    If a label is provided and the input doesn't start with a heading, the label
+    is added as an H2 header before the content.
+
+    If the input starts with a H1 heading, adds the label (or "Notes") as H2 after it.
 
     Args:
         text: Raw Markdown notes text to transform
         label: Optional label for the notes header (e.g., "Notes – 2025-01-01").
-               If None, "Notes" is used as the default label.
+               If None, no label header is added unless input has an H1.
 
     Returns:
         List of DocumentSection objects representing the markdown structure.
@@ -35,9 +38,9 @@ def transform_notes(text: str, label: str | None = None) -> list[DocumentSection
     # Parse the markdown content
     paragraphs = _parse_markdown(text)
 
-    # If no paragraphs, return empty
+    # If no paragraphs, return empty (or just the label header)
     if not paragraphs:
-        # Add a default "Notes" header if label is provided
+        # Add a header if label is provided
         if label:
             header_section = DocumentSection(
                 section_type=SectionType.NOTES_HEADER,
@@ -49,7 +52,16 @@ def transform_notes(text: str, label: str | None = None) -> list[DocumentSection
     # Check if first paragraph is a H1 heading (title)
     first_is_h1 = paragraphs and paragraphs[0].heading_level == 1
 
-    # Track if we need to add "Notes" H2 after the title
+    # If there's no H1 heading and a label is provided, add it as the header first
+    if not first_is_h1 and label:
+        sections.append(
+            DocumentSection(
+                section_type=SectionType.NOTES_HEADER,
+                paragraphs=[Paragraph(text=label, heading_level=2)],
+            )
+        )
+
+    # Track if we've added the notes H2 after an H1 title
     added_notes_header = False
 
     # Group paragraphs into sections

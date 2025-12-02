@@ -30,14 +30,17 @@ class TestTransformNotes:
         assert sections[0].paragraphs[0].text == "This is a note."
 
     def test_transform_notes_with_label_no_heading(self) -> None:
-        """transform_notes with label but no heading just creates body (label only used with H1)."""
+        """transform_notes with label and no heading adds label as header."""
         text = "Note content"
         label = "Meeting Notes"
         sections = transform_notes(text, label=label)
 
-        # Label is only used after H1, so without H1 just creates body
-        assert len(sections) == 1
-        assert sections[0].section_type == SectionType.NOTES_BODY
+        # Label is added as header when provided (even without H1 in input)
+        assert len(sections) == 2
+        assert sections[0].section_type == SectionType.NOTES_HEADER
+        assert sections[0].paragraphs[0].text == label
+        assert sections[1].section_type == SectionType.NOTES_BODY
+        assert sections[1].paragraphs[0].text == "Note content"
 
     def test_transform_notes_with_h1_title(self) -> None:
         """transform_notes adds 'Notes' H2 after H1 title."""
