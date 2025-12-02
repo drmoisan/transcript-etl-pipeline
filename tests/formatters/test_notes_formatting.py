@@ -40,6 +40,7 @@ class TestNotesFormattingDocx:
         para = docx_doc.paragraphs[0]
         assert para.text == "Notes – 2025-01-01"
         # Check that the style is Heading 2
+        assert para.style is not None
         assert para.style.name == "Heading 2"
 
     def test_notes_header_h1_uses_heading1_style(self, tmp_path: Path) -> None:
@@ -56,7 +57,9 @@ class TestNotesFormattingDocx:
         format_to_docx(doc, str(output_path))
 
         docx_doc = DocxDocument(str(output_path))  # type: ignore[no-untyped-call]
-        assert docx_doc.paragraphs[0].style.name == "Heading 1"
+        para = docx_doc.paragraphs[0]
+        assert para.style is not None
+        assert para.style.name == "Heading 1"
 
     def test_notes_body_with_bullets_uses_list_style(self, tmp_path: Path) -> None:
         """Notes body with bullet paragraphs uses List Bullet style."""
@@ -81,8 +84,10 @@ class TestNotesFormattingDocx:
 
         assert len(paras) == 3
         # First should use List Bullet style
+        assert paras[0].style is not None
         assert paras[0].style.name == "List Bullet"
         # Second should use List Bullet 2 style
+        assert paras[1].style is not None
         assert paras[1].style.name == "List Bullet 2"
         # Third should be regular paragraph
 
@@ -103,7 +108,7 @@ class TestNotesFormattingMd:
         output_path = tmp_path / "test.md"
         format_to_md(doc, str(output_path))
 
-        content = output_path.read_text()
+        content = output_path.read_text(encoding="utf-8")
         assert "# Notes – 2025-01-01" in content
 
     def test_notes_body_bullets_use_dash_prefix(self, tmp_path: Path) -> None:
@@ -122,7 +127,7 @@ class TestNotesFormattingMd:
         output_path = tmp_path / "test.md"
         format_to_md(doc, str(output_path))
 
-        content = output_path.read_text()
+        content = output_path.read_text(encoding="utf-8")
         assert "- First bullet" in content
         assert "- Second bullet" in content
 
@@ -139,7 +144,7 @@ class TestNotesFormattingMd:
         output_path = tmp_path / "test.md"
         format_to_md(doc, str(output_path))
 
-        content = output_path.read_text()
+        content = output_path.read_text(encoding="utf-8")
         assert "Regular paragraph" in content
         assert "- Regular paragraph" not in content
 
@@ -160,7 +165,7 @@ class TestNotesFormattingRtf:
         output_path = tmp_path / "test.rtf"
         format_to_rtf(doc, str(output_path))
 
-        content = output_path.read_text()
+        content = output_path.read_text(encoding="utf-8")
         # Check for bold tag around text
         assert r"{\b Notes" in content
 
@@ -177,7 +182,7 @@ class TestNotesFormattingRtf:
         output_path = tmp_path / "test.rtf"
         format_to_rtf(doc, str(output_path))
 
-        content = output_path.read_text()
+        content = output_path.read_text(encoding="utf-8")
         # fs28 = 14pt * 2 (RTF uses half-points)
         assert r"\fs28" in content
 
@@ -194,7 +199,7 @@ class TestNotesFormattingRtf:
         output_path = tmp_path / "test.rtf"
         format_to_rtf(doc, str(output_path))
 
-        content = output_path.read_text()
+        content = output_path.read_text(encoding="utf-8")
         # Unicode bullet character code
         assert r"\u8226" in content
 
@@ -233,7 +238,7 @@ class TestFullDocumentWithNotes:
         output_path = tmp_path / "test.md"
         format_to_md(doc, str(output_path))
 
-        content = output_path.read_text()
+        content = output_path.read_text(encoding="utf-8")
 
         # Verify structure
         assert "Meeting: Team Standup" in content

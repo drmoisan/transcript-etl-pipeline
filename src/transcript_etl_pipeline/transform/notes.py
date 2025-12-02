@@ -13,6 +13,13 @@ from transcript_etl_pipeline.document.model import (
     SectionType,
 )
 
+__all__ = [
+    "transform_notes",
+    "_generate_notes_label",
+    "_parse_markdown",
+    "_parse_notes_body",
+]
+
 
 def transform_notes(text: str, label: str | None = None) -> list[DocumentSection]:
     """Transform raw Markdown notes text into DocumentSection objects.

@@ -4,6 +4,7 @@ This module provides functionality to parse existing output files (DOCX, MD)
 back into the Document model to support the "Add to Existing" workflow.
 """
 
+import locale
 from pathlib import Path
 from typing import Any
 
@@ -62,8 +63,23 @@ def _read_markdown(path: Path) -> Document:
     Returns:
         Document model representing the file contents
     """
-    with open(path, encoding="utf-8") as f:
-        content = f.read()
+    encodings_to_try = ["utf-8"]
+    preferred_encoding = locale.getpreferredencoding(False)
+    if preferred_encoding and preferred_encoding.lower() not in ("utf-8", "utf_8"):
+        encodings_to_try.append(preferred_encoding)
+    encodings_to_try.append("utf-8-sig")
+
+    content: str | None = None
+    for enc in encodings_to_try:
+        try:
+            content = path.read_text(encoding=enc)
+            break
+        except UnicodeDecodeError:
+            continue
+
+    if content is None:
+        # As a last resort, replace undecodable characters so we still return a document
+        content = path.read_text(encoding="utf-8", errors="replace")
 
     return _parse_markdown_content(content)
 

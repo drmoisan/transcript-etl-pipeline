@@ -43,7 +43,7 @@ class TestCreateNewWithNotes:
         )
 
         assert output_file.exists()
-        content = output_file.read_text()
+        content = output_file.read_text(encoding="utf-8")
         assert "# Meeting Notes – 2025-01-01" in content
         assert "- Action item one" in content
         assert "- Action item two" in content
@@ -102,7 +102,7 @@ class TestCreateNewWithNotes:
         )
 
         assert output_file.exists()
-        content = output_file.read_text()
+        content = output_file.read_text(encoding="utf-8")
 
         # Should have both notes and transcript
         assert "Notes – 2025-01-01" in content
@@ -145,7 +145,7 @@ class TestUpdateExistingNotes:
         )
 
         assert output_file.exists()
-        content = output_file.read_text()
+        content = output_file.read_text(encoding="utf-8")
 
         # Should have both notes and transcript
         assert "Added Notes" in content
@@ -187,7 +187,7 @@ class TestUpdateExistingNotes:
         )
 
         assert output_file.exists()
-        content = output_file.read_text()
+        content = output_file.read_text(encoding="utf-8")
 
         # Should have new notes
         assert "New Notes" in content
@@ -233,7 +233,7 @@ class TestUpdateExistingNotes:
         )
 
         assert output_file.exists()
-        content = output_file.read_text()
+        content = output_file.read_text(encoding="utf-8")
 
         # Both notes should be present
         assert "First Notes" in content or "First content" in content
@@ -281,7 +281,7 @@ class TestUpdateExistingTranscript:
         )
 
         assert output_file.exists()
-        content = output_file.read_text()
+        content = output_file.read_text(encoding="utf-8")
 
         # Should have both notes and transcript
         assert "Meeting Notes" in content
@@ -324,7 +324,7 @@ class TestUpdateExistingTranscript:
         )
 
         assert output_file.exists()
-        content = output_file.read_text()
+        content = output_file.read_text(encoding="utf-8")
 
         # Should have new transcript, not old
         assert "Speaker B" in content or "New content" in content
@@ -404,7 +404,7 @@ class TestEdgeCases:
         )
 
         assert output_file.exists()
-        content = output_file.read_text()
+        content = output_file.read_text(encoding="utf-8")
         assert "Empty Notes" in content
 
     def test_notes_with_mixed_bullets(self, tmp_path: Path) -> None:
@@ -427,6 +427,6 @@ class TestEdgeCases:
         )
 
         assert output_file.exists()
-        content = output_file.read_text()
+        content = output_file.read_text(encoding="utf-8")
         assert "- First bullet" in content
         assert "- Second bullet" in content
