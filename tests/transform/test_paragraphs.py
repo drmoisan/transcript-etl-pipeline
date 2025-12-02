@@ -214,3 +214,26 @@ class TestDetectParagraphs:
         result = detect_paragraphs(text)
         # Should preserve the whitespace line
         assert "   " in result or result.count("\r\n\r\n") > 0
+
+    def test_detects_paragraphs_in_freeform_text(self) -> None:
+        """Ensure long freeform transcript gains paragraph breaks."""
+        text = (
+            "Transcript:\r\n"
+            "Testing, testing. This is Dan Moisan. I am speaking before the call begins. "
+            "To validate that audio can be properly captured. And that everything is working. "
+            "How are you today? I'm doing great. How are you, Aaron? Doing well. Happy Friday."
+        )
+
+        result = detect_paragraphs(text)
+
+        # Expect at least one paragraph break inserted by semantic detection
+        assert result.count("\r\n\r\n") >= 1
+
+    def test_question_answer_block_gets_split(self) -> None:
+        """Ensure question/answer pairs on a single line become separate paragraphs."""
+        text = "Transcript:\r\n" "How are you doing today? I'm doing well. Thanks for asking."
+
+        result = detect_paragraphs(text)
+        paragraphs = [block for block in result.split("\r\n\r\n") if block.strip()]
+
+        assert len(paragraphs) >= 2
