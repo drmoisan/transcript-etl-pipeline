@@ -3,14 +3,14 @@
 ## Change Plan Metadata
 
 - **Created**: 2025-12-01
-- **Status**: Phase 2 Complete - Phase 3 Pending
+- **Status**: ✅ Phase 3 Complete - All Phases Complete
 - **Related PR**: #8 - Add NLTK-based speaker detection for transcripts without speaker labels
 - **Related Files**:
   - `src/transcript_etl_pipeline/transform/identity_constraints.py` (NEW)
   - `src/transcript_etl_pipeline/transform/speakerless.py` (MODIFIED)
   - `src/transcript_etl_pipeline/transform/speaker_helpers.py` (MODIFIED)
   - `tests/transform/test_identity_constraints.py` (NEW - 33 tests)
-  - `tests/transform/test_identity_aware_grouping.py` (NEW - 11 tests)
+  - `tests/transform/test_identity_aware_grouping.py` (NEW - 17 tests)
   - `tests/integration/test_speakerless_integration.py` (MODIFIED)
 
 ## Objective
@@ -361,16 +361,16 @@ If implementation fails or creates unacceptable regressions:
 ## Success Metrics
 
 ### Must Have (P0)
-- [ ] "Thanks Frank" not assigned to Frank (Phase 3)
+- [x] "Thanks Frank" not assigned to Frank (Phase 3) ✅ Phase 3 Complete
 - [x] "I'm Peter Parker" assigned to Peter (Speaker A) ✅ Phase 2 Complete
 - [x] "I'm Fred Flintstone" assigned to Fred (Speaker C) ✅ Phase 2 Complete
-- [x] All 50+ existing tests pass ✅ 503 tests passing
+- [x] All 50+ existing tests pass ✅ 509 tests passing
 - [x] Black, Ruff, Pyright clean ✅ All validation passing
 
 ### Should Have (P1)
-- [x] 95%+ test coverage maintained ✅ 44 new tests added (33+11)
-- [ ] Clear error messages for unresolvable conflicts (Phase 3)
-- [ ] Logging for constraint violations (Phase 3)
+- [x] 95%+ test coverage maintained ✅ 50 new tests added (33+11+6)
+- [x] Clear error messages for unresolvable conflicts ✅ Logging warnings added
+- [x] Logging for constraint violations ✅ Debug and warning logs implemented
 
 ### Nice to Have (P2)
 - [ ] Performance benchmarks showing <10% slowdown
@@ -509,3 +509,66 @@ Phase 1 is considered **COMPLETE AS IMPLEMENTED**. The deviation from the origin
 5. The broader definition in `speakers.py` is appropriate for its existing use cases
 
 **Updated Phase 1 Status: ✅ COMPLETE (pragmatic implementation)**
+
+---
+
+## Phase 3 Completion Summary (2025-12-02)
+
+### Changes Implemented
+
+**Modified Files:**
+1. `identity_constraints.py`:
+   - Fixed `detect_addresses_to_person()` to skip sentences with self-identification
+   - Added comprehensive exclusion list for common non-name words
+   - Improved extraction of names from "Thanks [Name]" patterns (e.g., "Thanks Frank" → "Frank")
+   - Added type annotations to fix Pyright errors
+
+2. `speaker_helpers.py`:
+   - Added new function `resolve_addresses_other_violations()` for Phase 3 post-processing
+   - Added helper function `_find_safe_replacement_speaker()` for constraint-safe reassignment
+   - Updated `resolve_speaker_assignments_by_identity()` to delegate to new API
+   - Added debug and warning logging for constraint violations
+
+3. `speakerless.py`:
+   - Enabled Phase 3 post-processing by calling `resolve_addresses_other_violations()`
+   - Updated imports to include new function
+
+4. `test_identity_constraints.py`:
+   - Updated `test_multiple_constraints_same_sentence` to reflect new behavior
+
+5. `test_identity_aware_grouping.py`:
+   - Added 6 new tests in `TestResolveAddressesOtherViolations` class
+
+### Validation Results
+
+- ✅ Black: All files formatted correctly
+- ✅ Ruff: All checks passed
+- ✅ Pyright: 0 errors, 0 warnings
+- ✅ Pytest: **509 tests passing** (6 new tests added)
+
+### Key Success Criteria Met
+
+1. **"Thanks Frank" NOT assigned to Frank** ✅
+   - `resolve_addresses_other_violations()` detects when a sentence addresses someone by name
+   - If current speaker matches the addressed person, it finds a safe replacement speaker
+   - Test `test_thanks_frank_not_assigned_to_frank` validates this behavior
+
+2. **Conservative reassignment** ✅
+   - Single-sentence moves only (no cascading)
+   - Prefers adjacent speakers for natural conversational flow
+   - Logs warnings for unresolvable conflicts
+
+3. **Logging implemented** ✅
+   - Debug logs show detected violations and reassignments
+   - Warning logs show unresolved violations
+
+### Phase 3 Complete ✅
+
+**Status**: All Phase 3 objectives met. Identity-aware speaker detection is now fully implemented.
+
+**Summary of Implementation:**
+- Phase 1: Identity constraint extraction (33 tests)
+- Phase 2: Self-identification constraints enforced during similarity grouping (11 tests)
+- Phase 3: Addresses-other constraints resolved via post-processing (6 tests)
+
+**Total test coverage:** 509 tests passing (50 new tests for identity-aware detection)

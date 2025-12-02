@@ -6,9 +6,11 @@ grouped together during similarity-based speaker assignment.
 
 from transcript_etl_pipeline.transform.identity_constraints import (
     IdentityConstraint,
+    extract_identity_constraints,
 )
 from transcript_etl_pipeline.transform.speaker_helpers import (
     group_sentences_by_similarity,
+    resolve_addresses_other_violations,
     violates_identity_constraints,
 )
 
@@ -221,3 +223,142 @@ class TestIdentityAwareGrouping:
 
         # Despite high similarity, different identities prevent grouping
         assert assignments[1] != assignments[3]
+
+
+class TestResolveAddressesOtherViolations:
+    """Tests for Phase 3: Post-processing addresses_other constraint violations."""
+
+    def test_thanks_frank_not_assigned_to_frank(self) -> None:
+        """Test that 'Thanks Frank' is NOT assigned to Speaker who is Frank.
+
+        This is the key success criterion from the change plan:
+        - 'Thanks Frank' should NOT be assigned to Frank (speaker cannot address themselves)
+        """
+        sentences = [
+            "Hello everyone.",
+            "I'm Frank Oz and I like puppets.",
+            "Thanks Frank, that was interesting.",
+            "You're welcome.",
+        ]
+        # Initial assignments: suppose sentence 2 gets wrongly assigned to Speaker B (Frank)
+        # Speaker A = 0, Speaker B = 1
+        initial_assignments = [0, 1, 1, 0]  # Sentence 2 wrongly assigned to Frank
+
+        constraints = [
+            IdentityConstraint(1, "self_identification", "Frank Oz"),
+            IdentityConstraint(2, "addresses_other", "Frank"),
+        ]
+
+        result = resolve_addresses_other_violations(
+            sentences, initial_assignments, constraints, num_speakers=3
+        )
+
+        # Sentence 2 should be reassigned away from Speaker B (Frank = index 1)
+        assert result[2] != 1, "Sentence 'Thanks Frank' should NOT be assigned to Frank (Speaker B)"
+
+    def test_no_violation_unchanged(self) -> None:
+        """Test that correct assignments are not changed."""
+        sentences = [
+            "Hello everyone.",
+            "I'm Frank Oz.",
+            "Thanks Frank.",  # Already assigned to non-Frank speaker
+            "You're welcome.",
+        ]
+        initial_assignments = [0, 1, 0, 1]  # Sentence 2 correctly assigned to Speaker A
+
+        constraints = [
+            IdentityConstraint(1, "self_identification", "Frank Oz"),
+            IdentityConstraint(2, "addresses_other", "Frank"),
+        ]
+
+        result = resolve_addresses_other_violations(
+            sentences, initial_assignments, constraints, num_speakers=3
+        )
+
+        # No change needed - already correct
+        assert result == initial_assignments
+
+    def test_unknown_person_ignored(self) -> None:
+        """Test that addresses to unknown people are ignored."""
+        sentences = [
+            "Thanks Bob.",  # No one identified as Bob
+            "You're welcome.",
+        ]
+        initial_assignments = [0, 1]
+
+        # No self-identification constraint for "Bob"
+        constraints = [
+            IdentityConstraint(0, "addresses_other", "Bob"),
+        ]
+
+        result = resolve_addresses_other_violations(
+            sentences, initial_assignments, constraints, num_speakers=2
+        )
+
+        # No change - Bob is unknown
+        assert result == initial_assignments
+
+    def test_adjacent_context_preferred(self) -> None:
+        """Test that reassignment prefers adjacent speakers for natural flow."""
+        sentences = [
+            "Hello.",
+            "I'm Frank Oz.",
+            "Thanks Frank.",  # Violation if assigned to Frank
+            "Interesting point.",
+        ]
+        # Sentence 2 wrongly assigned to Speaker B (Frank)
+        initial_assignments = [0, 1, 1, 0]
+
+        constraints = [
+            IdentityConstraint(1, "self_identification", "Frank Oz"),
+            IdentityConstraint(2, "addresses_other", "Frank"),
+        ]
+
+        result = resolve_addresses_other_violations(
+            sentences, initial_assignments, constraints, num_speakers=3
+        )
+
+        # Should prefer previous or next speaker (0 or 0) for natural flow
+        assert result[2] == 0  # Speaker A from adjacent context
+
+    def test_two_speakers_skipped(self) -> None:
+        """Test that two-speaker mode skips post-processing."""
+        sentences = [
+            "I'm Alice.",
+            "Thanks Alice.",  # Would be a violation
+        ]
+        initial_assignments = [0, 0]  # Both assigned to same speaker
+
+        constraints = [
+            IdentityConstraint(0, "self_identification", "Alice"),
+            IdentityConstraint(1, "addresses_other", "Alice"),
+        ]
+
+        # For 2 speakers, alternation already handles this
+        result = resolve_addresses_other_violations(
+            sentences, initial_assignments, constraints, num_speakers=2
+        )
+
+        # No change for 2 speakers
+        assert result == initial_assignments
+
+    def test_integration_with_constraint_extraction(self) -> None:
+        """Test end-to-end with real constraint extraction."""
+        sentences = [
+            "Welcome everyone.",
+            "I'm Frank Oz.",
+            "Thanks Frank, go ahead.",
+            "Sure, I'll start.",
+        ]
+
+        constraints = extract_identity_constraints(sentences)
+
+        # Initial assignment with violation
+        initial_assignments = [0, 1, 1, 0]  # Sentence 2 wrongly with Frank
+
+        result = resolve_addresses_other_violations(
+            sentences, initial_assignments, constraints, num_speakers=3
+        )
+
+        # Sentence 2 should be reassigned
+        assert result[2] != 1, "Sentence addressing Frank should not be assigned to Frank"

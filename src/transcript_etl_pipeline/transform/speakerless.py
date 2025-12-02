@@ -33,6 +33,7 @@ from transcript_etl_pipeline.transform.speaker_helpers import (
     analyze_pronoun_patterns,
     detect_dialogue_markers,
     group_sentences_by_similarity,
+    resolve_addresses_other_violations,
     tokenize_into_sentences,
 )
 
@@ -300,13 +301,12 @@ def assign_speaker_labels(text: str, num_speakers: int | None = None) -> str:
                 for j in range(seg_start, next_change):
                     assignments[j] = new_speaker
 
-        # Note: Identity-based resolution is disabled for now as it needs
-        # deeper integration with the similarity grouping algorithm.
-        # Future enhancement: integrate name extraction into
-        # group_sentences_by_similarity
-        # assignments = resolve_speaker_assignments_by_identity(
-        #     sentences, assignments, num_speakers
-        # )
+        # Phase 3: Fix "addresses_other" violations
+        # This post-processing fixes cases where someone is assigned to speak
+        # a sentence that addresses them by name (e.g., "Thanks Frank" assigned to Frank)
+        assignments = resolve_addresses_other_violations(
+            sentences, assignments, constraints, num_speakers
+        )
 
     # Build result with grouped sentences
     result_lines: list[str] = []

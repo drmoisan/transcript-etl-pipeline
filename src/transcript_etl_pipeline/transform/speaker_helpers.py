@@ -29,6 +29,7 @@ __all__ = [
     "compute_sentence_similarity",
     "extract_speaker_identities",
     "resolve_speaker_assignments_by_identity",
+    "resolve_addresses_other_violations",
     "GREETINGS",
     "ACKNOWLEDGMENTS",
     "TURN_TAKING_CUES",
@@ -653,6 +654,167 @@ def extract_speaker_identities(sentences: list[str]) -> dict[int, str]:
     return identities
 
 
+def resolve_addresses_other_violations(
+    sentences: list[str],
+    assignments: list[int],
+    constraints: list["IdentityConstraint"],
+    num_speakers: int,
+) -> list[int]:
+    """Fix speaker assignments where someone addresses another by name.
+
+    This post-processing step handles "addresses_other" constraints:
+    - "Thanks Frank" should NOT be assigned to Frank
+    - "Peter, what do you think?" should NOT be assigned to Peter
+
+    Self-identification constraints are already enforced during grouping (Phase 2),
+    so this function ONLY handles addresses_other violations.
+
+    Args:
+        sentences: List of sentences
+        assignments: Speaker assignments from similarity grouping
+        constraints: Identity constraints extracted from sentences
+        num_speakers: Number of speakers
+
+    Returns:
+        Refined speaker assignments with addresses_other violations fixed
+    """
+    if num_speakers < 3:
+        # For 2 speakers, alternation already prevents self-addressing issues
+        return assignments
+
+    # Build mapping from self-identification constraints: speaker_idx -> name
+    speaker_to_name: dict[int, str] = {}
+    for constraint in constraints:
+        if constraint.constraint_type == "self_identification":
+            speaker_idx = assignments[constraint.sentence_idx]
+            first_name = constraint.name.split()[0]
+            speaker_to_name[speaker_idx] = first_name
+
+    if not speaker_to_name:
+        # No identities established, can't resolve addresses
+        return assignments
+
+    # Create reverse mapping: name -> speaker_idx
+    name_to_speaker: dict[str, int] = {name: idx for idx, name in speaker_to_name.items()}
+
+    # Start with a copy of assignments
+    refined = list(assignments)
+
+    # Find and fix addresses_other violations
+    for constraint in constraints:
+        if constraint.constraint_type != "addresses_other":
+            continue
+
+        sent_idx = constraint.sentence_idx
+        addressed_name = constraint.name.split()[0]  # First name only
+
+        # Check if the addressed person is known
+        if addressed_name not in name_to_speaker:
+            # We don't know who this person is, skip
+            logger.debug(
+                f"Cannot resolve address constraint for unknown person '{addressed_name}' "
+                f"in sentence {sent_idx}"
+            )
+            continue
+
+        addressed_speaker_idx = name_to_speaker[addressed_name]
+        current_speaker_idx = refined[sent_idx]
+
+        # Check for violation: speaker is assigned to the person they're addressing
+        if current_speaker_idx == addressed_speaker_idx:
+            # Violation detected! Try to find a safe reassignment
+            speaker_letter = chr(ord("A") + addressed_speaker_idx)
+            logger.debug(
+                f"Address violation: sentence {sent_idx} "
+                f"('{sentences[sent_idx][:50]}...') "
+                f"addresses {addressed_name} but is assigned to Speaker {speaker_letter}"
+            )
+
+            # Strategy: Find a different speaker that doesn't violate constraints
+            replacement_speaker = _find_safe_replacement_speaker(
+                sent_idx,
+                addressed_speaker_idx,
+                refined,
+                constraints,
+                speaker_to_name,
+                num_speakers,
+            )
+
+            if replacement_speaker is not None:
+                refined[sent_idx] = replacement_speaker
+                old_letter = chr(ord("A") + current_speaker_idx)
+                new_letter = chr(ord("A") + replacement_speaker)
+                logger.debug(
+                    f"Reassigned sentence {sent_idx} "
+                    f"from Speaker {old_letter} to Speaker {new_letter}"
+                )
+            else:
+                logger.warning(
+                    f"Could not resolve address violation in sentence {sent_idx}: "
+                    f"no safe speaker available (would create new conflicts)"
+                )
+
+    return refined
+
+
+def _find_safe_replacement_speaker(
+    sent_idx: int,
+    excluded_speaker: int,
+    assignments: list[int],
+    constraints: list["IdentityConstraint"],
+    speaker_to_name: dict[int, str],
+    num_speakers: int,
+) -> int | None:
+    """Find a speaker to reassign a sentence to without creating new violations.
+
+    Args:
+        sent_idx: Index of sentence to reassign
+        excluded_speaker: Speaker that cannot be assigned (violation would remain)
+        assignments: Current speaker assignments
+        constraints: All identity constraints
+        speaker_to_name: Mapping of speaker index to their name
+        num_speakers: Number of speakers
+
+    Returns:
+        A safe speaker index to assign, or None if no safe option exists
+    """
+    # Get constraints for this specific sentence
+    sentence_constraints = [c for c in constraints if c.sentence_idx == sent_idx]
+
+    # Get all names addressed in this sentence
+    addressed_names = {
+        c.name.split()[0] for c in sentence_constraints if c.constraint_type == "addresses_other"
+    }
+
+    # Build set of speakers that cannot be assigned
+    excluded_speakers = {excluded_speaker}
+    name_to_speaker: dict[str, int] = {name: idx for idx, name in speaker_to_name.items()}
+    for name in addressed_names:
+        if name in name_to_speaker:
+            excluded_speakers.add(name_to_speaker[name])
+
+    # Try adjacent context first (more natural flow)
+    # Check previous sentence's speaker
+    if sent_idx > 0:
+        prev_speaker = assignments[sent_idx - 1]
+        if prev_speaker not in excluded_speakers:
+            return prev_speaker
+
+    # Check next sentence's speaker
+    if sent_idx < len(assignments) - 1:
+        next_speaker = assignments[sent_idx + 1]
+        if next_speaker not in excluded_speakers:
+            return next_speaker
+
+    # Fallback: find any non-excluded speaker
+    for candidate in range(num_speakers):
+        if candidate not in excluded_speakers:
+            return candidate
+
+    # No safe option found
+    return None
+
+
 def resolve_speaker_assignments_by_identity(
     sentences: list[str],
     assignments: list[int],
@@ -660,11 +822,11 @@ def resolve_speaker_assignments_by_identity(
 ) -> list[int]:
     """Refine speaker assignments using name-based identity resolution.
 
-    This function improves speaker assignment by:
-    1. Identifying self-identifications ("I'm Peter Parker")
-    2. Tracking which speaker index corresponds to which name
-    3. Detecting when speakers are addressed by name ("Thanks Frank")
-    4. Reassigning segments that violate identity constraints
+    NOTE: This function is DEPRECATED in favor of the two-phase approach:
+    - Phase 2: Self-identification constraints enforced during grouping
+    - Phase 3: Address violations fixed via resolve_addresses_other_violations()
+
+    This function is kept for backward compatibility but delegates to the new API.
 
     Args:
         sentences: List of sentences
@@ -678,102 +840,14 @@ def resolve_speaker_assignments_by_identity(
         # Identity resolution is most valuable for 3+ speakers
         return assignments
 
-    # Extract self-identifications
-    identities = extract_speaker_identities(sentences)
+    # Import here to avoid circular imports
+    from transcript_etl_pipeline.transform.identity_constraints import (
+        extract_identity_constraints,
+    )
 
-    if not identities:
-        # No identities found, return original assignments
+    constraints = extract_identity_constraints(sentences)
+
+    if not constraints:
         return assignments
 
-    # Start with a copy of assignments
-    refined = list(assignments)
-
-    # Map speaker index to name (using first name only for matching)
-    speaker_to_first_name: dict[int, str] = {}
-
-    for sent_idx, full_name in identities.items():
-        speaker_idx = refined[sent_idx]
-        first_name = full_name.split()[0]  # Extract first name
-
-        if speaker_idx in speaker_to_first_name:
-            # Conflict: same speaker ID already has a different name
-            # This means the similarity grouping made an error
-            # We need to find a different speaker ID for this identity
-            existing_name = speaker_to_first_name[speaker_idx]
-
-            # Find which name should keep this speaker ID
-            # Strategy: count how many sentences belong to each identity
-            # The one with more sentences keeps the ID
-            count_existing = sum(
-                1 for _idx, name in identities.items() if name.split()[0] == existing_name
-            )
-            count_new = sum(1 for _idx, name in identities.items() if name.split()[0] == first_name)
-
-            if count_new > count_existing:
-                # New identity gets this speaker ID, reassign all existing identity sentences
-                for i, name in identities.items():
-                    if name.split()[0] == existing_name:
-                        # Find an unused speaker ID
-                        for candidate in range(num_speakers):
-                            if (
-                                candidate not in speaker_to_first_name
-                                or speaker_to_first_name[candidate] == existing_name
-                            ):
-                                refined[i] = candidate
-                                speaker_to_first_name[candidate] = existing_name
-                                break
-                speaker_to_first_name[speaker_idx] = first_name
-            else:
-                # Existing identity keeps this speaker ID, find new ID for current sentence
-                for candidate in range(num_speakers):
-                    if (
-                        candidate not in speaker_to_first_name
-                        or speaker_to_first_name[candidate] == first_name
-                    ):
-                        refined[sent_idx] = candidate
-                        speaker_to_first_name[candidate] = first_name
-                        break
-        else:
-            speaker_to_first_name[speaker_idx] = first_name
-
-    # Create reverse mapping: first name to speaker index
-    name_to_speaker: dict[str, int] = {name: idx for idx, name in speaker_to_first_name.items()}
-
-    # Second pass: fix sentences where someone addresses another person by name
-    for i, sentence in enumerate(sentences):
-        current_speaker = refined[i]
-
-        # Check if someone is being addressed by first name in this sentence
-        for first_name, addressed_speaker in name_to_speaker.items():
-            # Look for the name in the sentence (case-insensitive, whole word)
-            pattern = r"\b" + re.escape(first_name) + r"\b"
-            if re.search(pattern, sentence, re.IGNORECASE) and current_speaker == addressed_speaker:
-                # Violation: speaker is addressing themselves by name
-                # Find who should be speaking
-
-                # Strategy: Look at adjacent context
-                replacement_speaker = None
-
-                # Check previous sentence
-                if i > 0:
-                    prev_speaker = refined[i - 1]
-                    if prev_speaker != addressed_speaker:
-                        replacement_speaker = prev_speaker
-
-                # If still not found, check next sentence
-                if replacement_speaker is None and i < len(sentences) - 1:
-                    next_speaker = refined[i + 1]
-                    if next_speaker != addressed_speaker:
-                        replacement_speaker = next_speaker
-
-                # Fallback: find any other speaker
-                if replacement_speaker is None:
-                    for candidate in range(num_speakers):
-                        if candidate != addressed_speaker:
-                            replacement_speaker = candidate
-                            break
-
-                if replacement_speaker is not None:
-                    refined[i] = replacement_speaker
-
-    return refined
+    return resolve_addresses_other_violations(sentences, assignments, constraints, num_speakers)

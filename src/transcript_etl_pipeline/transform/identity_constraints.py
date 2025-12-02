@@ -99,6 +99,7 @@ def detect_addresses_to_person(sentence: str) -> list[str]:
     - "is Name a..." (third-person question)
     - "if ... is Name" (conditional/hypothetical)
     - "Is Name ..." (question about Name, not to Name)
+    - Self-identification sentences ("I'm Name", "My name is Name")
 
     Args:
         sentence: The sentence to analyze
@@ -109,14 +110,19 @@ def detect_addresses_to_person(sentence: str) -> list[str]:
     sentence_lower = sentence.lower().strip()
     addressed_names: list[str] = []
 
+    # Skip sentences that contain self-identification patterns
+    # The speaker cannot be addressing themselves by name in these cases
+    if detect_self_identification(sentence) is not None:
+        return []
+
     # Extract potential capitalized names from the sentence
     # Match: Capital letter followed by lowercase letters, optional additional names
     # But exclude common non-name words that are capitalized
-    name_pattern = r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b"
-    potential_names = re.findall(name_pattern, sentence)
+    name_pattern = r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b"
+    potential_names: list[str] = re.findall(name_pattern, sentence)
 
-    # Filter out common non-name capitalized words
-    excluded_words = {
+    # Filter out common non-name capitalized words and phrases starting with them
+    excluded_first_words = {
         "Thanks",
         "Thank",
         "Hello",
@@ -126,8 +132,54 @@ def detect_addresses_to_person(sentence: str) -> list[str]:
         "Morning",
         "Afternoon",
         "Evening",
+        "Yes",
+        "No",
+        "Sure",
+        "Ok",
+        "Okay",
+        "Great",
+        "Perfect",
+        "Excellent",
+        "Welcome",
+        "Let",
+        "Who",
+        "What",
+        "Where",
+        "When",
+        "Why",
+        "How",
+        "My",
+        "I",
+        "You",
+        "We",
+        "They",
+        "Oh",
+        "Well",
+        "Now",
     }
-    potential_names = [name for name in potential_names if name not in excluded_words]
+
+    # Filter out excluded words and phrases
+    filtered_names: list[str] = []
+    for name in potential_names:
+        first_word = name.split()[0]
+        # Skip if first word is an excluded word
+        if first_word in excluded_first_words:
+            # But check if there's a valid name after the excluded word
+            # e.g., "Thanks Frank" -> we want "Frank"
+            parts = name.split()
+            if len(parts) > 1:
+                # Add the remaining parts as the name
+                remaining = " ".join(parts[1:])
+                if remaining and remaining not in excluded_first_words:
+                    filtered_names.append(remaining)
+            continue
+        if len(name) < 2:
+            continue
+        # Check if this is a standalone question like "Fred?"
+        if " " not in name and re.search(rf"\b{re.escape(name)}\s*\?\s*$", sentence):
+            continue
+        filtered_names.append(name)
+    potential_names = filtered_names
 
     if not potential_names:
         return []
