@@ -230,8 +230,14 @@ class TestSpeakerlessIntegrationComparison:
         # Also verify labeling produces valid output
         result = assign_speaker_labels(text)
         lines = [line for line in result.split("\r\n") if line.strip()]
-        assert len(lines) == 4, f"Expected 4 lines, got {len(lines)}"
+        # With grouping, sentences 0, 1, 2 are Speaker A, and 3 is Speaker B
+        # So we expect 2 lines
+        assert len(lines) == 2, f"Expected 2 lines (grouped), got {len(lines)}"
         assert all("Speaker" in line for line in lines)
+        assert "What time" in lines[0]
+        assert "It starts" in lines[0]
+        assert "Where is" in lines[0]
+        assert "Conference room" in lines[1]
 
     def test_acknowledgment_pattern(self) -> None:
         """Test that acknowledgments trigger speaker changes at exact positions.
@@ -272,9 +278,9 @@ class TestSpeakerlessIntegrationComparison:
         0: Let's start the meeting.              (start)
         1: Hello everyone, thanks for joining.   (greeting triggers change)
         2: Hi there, glad to be here.            (greeting triggers change)
-        3: Great, let's begin.                   (no trigger)
+        3: Great, let's begin.                   (acknowledgment triggers change)
 
-        Expected changes at: [0, 1, 2]
+        Expected changes at: [0, 1, 2, 3]
         """
         text = (
             "Let's start the meeting.\n"
@@ -286,7 +292,7 @@ class TestSpeakerlessIntegrationComparison:
         changes = detect_speaker_changes(text)
 
         # Verify exact expected speaker change points
-        expected_changes = [0, 1, 2]
+        expected_changes = [0, 1, 2, 3]
         assert (
             changes == expected_changes
         ), f"Expected speaker changes at {expected_changes}, got {changes}"
@@ -297,15 +303,18 @@ class TestSpeakerlessIntegrationComparison:
         assert "Hi there" in result
 
     def test_pronoun_shift_detection(self) -> None:
-        """Test that pronoun shifts (I/you) are detected at exact positions.
+        """Test that pronoun shifts (I/you) are detected with discontinuity check.
 
         Input (4 lines):
-        0: I think we should proceed with the plan.  (start, first-person)
-        1: You make an excellent point.              (I->you shift triggers change)
-        2: I agree with your assessment.             (you->I shift triggers change)
-        3: You've done great work on this.           (I->you shift triggers change)
+        0: I think we should proceed with the plan.  (start, first-person only)
+        1: You make an excellent point.           (I->You shift: prev has I, curr has You but not I)
+        2: I agree with your assessment.          (has both I and your - continuity, NO change)
+        3: You've done great work on this.        (I->You shift: prev has I, curr has You but not I)
 
-        Expected changes at: [0, 1, 2, 3] - every line due to I/you alternation
+        Expected changes at: [0, 1, 3] - sentence 2 is NOT a change due to pronoun continuity
+
+        This reflects the fixed logic where "I + your" doesn't trigger a change because
+        it could be the same speaker continuing to address the other person.
         """
         text = (
             "I think we should proceed with the plan.\n"
@@ -317,15 +326,23 @@ class TestSpeakerlessIntegrationComparison:
         changes = detect_speaker_changes(text)
 
         # Verify exact expected speaker change points
-        expected_changes = [0, 1, 2, 3]
+        expected_changes = [0, 1, 3]
         assert (
             changes == expected_changes
         ), f"Expected speaker changes at {expected_changes}, got {changes}"
 
-        # Verify all lines get labeled
+        # Verify output formatting
         result = assign_speaker_labels(text)
         lines = [line for line in result.split("\r\n") if line.strip()]
-        assert len(lines) == 4
+
+        # With changes at [0, 1, 3], we expect 3 speaker segments:
+        # - Speaker A: sentence 0
+        # - Speaker B: sentences 1-2 (grouped due to no change at 2)
+        # - Speaker C: sentence 3
+        assert len(lines) == 3
+
+        # Verify each segment starts with a speaker label
+        assert all(line.startswith("Speaker ") for line in lines)
         assert all("Speaker" in line for line in lines)
 
     def test_multi_speaker_meeting(self) -> None:
@@ -366,7 +383,12 @@ class TestSpeakerlessIntegrationComparison:
         # Verify all sentences get labeled (7 sentences due to tokenization)
         result = assign_speaker_labels(text)
         lines = [line for line in result.split("\r\n") if line.strip()]
-        assert len(lines) == 7, f"Expected 7 labeled sentences, got {len(lines)}"
+        # With grouping based on changes [0, 1, 3, 5]:
+        # Line 0 (Sent 0): Speaker A
+        # Line 1 (Sent 1, 2): Speaker B
+        # Line 2 (Sent 3, 4): Speaker C
+        # Line 3 (Sent 5, 6): Speaker D
+        assert len(lines) == 4, f"Expected 4 grouped lines, got {len(lines)}"
         assert all("Speaker" in line for line in lines)
 
         # Content should be preserved

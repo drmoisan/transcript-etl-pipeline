@@ -12,7 +12,10 @@ NLTK tools used:
 
 import logging
 import re
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
+
+if TYPE_CHECKING:
+    from transcript_etl_pipeline.transform.identity_constraints import IdentityConstraint
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +27,8 @@ __all__ = [
     "detect_dialogue_markers",
     "extract_sentence_features",
     "compute_sentence_similarity",
+    "extract_speaker_identities",
+    "resolve_speaker_assignments_by_identity",
     "GREETINGS",
     "ACKNOWLEDGMENTS",
     "TURN_TAKING_CUES",
@@ -32,9 +37,23 @@ __all__ = [
 # Common dialogue marker sets - shared between speakerless and speakers modules
 GREETINGS = frozenset({"hello", "hi", "hey", "good morning", "good afternoon", "good evening"})
 ACKNOWLEDGMENTS = frozenset(
-    {"yes", "no", "yeah", "yep", "nope", "okay", "ok", "sure", "right", "absolutely"}
+    {
+        "yes",
+        "no",
+        "yeah",
+        "yep",
+        "nope",
+        "okay",
+        "ok",
+        "sure",
+        "right",
+        "absolutely",
+        "great",
+        "perfect",
+        "excellent",
+    }
 )
-TURN_TAKING_CUES = frozenset({"well", "so", "but", "actually", "anyway", "however"})
+TURN_TAKING_CUES = frozenset({"well", "so", "but", "actually", "anyway", "however", "let's", "now"})
 
 # Pronoun sets for analysis
 FIRST_PERSON_PRONOUNS = frozenset(
@@ -405,10 +424,53 @@ def compute_sentence_similarity(features1: dict[str, Any], features2: dict[str, 
     return score / max_score if max_score > 0 else 0.0
 
 
+def violates_identity_constraints(
+    group1_indices: list[int],
+    group2_indices: list[int],
+    constraints: list["IdentityConstraint"],
+) -> bool:
+    """Check if merging two sentence groups would violate identity constraints.
+
+    Two groups cannot be merged if they contain sentences with conflicting
+    self-identifications (e.g., "I'm Peter Parker" in group1 and
+    "I'm Fred Flintstone" in group2).
+
+    Args:
+        group1_indices: Sentence indices in first group
+        group2_indices: Sentence indices in second group
+        constraints: List of identity constraints
+
+    Returns:
+        True if merging would violate constraints, False otherwise
+    """
+    # Extract self-identification constraints from both groups
+    group1_identities: set[str] = set()
+    group2_identities: set[str] = set()
+
+    for constraint in constraints:
+        if constraint.constraint_type == "self_identification":
+            if constraint.sentence_idx in group1_indices:
+                # Normalize to first name for comparison
+                first_name = constraint.name.split()[0]
+                group1_identities.add(first_name)
+            elif constraint.sentence_idx in group2_indices:
+                first_name = constraint.name.split()[0]
+                group2_identities.add(first_name)
+
+    # If either group has no identities, no conflict
+    if not group1_identities or not group2_identities:
+        return False
+
+    # Check if groups have different identities
+    # If they do, merging would violate the constraint
+    return group1_identities.isdisjoint(group2_identities)
+
+
 def group_sentences_by_similarity(
     sentences: list[str],
     change_points: list[int],
     num_speakers: int,
+    constraints: list["IdentityConstraint"] | None = None,
 ) -> list[int]:
     """Group sentences into speaker clusters based on similarity.
 
@@ -416,11 +478,13 @@ def group_sentences_by_similarity(
     1. Each change point starts a potential new speaker segment
     2. For 3+ speakers with few change points, cycle through speakers
     3. Otherwise, use similarity matching to cluster sentences
+    4. Identity constraints prevent merging incompatible speakers
 
     Args:
         sentences: List of sentences in the transcript
         change_points: Indices where speaker changes were detected
         num_speakers: Number of distinct speakers to assign
+        constraints: Optional list of identity constraints to enforce
 
     Returns:
         List of speaker indices (0 to num_speakers-1) for each sentence
@@ -430,6 +494,10 @@ def group_sentences_by_similarity(
 
     if num_speakers < 2:
         return [0] * len(sentences)
+
+    # Default to empty constraints if none provided
+    if constraints is None:
+        constraints = []
 
     # Extract features for all sentences
     all_features = [extract_sentence_features(s) for s in sentences]
@@ -467,6 +535,7 @@ def group_sentences_by_similarity(
     # Assign remaining segments using similarity matching
     for seg_idx in range(1, len(segments)):
         start, end = segments[seg_idx]
+        current_segment_indices = list(range(start, end))
 
         # Compute average similarity to each existing speaker cluster
         best_speaker = -1
@@ -474,6 +543,13 @@ def group_sentences_by_similarity(
 
         for speaker_idx in range(num_speakers):
             if not speaker_clusters[speaker_idx]:
+                continue
+
+            # Check if merging would violate identity constraints
+            if violates_identity_constraints(
+                speaker_clusters[speaker_idx], current_segment_indices, constraints
+            ):
+                # Skip this speaker - merging would violate constraints
                 continue
 
             # Compute average similarity to this speaker's sentences
@@ -492,17 +568,43 @@ def group_sentences_by_similarity(
                     best_speaker = speaker_idx
 
         # If no good match found or score too high (all similar),
-        # use round-robin to ensure speaker variety
-        if best_speaker < 0 or best_score > 0.8:
-            # Find first empty cluster
+        # use round-robin to ensure speaker variety.
+        # Also prioritize filling empty clusters if we don't have a very strong match.
+
+        # Check if we have empty clusters
+        has_empty_clusters = any(not c for c in speaker_clusters)
+
+        # If we have empty clusters and match isn't perfect (>0.9), force use of empty cluster
+        if has_empty_clusters and best_score < 0.9:
+            best_speaker = -1
+
+        if best_speaker < 0 or best_score > 0.85:
+            # Find first empty cluster that doesn't violate constraints
             for speaker_idx in range(num_speakers):
-                if not speaker_clusters[speaker_idx]:
+                if not speaker_clusters[speaker_idx] and not violates_identity_constraints(
+                    speaker_clusters[speaker_idx],
+                    current_segment_indices,
+                    constraints,
+                ):
                     best_speaker = speaker_idx
                     break
-            else:
-                # All clusters have sentences - cycle to next speaker
+
+            if best_speaker < 0:
+                # All clusters have sentences - find next speaker that doesn't violate
                 prev_speaker = assignments[start - 1] if start > 0 else 0
-                best_speaker = (prev_speaker + 1) % num_speakers
+                for attempt in range(num_speakers):
+                    candidate = (prev_speaker + 1 + attempt) % num_speakers
+                    if not violates_identity_constraints(
+                        speaker_clusters[candidate],
+                        current_segment_indices,
+                        constraints,
+                    ):
+                        best_speaker = candidate
+                        break
+                else:
+                    # No valid speaker found (shouldn't happen with proper constraints)
+                    # Fall back to round-robin
+                    best_speaker = (prev_speaker + 1) % num_speakers
 
         # Assign this segment to the best speaker
         for idx in range(start, end):
@@ -515,3 +617,163 @@ def group_sentences_by_similarity(
             assignments[i] = 0
 
     return assignments
+
+
+def extract_speaker_identities(sentences: list[str]) -> dict[int, str]:
+    """Extract speaker identities from self-identification sentences.
+
+    Detects patterns like:
+    - "I'm [Name]"
+    - "My name is [Name]"
+    - "This is [Name]"
+
+    Args:
+        sentences: List of sentences to analyze
+
+    Returns:
+        Dictionary mapping sentence index to identified name
+    """
+    identities: dict[int, str] = {}
+
+    # Patterns for self-identification
+    patterns = [
+        r"(?:i'm|i am)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)",
+        r"my name is\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)",
+        r"this is\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)",
+    ]
+
+    for i, sentence in enumerate(sentences):
+        for pattern in patterns:
+            match = re.search(pattern, sentence, re.IGNORECASE)
+            if match:
+                name = match.group(1)
+                identities[i] = name
+                break
+
+    return identities
+
+
+def resolve_speaker_assignments_by_identity(
+    sentences: list[str],
+    assignments: list[int],
+    num_speakers: int,
+) -> list[int]:
+    """Refine speaker assignments using name-based identity resolution.
+
+    This function improves speaker assignment by:
+    1. Identifying self-identifications ("I'm Peter Parker")
+    2. Tracking which speaker index corresponds to which name
+    3. Detecting when speakers are addressed by name ("Thanks Frank")
+    4. Reassigning segments that violate identity constraints
+
+    Args:
+        sentences: List of sentences
+        assignments: Initial speaker assignments (0 to num_speakers-1)
+        num_speakers: Number of speakers
+
+    Returns:
+        Refined speaker assignments
+    """
+    if num_speakers < 3:
+        # Identity resolution is most valuable for 3+ speakers
+        return assignments
+
+    # Extract self-identifications
+    identities = extract_speaker_identities(sentences)
+
+    if not identities:
+        # No identities found, return original assignments
+        return assignments
+
+    # Start with a copy of assignments
+    refined = list(assignments)
+
+    # Map speaker index to name (using first name only for matching)
+    speaker_to_first_name: dict[int, str] = {}
+
+    for sent_idx, full_name in identities.items():
+        speaker_idx = refined[sent_idx]
+        first_name = full_name.split()[0]  # Extract first name
+
+        if speaker_idx in speaker_to_first_name:
+            # Conflict: same speaker ID already has a different name
+            # This means the similarity grouping made an error
+            # We need to find a different speaker ID for this identity
+            existing_name = speaker_to_first_name[speaker_idx]
+
+            # Find which name should keep this speaker ID
+            # Strategy: count how many sentences belong to each identity
+            # The one with more sentences keeps the ID
+            count_existing = sum(
+                1 for _idx, name in identities.items() if name.split()[0] == existing_name
+            )
+            count_new = sum(1 for _idx, name in identities.items() if name.split()[0] == first_name)
+
+            if count_new > count_existing:
+                # New identity gets this speaker ID, reassign all existing identity sentences
+                for i, name in identities.items():
+                    if name.split()[0] == existing_name:
+                        # Find an unused speaker ID
+                        for candidate in range(num_speakers):
+                            if (
+                                candidate not in speaker_to_first_name
+                                or speaker_to_first_name[candidate] == existing_name
+                            ):
+                                refined[i] = candidate
+                                speaker_to_first_name[candidate] = existing_name
+                                break
+                speaker_to_first_name[speaker_idx] = first_name
+            else:
+                # Existing identity keeps this speaker ID, find new ID for current sentence
+                for candidate in range(num_speakers):
+                    if (
+                        candidate not in speaker_to_first_name
+                        or speaker_to_first_name[candidate] == first_name
+                    ):
+                        refined[sent_idx] = candidate
+                        speaker_to_first_name[candidate] = first_name
+                        break
+        else:
+            speaker_to_first_name[speaker_idx] = first_name
+
+    # Create reverse mapping: first name to speaker index
+    name_to_speaker: dict[str, int] = {name: idx for idx, name in speaker_to_first_name.items()}
+
+    # Second pass: fix sentences where someone addresses another person by name
+    for i, sentence in enumerate(sentences):
+        current_speaker = refined[i]
+
+        # Check if someone is being addressed by first name in this sentence
+        for first_name, addressed_speaker in name_to_speaker.items():
+            # Look for the name in the sentence (case-insensitive, whole word)
+            pattern = r"\b" + re.escape(first_name) + r"\b"
+            if re.search(pattern, sentence, re.IGNORECASE) and current_speaker == addressed_speaker:
+                # Violation: speaker is addressing themselves by name
+                # Find who should be speaking
+
+                # Strategy: Look at adjacent context
+                replacement_speaker = None
+
+                # Check previous sentence
+                if i > 0:
+                    prev_speaker = refined[i - 1]
+                    if prev_speaker != addressed_speaker:
+                        replacement_speaker = prev_speaker
+
+                # If still not found, check next sentence
+                if replacement_speaker is None and i < len(sentences) - 1:
+                    next_speaker = refined[i + 1]
+                    if next_speaker != addressed_speaker:
+                        replacement_speaker = next_speaker
+
+                # Fallback: find any other speaker
+                if replacement_speaker is None:
+                    for candidate in range(num_speakers):
+                        if candidate != addressed_speaker:
+                            replacement_speaker = candidate
+                            break
+
+                if replacement_speaker is not None:
+                    refined[i] = replacement_speaker
+
+    return refined

@@ -26,6 +26,9 @@ The detection works on both:
 import logging
 import re
 
+from transcript_etl_pipeline.transform.identity_constraints import (
+    extract_identity_constraints,
+)
 from transcript_etl_pipeline.transform.speaker_helpers import (
     analyze_pronoun_patterns,
     detect_dialogue_markers,
@@ -125,13 +128,23 @@ def detect_speaker_changes(text: str) -> list[int]:
         prev_patterns = pronoun_patterns[i - 1] if i - 1 < len(pronoun_patterns) else {}
 
         # Heuristic 1: Pronoun shift
-        # If previous sentence had "I" and current has "you" or vice versa
+        # If previous sentence had "I" and current has "you" or vice versa.
+        # We add a check to ensure the current sentence doesn't ALSO contain the
+        # pronoun from the previous sentence, which would suggest continuity.
         curr_first = curr_patterns.get("first_person", 0)
         curr_second = curr_patterns.get("second_person", 0)
         prev_first = prev_patterns.get("first_person", 0)
         prev_second = prev_patterns.get("second_person", 0)
 
-        if (prev_first > 0 and curr_second > 0) or (prev_second > 0 and curr_first > 0):
+        # Shift I -> You (Speaker A talks about self -> Speaker B talks about A)
+        # Requires current sentence to NOT have first person (otherwise it's likely A continuing)
+        i_to_you = prev_first > 0 and curr_second > 0 and curr_first == 0
+
+        # Shift You -> I (Speaker A talks about B -> Speaker B talks about self)
+        # Requires current sentence to NOT have second person (otherwise it's likely A continuing)
+        you_to_i = prev_second > 0 and curr_first > 0 and curr_second == 0
+
+        if i_to_you or you_to_i:
             is_speaker_change = True
 
         # Heuristic 2: Question-answer pattern
@@ -226,31 +239,100 @@ def assign_speaker_labels(text: str, num_speakers: int | None = None) -> str:
     # Generate speaker labels
     speaker_labels = [chr(ord("A") + i) for i in range(num_speakers)]
 
-    # Build result with speaker labels
-    result_lines: list[str] = []
+    # Calculate assignments for all sentences
+    assignments: list[int] = []
 
     if num_speakers == 2:
         # For 2 speakers, use simple alternating assignment
         current_speaker_idx = 0
         change_set = set(change_points)
 
-        for i, sentence in enumerate(sentences):
+        for i in range(len(sentences)):
             if i in change_set and i > 0:
                 # Speaker change detected - switch to other speaker
                 current_speaker_idx = (current_speaker_idx + 1) % 2
-
-            # Add speaker label to the sentence
-            speaker_label = f"Speaker {speaker_labels[current_speaker_idx]}"
-            result_lines.append(f"{speaker_label}: {sentence.strip()}")
+            assignments.append(current_speaker_idx)
     else:
         # For 3+ speakers, use similarity-based grouping
         # This helps cluster similar-sounding sentences to the same speaker
-        assignments = group_sentences_by_similarity(sentences, change_points, num_speakers)
+        # Extract identity constraints to prevent grouping conflicting speakers
+        constraints = extract_identity_constraints(sentences)
+        assignments = group_sentences_by_similarity(
+            sentences, change_points, num_speakers, constraints
+        )
 
-        for i, sentence in enumerate(sentences):
-            speaker_idx = assignments[i] if i < len(assignments) else 0
-            speaker_label = f"Speaker {speaker_labels[speaker_idx]}"
-            result_lines.append(f"{speaker_label}: {sentence.strip()}")
+        # Enforce speaker changes at detected change points
+        # The similarity grouping might cluster adjacent segments to the same speaker
+        # if they are short or semantically similar, but we must respect the
+        # detected change points.
+
+        # Ensure assignments is a mutable list and matches sentence count
+        assignments = list(assignments)
+        if len(assignments) < len(sentences):
+            assignments.extend([0] * (len(sentences) - len(assignments)))
+
+        # Sort change points to process segments sequentially
+        sorted_changes = sorted(list(set(change_points)))
+        if 0 not in sorted_changes:
+            sorted_changes.insert(0, 0)
+
+        for k in range(1, len(sorted_changes)):
+            seg_start = sorted_changes[k]
+            prev_seg_start = sorted_changes[k - 1]
+
+            # Get speaker for previous segment
+            prev_speaker = assignments[prev_seg_start]
+
+            # Get speaker for current segment
+            curr_speaker = assignments[seg_start]
+
+            if curr_speaker == prev_speaker:
+                # Conflict: Adjacent segments have same speaker despite change point.
+                # Force a change by rotating to the next speaker ID.
+                new_speaker = (prev_speaker + 1) % num_speakers
+
+                # Determine end of current segment
+                next_change = (
+                    sorted_changes[k + 1] if k + 1 < len(sorted_changes) else len(sentences)
+                )
+
+                # Update all sentences in this segment
+                for j in range(seg_start, next_change):
+                    assignments[j] = new_speaker
+
+        # Note: Identity-based resolution is disabled for now as it needs
+        # deeper integration with the similarity grouping algorithm.
+        # Future enhancement: integrate name extraction into
+        # group_sentences_by_similarity
+        # assignments = resolve_speaker_assignments_by_identity(
+        #     sentences, assignments, num_speakers
+        # )
+
+    # Build result with grouped sentences
+    result_lines: list[str] = []
+    current_speaker_idx = -1
+    current_block: list[str] = []
+
+    for i, sentence in enumerate(sentences):
+        speaker_idx = assignments[i] if i < len(assignments) else 0
+
+        if speaker_idx != current_speaker_idx:
+            # Flush previous block
+            if current_block:
+                speaker_label = f"Speaker {speaker_labels[current_speaker_idx]}"
+                result_lines.append(f"{speaker_label}: {' '.join(current_block)}")
+
+            # Start new block
+            current_speaker_idx = speaker_idx
+            current_block = [sentence.strip()]
+        else:
+            # Continue current block
+            current_block.append(sentence.strip())
+
+    # Flush final block
+    if current_block:
+        speaker_label = f"Speaker {speaker_labels[current_speaker_idx]}"
+        result_lines.append(f"{speaker_label}: {' '.join(current_block)}")
 
     # Convert to CRLF for consistency with rest of pipeline
     return "\r\n".join(result_lines)

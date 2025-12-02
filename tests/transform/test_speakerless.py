@@ -144,8 +144,8 @@ class TestAssignSpeakerLabels:
         assert "track" in result
 
     def test_crlf_line_endings(self) -> None:
-        """Test that output uses CRLF line endings."""
-        text = "Line one.\r\nLine two."
+        """Test that output uses CRLF line endings when multiple lines are generated."""
+        text = "Hello.\r\nHi there."
         result = assign_speaker_labels(text)
         # Output should use CRLF
         assert "\r\n" in result
@@ -233,24 +233,45 @@ class TestNumSpeakersParameter:
         assert speakers == {"Speaker A", "Speaker B"}
 
     def test_explicit_three_speakers(self) -> None:
-        """Test explicitly specifying 3 speakers uses similarity-based grouping."""
+        """Test explicitly specifying 3 speakers uses similarity-based grouping.
+
+        Note: This test verifies basic functionality but there are known limitations
+        with name-based speaker identity resolution in complex multi-speaker scenarios.
+        Future enhancement: integrate name extraction into the similarity grouping algorithm.
+        """
         text = (
-            "Welcome everyone to the meeting.\r\n"
-            "Thanks for having us.\r\n"
-            "Yes, glad to be here.\r\n"
-            "Let's start with introductions.\r\n"
-            "Sure, I'll go first.\r\n"
-            "Great idea."
+            "Welcome everyone to the meeting. Thanks for having us. Yes, thank you so much. "
+            "No problem. Let's start with introductions. You both know me. I'm Peter Parker, "
+            "and I thought it would be great for you two to meet. Who wants to go first? "
+            "Sure, I'll go first. Thanks Frank, go ahead. Ok. My name is Frank Oz, and I like "
+            "puppets. Thanks Frank. Fred? Oh yes, I'm Fred Flintstone. Great. Thank you both"
         )
         result = assign_speaker_labels(text, num_speakers=3)
         lines = [line for line in result.split("\r\n") if line.strip()]
+
         # Should use Speaker A, B, and C
-        speakers = {line.split(":")[0] for line in lines}
+        speakers = [line.split(":")[0] for line in lines]
+
         # Should have at most 3 speakers
-        assert len(speakers) <= 3
+        unique_speakers = set(speakers)
+        assert len(unique_speakers) <= 3
+
         # All should be valid speaker labels
         valid_speakers = {"Speaker A", "Speaker B", "Speaker C"}
-        assert speakers.issubset(valid_speakers)
+        assert unique_speakers.issubset(valid_speakers)
+
+        # Verify logical speaker changes occur
+        # "Welcome..." (A) -> "Thanks..." (B)
+        assert speakers[0] != speakers[1], "Speaker should change after welcome"
+
+        # "Thanks..." (B) -> "Yes..." (C)
+        assert speakers[1] != speakers[2], "Speaker should change after thanks"
+
+        # Verify content preservation - all key phrases should be present
+        assert "Peter Parker" in result
+        assert "Frank Oz" in result
+        assert "Fred Flintstone" in result
+        assert "Who wants to go first" in result
 
     def test_explicit_four_speakers(self) -> None:
         """Test explicitly specifying 4 speakers."""
@@ -284,6 +305,9 @@ class TestNumSpeakersParameter:
         # All should be Speaker A
         for line in lines:
             assert line.startswith("Speaker A:")
+
+        # Should be grouped into one line
+        assert len(lines) == 1
 
     def test_num_speakers_affects_alternation(self) -> None:
         """Test that num_speakers=2 uses simple alternation at change points."""
