@@ -41,7 +41,7 @@ ignore = ["ANN101", "ANN102"]
 fixable = ["ALL"]
 
 [tool.pyright]
-include = ["src", "tests"]
+include = ["src", "tests", "scripts"]
 exclude = ["**/.venv/**"]
 typeCheckingMode = "strict"
 reportMissingImports = true
@@ -49,3 +49,23 @@ reportMissingTypeStubs = false
 reportUnknownMemberType = true
 reportUnknownVariableType = true
 
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "tests/*",
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/site-packages/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+    "@abc.abstractmethod",
+]

@@ -14,4 +14,5 @@ htmlcov/
 dist/
 build/
 .vscode/*
+!.vscode/tasks.json
 artifacts/*

@@ -1,8 +1,58 @@
 # Scripts Directory
 
-This directory contains utility scripts for the transcript-etl-pipeline project.
+This directory contains utility scripts and debug tools for the transcript-etl-pipeline project.
 
-## Available Scripts
+## Debug Scripts (Python)
+
+### debug_identity.py
+Examines identity constraint extraction from transcripts.
+
+**Usage:**
+```bash
+poetry run python scripts/debug_identity.py
+```
+
+**Purpose:** Debug the extraction of self-identification and addresses-other constraints.
+
+---
+
+### debug_postprocess.py
+Traces post-processing logic with detailed before/after comparison.
+
+**Usage:**
+```bash
+poetry run python scripts/debug_postprocess.py
+```
+
+**Purpose:** Debug the `resolve_addresses_other_violations()` post-processing step.
+
+---
+
+### debug_trace.py
+Full pipeline trace showing all speaker assignment steps.
+
+**Usage:**
+```bash
+poetry run python scripts/debug_trace.py
+```
+
+**Purpose:** Trace the complete speaker detection pipeline from tokenization to final output.
+
+---
+
+### test_output_check.py
+Quick validation of 3-speaker scenario output.
+
+**Usage:**
+```bash
+poetry run python scripts/test_output_check.py
+```
+
+**Purpose:** Verify exact output match for the Peter Parker/Frank Oz/Fred Flintstone test case.
+
+---
+
+## PowerShell Scripts
 
 ### collect-commit-context.ps1
 

@@ -2,8 +2,8 @@
 
 A Python tool for extracting, transforming, and formatting meeting transcripts with automatic speaker detection and multiple output formats (DOCX, RTF, Markdown).
 
-[![Tests](https://img.shields.io/badge/tests-241%20passed-brightgreen)](https://github.com/drmoisan/transcript-etl-pipeline)
-[![Coverage](https://img.shields.io/badge/coverage-62%25-yellow)](https://github.com/drmoisan/transcript-etl-pipeline)
+[![Tests](https://img.shields.io/badge/tests-509%20passed-brightgreen)](https://github.com/drmoisan/transcript-etl-pipeline)
+[![Coverage](https://img.shields.io/badge/coverage-87%25-brightgreen)](https://github.com/drmoisan/transcript-etl-pipeline)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000)](https://github.com/psf/black)
 [![Type Checking](https://img.shields.io/badge/type%20checking-pyright%20strict-blue)](https://github.com/microsoft/pyright)
 
@@ -15,6 +15,10 @@ A Python tool for extracting, transforming, and formatting meeting transcripts w
   - Whitespace cleanup
   - Label detection and formatting
   - Paragraph detection using sentence endings and pause indicators
+  - **Identity-aware speaker detection** with constraint enforcement:
+    - Self-identification: "I'm [Name]" assigns sentences to [Name]
+    - Address detection: "Thanks [Name]" prevents assignment to [Name]
+    - Similarity grouping respects identity constraints
   - Speaker resolution with Dan Moisan identification
 - **Load** to multiple formats:
   - Microsoft Word (DOCX) with proper spacing and fonts
@@ -90,7 +94,10 @@ src/transcript_etl_pipeline/
 ├── transform/        # Normalization and enhancement
 │   ├── normalize.py  # Line endings, whitespace, labels
 │   ├── paragraphs.py # Paragraph detection
-│   ├── speakers.py   # Speaker resolution
+│   ├── identity_constraints.py  # Name extraction and constraint modeling
+│   ├── speaker_helpers.py       # Constraint-aware similarity grouping
+│   ├── speakerless.py           # NLTK-based speaker detection
+│   ├── speakers.py   # Speaker resolution and Dan Moisan identification
 │   └── enhance.py    # Orchestration
 ├── document/         # Document model
 │   ├── model.py      # Data structures
@@ -125,13 +132,18 @@ All output formats follow consistent spacing and styling:
 
 ## Testing
 
-The project includes comprehensive test coverage with 241 tests:
+The project includes comprehensive test coverage with 509 tests:
 
-- **Unit Tests**: 219 tests covering core functionality
+- **Unit Tests**: 487 tests covering core functionality
+  - Identity constraints extraction: 33 tests
+  - Identity-aware speaker grouping: 17 tests
+  - Speakerless transcript detection: 50+ tests with NLTK-based heuristics
+  - Document formatting and parsing: 100+ tests
+  - Transform pipeline (normalize, enhance, paragraphs): 150+ tests
 - **Integration Tests**: 22 tests for end-to-end pipeline validation
-- **Coverage**: 62% overall, 97%+ for core transformation logic
-  - 100% coverage: formatters (RTF, MD), transform logic, document model
-  - 97%+ coverage: parser, DOCX formatter, normalizer, speaker resolution
+- **Coverage**: 87% overall, 97%+ for core transformation logic
+  - 100% coverage: formatters (RTF, MD), transform logic, document model, identity constraints
+  - 97%+ coverage: parser, DOCX formatter, normalizer, speaker resolution, identity-aware grouping
   - Lower coverage: CLI/UI integration layers (tested via integration tests)
 
 ```bash
@@ -281,19 +293,31 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ✅ **Production Ready**
 
 - Core ETL pipeline fully functional
-- 241 tests with 62% coverage (all passing)
+- **Identity-aware speaker detection** with constraint enforcement (NEW)
+- 509 tests with 87% coverage (all passing)
 - All code quality checks passing (Black, Ruff, Pyright, Pytest)
 - Multiple output formats supported (DOCX, RTF, MD)
 - CLI and UI fully operational
 - Comprehensive logging infrastructure
 - PowerShell utilities for Git context collection
 
+### Recent Enhancements (Dec 2025)
+
+**Identity-Aware Speaker Detection**: The pipeline now enforces identity constraints during speaker assignment:
+- ✅ Self-identification constraint: "I'm [Name]" correctly assigns sentences to [Name]
+- ✅ Address detection: "Thanks [Name]" prevents assignment to [Name] (speaker cannot address themselves)
+- ✅ Constraint-aware similarity grouping: Identity information overrides linguistic similarity
+- ✅ Post-processing resolution: Conservative reassignment for addresses_other violations
+- ✅ 50 new tests validating identity-aware behavior (33 extraction + 17 grouping)
+
+This addresses critical flaws in multi-speaker scenarios where names are mentioned or self-identifications occur.
+
 ### Known Limitations
 
 - Speaker resolution requires either metadata names or UI interaction
 - UI dialogs require tkinter (can be bypassed with full CLI arguments)
 - Best results with properly formatted transcript input
-- Speaker identification uses heuristics that may need refinement for edge cases
+- Identity detection uses name extraction heuristics (e.g., "I'm [Name]", "Thanks [Name]")
 
 ## Acknowledgements
 
