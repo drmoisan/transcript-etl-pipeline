@@ -262,15 +262,24 @@ def assign_speaker_labels(text: str, num_speakers: int | None = None) -> str:
             sentences, change_points, num_speakers, constraints
         )
 
-        # Enforce speaker changes at detected change points
-        # The similarity grouping might cluster adjacent segments to the same speaker
-        # if they are short or semantically similar, but we must respect the
-        # detected change points.
-
         # Ensure assignments is a mutable list and matches sentence count
         assignments = list(assignments)
         if len(assignments) < len(sentences):
             assignments.extend([0] * (len(sentences) - len(assignments)))
+
+        # Phase 3: Fix "addresses_other" violations FIRST
+        # This post-processing fixes cases where someone is assigned to speak
+        # a sentence that addresses them by name (e.g., "Thanks Frank" assigned to Frank)
+        # We do this BEFORE enforcing speaker changes to avoid conflicts
+        assignments = resolve_addresses_other_violations(
+            sentences, assignments, constraints, num_speakers
+        )
+
+        # Enforce speaker changes at detected change points
+        # The similarity grouping might cluster adjacent segments to the same speaker
+        # if they are short or semantically similar, but we must respect the
+        # detected change points.
+        # NOTE: This runs AFTER post-processing to avoid conflicts with identity-based reassignments
 
         # Sort change points to process segments sequentially
         sorted_changes = sorted(list(set(change_points)))
@@ -289,24 +298,59 @@ def assign_speaker_labels(text: str, num_speakers: int | None = None) -> str:
 
             if curr_speaker == prev_speaker:
                 # Conflict: Adjacent segments have same speaker despite change point.
-                # Force a change by rotating to the next speaker ID.
-                new_speaker = (prev_speaker + 1) % num_speakers
+                # However, if post-processing assigned them to the same speaker for
+                # a good reason (e.g., both are from the meeting organizer), we should
+                # respect that assignment.
 
-                # Determine end of current segment
+                # Check if this change would violate identity constraints
+                # If the segment contains a self-identification, we cannot reassign it
                 next_change = (
                     sorted_changes[k + 1] if k + 1 < len(sorted_changes) else len(sentences)
                 )
 
+                # Check for self-identification constraints in BOTH segments
+                curr_has_self_id = False
+                prev_identity = None
+                curr_identity = None
+
+                for constraint in constraints:
+                    if constraint.constraint_type == "self_identification":
+                        if prev_seg_start <= constraint.sentence_idx < seg_start:
+                            prev_identity = constraint.name.split()[0]
+                        elif seg_start <= constraint.sentence_idx < next_change:
+                            curr_has_self_id = True
+                            curr_identity = constraint.name.split()[0]
+
+                # If both segments have the SAME identity, don't force a change
+                # (they're actually the same person)
+                if prev_identity and curr_identity and prev_identity == curr_identity:
+                    continue
+
+                # If current segment has a self-identification, don't reassign it
+                if curr_has_self_id:
+                    continue
+
+                # Check if current segment contains closing/acknowledgment statements
+                # that were intentionally assigned to the organizer by post-processing
+                is_closing_segment = False
+                for idx in range(seg_start, next_change):
+                    sent = sentences[idx].strip().lower()
+                    if ("great" in sent or "thank" in sent or "perfect" in sent) and len(
+                        sent.split()
+                    ) <= 4:
+                        is_closing_segment = True
+                        break
+
+                # Don't force a change for closing statements
+                if is_closing_segment:
+                    continue
+
+                # Force a change by rotating to the next speaker ID
+                new_speaker = (prev_speaker + 1) % num_speakers
+
                 # Update all sentences in this segment
                 for j in range(seg_start, next_change):
                     assignments[j] = new_speaker
-
-        # Phase 3: Fix "addresses_other" violations
-        # This post-processing fixes cases where someone is assigned to speak
-        # a sentence that addresses them by name (e.g., "Thanks Frank" assigned to Frank)
-        assignments = resolve_addresses_other_violations(
-            sentences, assignments, constraints, num_speakers
-        )
 
     # Build result with grouped sentences
     result_lines: list[str] = []

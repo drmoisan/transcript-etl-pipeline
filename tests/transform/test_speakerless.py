@@ -233,11 +233,19 @@ class TestNumSpeakersParameter:
         assert speakers == {"Speaker A", "Speaker B"}
 
     def test_explicit_three_speakers(self) -> None:
-        """Test explicitly specifying 3 speakers uses similarity-based grouping.
+        """Test explicitly specifying 3 speakers with identity-aware detection.
 
-        Note: This test verifies basic functionality but there are known limitations
-        with name-based speaker identity resolution in complex multi-speaker scenarios.
-        Future enhancement: integrate name extraction into the similarity grouping algorithm.
+        This test validates that identity constraints are properly enforced:
+        - Peter Parker (Speaker A) identifies himself early
+        - Frank Oz (Speaker B) identifies himself and is addressed by name
+        - Fred Flintstone (Speaker C) identifies himself as a different person
+        - "Thanks Frank" sentences are NOT assigned to Frank Oz (Speaker B)
+        - Closing statements are assigned to the meeting organizer (Peter Parker, Speaker A)
+
+        Expected speaker assignments leverage identity-aware grouping:
+        - Speaker A: Peter Parker (meeting organizer)
+        - Speaker B: Frank Oz
+        - Speaker C: Fred Flintstone
         """
         text = (
             "Welcome everyone to the meeting. Thanks for having us. Yes, thank you so much. "
@@ -249,23 +257,58 @@ class TestNumSpeakersParameter:
         result = assign_speaker_labels(text, num_speakers=3)
         lines = [line for line in result.split("\r\n") if line.strip()]
 
-        # Should use Speaker A, B, and C
+        # Extract speaker labels and content
         speakers = [line.split(":")[0] for line in lines]
+        contents = [line.split(":", 1)[1].strip() for line in lines]
 
-        # Should have at most 3 speakers
+        # Should use exactly 3 speakers
         unique_speakers = set(speakers)
-        assert len(unique_speakers) <= 3
+        assert len(unique_speakers) == 3, f"Expected exactly 3 speakers, got {len(unique_speakers)}"
 
         # All should be valid speaker labels
         valid_speakers = {"Speaker A", "Speaker B", "Speaker C"}
-        assert unique_speakers.issubset(valid_speakers)
+        assert unique_speakers == valid_speakers
 
-        # Verify logical speaker changes occur
-        # "Welcome..." (A) -> "Thanks..." (B)
-        assert speakers[0] != speakers[1], "Speaker should change after welcome"
+        # Verify expected speaker assignments based on identity constraints
+        # Line 0: "Welcome everyone to the meeting." -> Speaker A (Peter Parker)
+        assert speakers[0] == "Speaker A"
 
-        # "Thanks..." (B) -> "Yes..." (C)
-        assert speakers[1] != speakers[2], "Speaker should change after thanks"
+        # Line 1: "Thanks for having us." -> Speaker B
+        assert speakers[1] == "Speaker B"
+
+        # Line 2: "Yes, thank you so much." -> Speaker C
+        assert speakers[2] == "Speaker C"
+
+        # Line 3: Contains "I'm Peter Parker" -> Speaker A
+        assert speakers[3] == "Speaker A"
+        assert "Peter Parker" in contents[3]
+
+        # Line 4: "Sure, I'll go first." -> Speaker B
+        assert speakers[4] == "Speaker B"
+
+        # Line 5: "Thanks Frank, go ahead." -> Should NOT be Frank (Speaker B)
+        # This addresses Frank, so it must be Speaker A (Peter Parker)
+        assert speakers[5] == "Speaker A"
+        assert "Thanks Frank" in contents[5]
+
+        # Line 6: "My name is Frank Oz" -> Speaker B (Frank Oz)
+        assert speakers[6] == "Speaker B"
+        assert "Frank Oz" in contents[6]
+
+        # Line 7: "Thanks Frank. Fred?" -> Should NOT be Frank (Speaker B)
+        # This also addresses Frank and calls on Fred, so it's Speaker A (Peter Parker)
+        assert speakers[7] == "Speaker A"
+        assert "Thanks Frank" in contents[7]
+        assert "Fred?" in contents[7]
+
+        # Line 8: "Oh yes, I'm Fred Flintstone" -> Speaker C (Fred Flintstone, different from Peter)
+        assert speakers[8] == "Speaker C"
+        assert "Fred Flintstone" in contents[8]
+
+        # Line 9: "Great. Thank you both" -> Speaker A (Peter Parker wrapping up)
+        assert speakers[9] == "Speaker A"
+        assert "Great" in contents[9]
+        assert "Thank you both" in contents[9]
 
         # Verify content preservation - all key phrases should be present
         assert "Peter Parker" in result

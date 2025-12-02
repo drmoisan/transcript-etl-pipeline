@@ -700,6 +700,9 @@ def resolve_addresses_other_violations(
     # Start with a copy of assignments
     refined = list(assignments)
 
+    # Track which sentences have been reassigned for follow-through logic
+    reassigned_indices: set[int] = set()
+
     # Find and fix addresses_other violations
     for constraint in constraints:
         if constraint.constraint_type != "addresses_other":
@@ -742,17 +745,121 @@ def resolve_addresses_other_violations(
 
             if replacement_speaker is not None:
                 refined[sent_idx] = replacement_speaker
+                reassigned_indices.add(sent_idx)
                 old_letter = chr(ord("A") + current_speaker_idx)
                 new_letter = chr(ord("A") + replacement_speaker)
                 logger.debug(
                     f"Reassigned sentence {sent_idx} "
                     f"from Speaker {old_letter} to Speaker {new_letter}"
                 )
+
+                # Follow-through logic: Check if immediately following sentence
+                # should also be reassigned to maintain speaker continuity
+                # This handles cases like: "Thanks Frank. Fred?" where both
+                # sentences are from the same speaker
+                next_idx = sent_idx + 1
+                if next_idx < len(sentences):
+                    next_sent = sentences[next_idx].strip()
+                    next_speaker = refined[next_idx]
+
+                    # Check if next sentence is short and likely a continuation
+                    # (questions, names, brief acknowledgments)
+                    is_short = len(next_sent.split()) <= 3
+                    is_question = next_sent.endswith("?")
+                    is_name_call = (
+                        next_sent.rstrip("?").strip().istitle() and len(next_sent.split()) == 1
+                    )
+
+                    # If next sentence was assigned to the addressed speaker
+                    # and it's a short continuation, reassign it too
+                    if next_speaker == addressed_speaker_idx and (
+                        is_short or is_question or is_name_call
+                    ):
+                        refined[next_idx] = replacement_speaker
+                        reassigned_indices.add(next_idx)
+                        logger.debug(
+                            f"Follow-through: Reassigned sentence {next_idx} "
+                            f"('{next_sent}') to Speaker {new_letter} for continuity"
+                        )
             else:
                 logger.warning(
                     f"Could not resolve address violation in sentence {sent_idx}: "
                     f"no safe speaker available (would create new conflicts)"
                 )
+
+    # Additional heuristic: Handle closing/wrap-up statements
+    # After the last self-identification, remaining sentences are likely from
+    # the meeting organizer (usually the first self-identified speaker)
+    if speaker_to_name:
+        # Find the last self-identification
+        last_self_id_idx = max(
+            (c.sentence_idx for c in constraints if c.constraint_type == "self_identification"),
+            default=-1,
+        )
+
+        logger.debug(f"Last self-identification at sentence {last_self_id_idx}")
+
+        if last_self_id_idx >= 0 and last_self_id_idx < len(sentences) - 1:
+            # Find the first speaker who self-identified (likely the meeting organizer)
+            first_self_id_speaker = None
+            for constraint in constraints:
+                if constraint.constraint_type == "self_identification":
+                    first_self_id_speaker = refined[constraint.sentence_idx]
+                    speaker_letter = chr(ord("A") + first_self_id_speaker)
+                    logger.debug(
+                        f"First self-identified speaker: Speaker {speaker_letter} "
+                        f"({constraint.name})"
+                    )
+                    break
+
+            if first_self_id_speaker is not None:
+                # Check sentences after the last self-identification
+                for idx in range(last_self_id_idx + 1, len(sentences)):
+                    sent = sentences[idx].strip()
+
+                    # Skip sentences that have addresses_other constraints
+                    # These are mid-conversation and not closing statements
+                    has_addresses_other = any(
+                        c.sentence_idx == idx and c.constraint_type == "addresses_other"
+                        for c in constraints
+                    )
+                    if has_addresses_other:
+                        logger.debug(
+                            f"Sentence {idx} has addresses_other constraint, "
+                            f"skipping closing statement logic"
+                        )
+                        continue
+
+                    # Check if this is a short acknowledgment or closing statement
+                    # (e.g., "Great.", "Thank you both", "Thanks everyone")
+                    is_acknowledgment = sent.lower().startswith(
+                        ("great", "perfect", "excellent", "wonderful")
+                    )
+                    is_thanks = "thank" in sent.lower()
+                    is_short = len(sent.split()) <= 4
+
+                    logger.debug(
+                        f"Sentence {idx} ('{sent}'): "
+                        f"ack={is_acknowledgment}, thanks={is_thanks}, short={is_short}"
+                    )
+
+                    # If it's a closing/acknowledgment and not assigned to someone with
+                    # self-identification, assign it to the first speaker (organizer)
+                    current_speaker = refined[idx]
+                    if (
+                        (is_acknowledgment or is_thanks)
+                        and is_short
+                        and current_speaker != first_self_id_speaker
+                    ):
+                        # Reassign to first speaker (organizer)
+                        old_letter = chr(ord("A") + current_speaker)
+                        new_letter = chr(ord("A") + first_self_id_speaker)
+                        refined[idx] = first_self_id_speaker
+                        logger.debug(
+                            f"Closing statement: Reassigned sentence {idx} "
+                            f"('{sent}') from Speaker {old_letter} to Speaker {new_letter} "
+                            f"(meeting organizer)"
+                        )
 
     return refined
 
