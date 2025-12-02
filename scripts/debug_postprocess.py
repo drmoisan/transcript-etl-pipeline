@@ -41,7 +41,7 @@ assignments_after = resolve_addresses_other_violations(
     sentences, assignments_before, constraints, 3
 )
 
-changes = []
+changes: list[int] = []
 for i, (sent, spk_before, spk_after) in enumerate(
     zip(sentences, assignments_before, assignments_after, strict=False)
 ):

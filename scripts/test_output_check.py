@@ -47,7 +47,7 @@ if len(result_lines) != len(expected_lines):
     print()
 
 matches = 0
-mismatches = []
+mismatches: list[tuple[int, str, str]] = []
 for i in range(max(len(result_lines), len(expected_lines))):
     if i < len(result_lines) and i < len(expected_lines):
         r = result_lines[i]
