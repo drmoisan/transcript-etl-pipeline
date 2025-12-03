@@ -102,7 +102,8 @@
         "issue",
         "create",
         "--template",
-        "feature-request.md"
+        "feature-request.md",
+        "--web"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
@@ -112,7 +113,31 @@
         "reveal": "always",
         "panel": "new"
       },
-      "detail": "Creates a feature issue using .github/ISSUE_TEMPLATE/feature-request.md (requires gh CLI auth)."
+      "detail": "Opens browser with .github/ISSUE_TEMPLATE/feature-request.md via gh (requires gh CLI auth)."
+    },
+    {
+      "label": "GitHub: Feature Issue from Potential",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoLogo",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/potential-to-issue.ps1",
+        "-PotentialPath",
+        "${input:PotentialFilePath}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "detail": "Creates a feature issue from a potential file using gh issue create (non-interactive)."
     },
     {
       "label": "GitHub: New Bug Issue",
@@ -122,7 +147,8 @@
         "issue",
         "create",
         "--template",
-        "bug-report.md"
+        "bug-report.md",
+        "--web"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
@@ -132,7 +158,7 @@
         "reveal": "always",
         "panel": "new"
       },
-      "detail": "Creates a bug report using .github/ISSUE_TEMPLATE/bug-report.md (requires gh CLI auth)."
+      "detail": "Opens browser with .github/ISSUE_TEMPLATE/bug-report.md via gh (requires gh CLI auth)."
     },
         {
             "label": "Feature: New Potential Entry",
@@ -159,12 +185,18 @@
             "detail": "Creates a dated potential feature file from the template and opens it plus backlog.md for editing."
         }
     ],
-    "inputs": [
-        {
-            "id": "PotentialShortName",
-            "type": "promptString",
-            "description": "Short name (kebab-case, e.g., notes-feature)",
-            "default": "notes-feature"
-        }
-    ]
+  "inputs": [
+    {
+      "id": "PotentialShortName",
+      "type": "promptString",
+      "description": "Short name (kebab-case, e.g., notes-feature)",
+      "default": "notes-feature"
+    },
+    {
+      "id": "PotentialFilePath",
+      "type": "promptString",
+      "description": "Path to potential feature file",
+      "default": "docs/features/potential/2025-12-01-notes-feature.md"
+    }
+  ]
 }
