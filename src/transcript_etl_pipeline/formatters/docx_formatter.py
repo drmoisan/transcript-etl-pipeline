@@ -35,6 +35,19 @@ else:
     DocxParagraphType = Any
     DocxRunType = Any
 
+# Mapping from heading level to Word style name
+HEADING_STYLES = {
+    1: "Heading 1",
+    2: "Heading 2",
+    3: "Heading 3",
+}
+
+# Mapping from bullet level to Word style name
+BULLET_STYLES = {
+    1: "List Bullet",
+    2: "List Bullet 2",
+}
+
 
 def format_to_docx(doc: Document, output_path: str) -> None:
     """Format transcript document to DOCX file.
@@ -46,6 +59,8 @@ def format_to_docx(doc: Document, output_path: str) -> None:
     - No extra spacing for metadata
     - 12pt spacing above Transcript: label and speaker paragraphs
     - 6pt spacing above regular paragraphs
+    - Notes headers use Word heading styles (Heading 1, 2, 3)
+    - Notes bullets use Word list styles (List Bullet, List Bullet 2)
 
     Args:
         doc: The transcript document to format
@@ -80,7 +95,29 @@ def _format_paragraph(docx_doc: Any, paragraph: Paragraph, section_type: Section
         paragraph: The paragraph to format
         section_type: The type of section this paragraph belongs to
     """
-    # Create a new paragraph in the document
+    # Handle notes headers with Word heading styles
+    if section_type == SectionType.NOTES_HEADER or paragraph.heading_level > 0:
+        heading_level = paragraph.heading_level if paragraph.heading_level > 0 else 2
+        style_name = HEADING_STYLES.get(heading_level, "Heading 2")
+        docx_paragraph = docx_doc.add_paragraph(paragraph.text, style=style_name)
+        return
+
+    # Handle notes body with bullets using Word list styles
+    if section_type == SectionType.NOTES_BODY:
+        if paragraph.is_bullet:
+            bullet_level = paragraph.bullet_level if paragraph.bullet_level > 0 else 1
+            style_name = BULLET_STYLES.get(bullet_level, "List Bullet")
+            docx_paragraph = docx_doc.add_paragraph(paragraph.text, style=style_name)
+        else:
+            # Non-bullet notes body paragraph
+            docx_paragraph = docx_doc.add_paragraph()
+            run = docx_paragraph.add_run(paragraph.text)
+            _apply_font(run, BODY_FONT)
+            spacing = SPACING_RULES[section_type]
+            _apply_spacing(docx_paragraph, spacing)
+        return
+
+    # Create a new paragraph in the document for transcript/metadata
     docx_paragraph = docx_doc.add_paragraph()
 
     # Get spacing based on section type

@@ -2,6 +2,12 @@
 
 This module provides a CLI for running the complete transcript ETL pipeline:
 extract → transform → load.
+
+Supports:
+- Transcript-only processing (existing workflow)
+- Notes-only processing
+- Notes + Transcript combined
+- Update existing documents (add/replace notes or transcript)
 """
 
 import argparse
@@ -11,7 +17,9 @@ from pathlib import Path
 
 from transcript_etl_pipeline import config
 from transcript_etl_pipeline.devtools.debug_callgraph import run_with_callgraph
+from transcript_etl_pipeline.document.model import Document
 from transcript_etl_pipeline.document.parser import parse_enhanced_text
+from transcript_etl_pipeline.document.reader import read_document
 from transcript_etl_pipeline.extract.from_clipboard import extract_from_clipboard
 from transcript_etl_pipeline.extract.from_file import extract_from_file
 from transcript_etl_pipeline.formatters.docx_formatter import format_to_docx
@@ -20,6 +28,7 @@ from transcript_etl_pipeline.formatters.rtf_formatter import format_to_rtf
 from transcript_etl_pipeline.logging_config import get_logger, setup_logging
 from transcript_etl_pipeline.transform.enhance import enhance_text
 from transcript_etl_pipeline.transform.normalize import normalize_text
+from transcript_etl_pipeline.transform.notes import transform_notes
 from transcript_etl_pipeline.transform.speakers import SpeakerResolutionUI
 
 logger = get_logger(__name__)
@@ -33,9 +42,32 @@ def create_parser() -> argparse.ArgumentParser:
     """
     parser = argparse.ArgumentParser(
         prog="transcript-etl",
-        description="Extract, transform, and format meeting transcripts",
+        description="Extract, transform, and format meeting transcripts and notes",
     )
 
+    # Mode: new document vs update existing
+    parser.add_argument(
+        "--mode",
+        choices=["new", "update"],
+        default="new",
+        help="Mode: 'new' creates a new document, 'update' modifies an existing one",
+    )
+
+    # For update mode: path to existing document
+    parser.add_argument(
+        "--update-file",
+        type=str,
+        help="Path to existing document to update (required if --mode=update)",
+    )
+
+    # For update mode: action for notes/transcript
+    parser.add_argument(
+        "--update-action",
+        choices=["add-notes", "replace-notes", "add-transcript", "replace-transcript"],
+        help="Action when updating: add or replace notes/transcript",
+    )
+
+    # Transcript source (original functionality)
     parser.add_argument(
         "--source",
         choices=["clipboard", "file"],
@@ -48,6 +80,26 @@ def create_parser() -> argparse.ArgumentParser:
         help="Path to transcript file (required if --source=file)",
     )
 
+    # Notes source
+    parser.add_argument(
+        "--notes-source",
+        choices=["clipboard", "file"],
+        help="Source of notes text (optional)",
+    )
+
+    parser.add_argument(
+        "--notes-file",
+        type=str,
+        help="Path to notes file (required if --notes-source=file)",
+    )
+
+    parser.add_argument(
+        "--notes-label",
+        type=str,
+        help="Label for notes header (auto-generated if not provided)",
+    )
+
+    # Output options
     parser.add_argument(
         "--format",
         choices=["docx", "rtf", "md"],
@@ -83,6 +135,249 @@ def generate_default_filename(format_ext: str) -> str:
     return f"{today.year} {today.month:02d} {today.day:02d} Transcript.{format_ext}"
 
 
+def _extract_text(source: str, file_path: str | None) -> str:
+    """Extract text from the specified source.
+
+    Args:
+        source: Either "clipboard" or "file"
+        file_path: Path to file if source is "file"
+
+    Returns:
+        Extracted text content
+
+    Raises:
+        ValueError: If source is "file" but no file_path provided
+    """
+    if source == "clipboard":
+        logger.debug("Calling extract_from_clipboard()")
+        return extract_from_clipboard()
+    elif source == "file":
+        if not file_path:
+            raise ValueError("File path is required when source is 'file'")
+        logger.debug(f"Calling extract_from_file({file_path})")
+        return extract_from_file(file_path)
+    else:
+        raise ValueError(f"Invalid source: {source}")
+
+
+def _save_document(document: Document, output_format: str, output_path: Path) -> None:
+    """Save document to file in the specified format.
+
+    Args:
+        document: Document to save
+        output_format: Format (docx, rtf, or md)
+        output_path: Full path to output file
+    """
+    if output_format == "docx":
+        logger.debug("Calling format_to_docx()")
+        format_to_docx(document, str(output_path))
+    elif output_format == "rtf":
+        logger.debug("Calling format_to_rtf()")
+        format_to_rtf(document, str(output_path))
+    elif output_format == "md":
+        logger.debug("Calling format_to_md()")
+        format_to_md(document, str(output_path))
+    else:
+        raise ValueError(f"Unsupported format: {output_format}")
+
+
+def run_unified_pipeline(
+    mode: str,
+    output_format: str,
+    output_name: str,
+    output_folder: str,
+    # Transcript options
+    transcript_source: str | None = None,
+    transcript_file: str | None = None,
+    # Notes options
+    notes_source: str | None = None,
+    notes_file: str | None = None,
+    notes_label: str | None = None,
+    # Update options
+    update_file: str | None = None,
+    update_action: str | None = None,
+    # UI callback
+    ui_callback: SpeakerResolutionUI | None = None,
+) -> None:
+    """Run the unified ETL pipeline supporting notes and transcript.
+
+    Args:
+        mode: Either "new" or "update"
+        output_format: Output format (docx, rtf, or md)
+        output_name: Name for output file (with extension)
+        output_folder: Folder to save output file
+        transcript_source: Source for transcript ("clipboard" or "file")
+        transcript_file: Path to transcript file
+        notes_source: Source for notes ("clipboard" or "file")
+        notes_file: Path to notes file
+        notes_label: Label for notes header
+        update_file: Path to existing file for update mode
+        update_action: Action for update mode
+        ui_callback: Optional UI callback for speaker resolution
+
+    Raises:
+        ValueError: If invalid parameters are provided
+        FileNotFoundError: If file path doesn't exist
+    """
+    logger.info("=" * 60)
+    logger.info("STARTING UNIFIED ETL PIPELINE")
+    logger.info("=" * 60)
+    logger.info(f"Mode: {mode}")
+    logger.info(f"Transcript source: {transcript_source}")
+    logger.info(f"Notes source: {notes_source}")
+    logger.info(f"Output format: {output_format}")
+    logger.info("-" * 60)
+
+    document: Document
+
+    if mode == "update":
+        # Update existing document
+        if not update_file:
+            raise ValueError("--update-file is required when --mode=update")
+        if not update_action:
+            raise ValueError("--update-action is required when --mode=update")
+
+        logger.info(f"Loading existing document: {update_file}")
+        print(f"Loading existing document: {update_file}...")
+        document = read_document(update_file)
+        logger.info(f"✓ Loaded document with {len(document.sections)} sections")
+
+        # Process based on update action
+        if update_action in ("add-notes", "replace-notes"):
+            if not notes_source:
+                raise ValueError("--notes-source is required for notes update")
+            _process_notes_update(document, notes_source, notes_file, notes_label, update_action)
+        elif update_action in ("add-transcript", "replace-transcript"):
+            if not transcript_source:
+                raise ValueError("--source is required for transcript update")
+            _process_transcript_update(
+                document, transcript_source, transcript_file, update_action, ui_callback
+            )
+        else:
+            raise ValueError(f"Invalid update action: {update_action}")
+    else:
+        # New document mode
+        document = Document()
+
+        # Process notes if provided
+        if notes_source:
+            logger.info(f"PROCESSING NOTES from {notes_source}")
+            print(f"Processing notes from {notes_source}...")
+            notes_text = _extract_text(notes_source, notes_file)
+            notes_sections = transform_notes(notes_text, label=notes_label)
+            for section in notes_sections:
+                document.add_section(section)
+            logger.info(f"✓ Added {len(notes_sections)} notes sections")
+
+        # Process transcript if provided
+        if transcript_source:
+            logger.info(f"PROCESSING TRANSCRIPT from {transcript_source}")
+            print(f"Processing transcript from {transcript_source}...")
+            transcript_doc = _process_transcript(transcript_source, transcript_file, ui_callback)
+            # Merge transcript sections into document
+            for section in transcript_doc.sections:
+                document.add_section(section)
+            logger.info(f"✓ Added {len(transcript_doc.sections)} transcript sections")
+
+    # Save the document
+    output_path = Path(output_folder) / output_name
+    logger.info(f"SAVING to {output_path}")
+    print(f"Saving to {output_format.upper()}...")
+
+    _save_document(document, output_format, output_path)
+
+    logger.info(f"✓ Output saved to: {output_path}")
+    print(f"✓ Output saved to: {output_path}")
+    logger.info("=" * 60)
+    logger.info("PIPELINE COMPLETED SUCCESSFULLY")
+    logger.info("=" * 60)
+
+    # Save the output folder to config
+    config.save_last_output_folder(output_folder)
+
+
+def _process_transcript(
+    source: str,
+    file_path: str | None,
+    ui_callback: SpeakerResolutionUI | None,
+) -> Document:
+    """Process transcript text through the full pipeline.
+
+    Args:
+        source: Source of transcript text
+        file_path: Path to file if source is "file"
+        ui_callback: UI callback for speaker resolution
+
+    Returns:
+        Processed Document
+    """
+    # Extract
+    raw_text = _extract_text(source, file_path)
+    logger.info(f"✓ Extracted {len(raw_text)} characters")
+
+    # Normalize
+    normalized_text = normalize_text(raw_text)
+    logger.info(f"✓ Normalized to {len(normalized_text)} characters")
+
+    # Enhance
+    enhanced_text, speaker_map = enhance_text(normalized_text, ui_callback=ui_callback)
+    logger.info(f"✓ Enhanced, identified {len(speaker_map)} speakers")
+    print(f"Identified speakers: {speaker_map if speaker_map else 'None'}")
+
+    # Parse
+    document = parse_enhanced_text(enhanced_text)
+    logger.info(f"✓ Parsed document with {len(document.sections)} sections")
+
+    return document
+
+
+def _process_notes_update(
+    document: Document,
+    source: str,
+    file_path: str | None,
+    label: str | None,
+    action: str,
+) -> None:
+    """Process notes update on existing document.
+
+    Args:
+        document: Document to update
+        source: Source of notes text
+        file_path: Path to file if source is "file"
+        label: Label for notes header
+        action: Either "add-notes" or "replace-notes"
+    """
+    notes_text = _extract_text(source, file_path)
+    notes_sections = transform_notes(notes_text, label=label)
+
+    mode = "add" if action == "add-notes" else "replace"
+    document.merge_notes(notes_sections, mode=mode)
+    logger.info(f"✓ Notes {'added' if mode == 'add' else 'replaced'}")
+
+
+def _process_transcript_update(
+    document: Document,
+    source: str,
+    file_path: str | None,
+    action: str,
+    ui_callback: SpeakerResolutionUI | None,
+) -> None:
+    """Process transcript update on existing document.
+
+    Args:
+        document: Document to update
+        source: Source of transcript text
+        file_path: Path to file if source is "file"
+        action: Either "add-transcript" or "replace-transcript"
+        ui_callback: UI callback for speaker resolution
+    """
+    transcript_doc = _process_transcript(source, file_path, ui_callback)
+
+    mode = "add" if action == "add-transcript" else "replace"
+    document.merge_transcript(transcript_doc.sections, mode=mode)
+    logger.info(f"✓ Transcript {'added' if mode == 'add' else 'replaced'}")
+
+
 def run_pipeline(
     source: str,
     file_path: str | None,
@@ -91,7 +386,7 @@ def run_pipeline(
     output_folder: str,
     ui_callback: SpeakerResolutionUI | None = None,
 ) -> None:
-    """Run the complete ETL pipeline.
+    """Run the complete ETL pipeline (legacy transcript-only mode).
 
     Args:
         source: Either "clipboard" or "file"
@@ -106,120 +401,16 @@ def run_pipeline(
         FileNotFoundError: If file path doesn't exist
         RuntimeError: If pipeline execution fails
     """
-    logger.info("=" * 60)
-    logger.info("STARTING TRANSCRIPT ETL PIPELINE")
-    logger.info("=" * 60)
-    logger.info(f"Source: {source}")
-    logger.info(f"File path: {file_path}")
-    logger.info(f"Output format: {output_format}")
-    logger.info(f"Output name: {output_name}")
-    logger.info(f"Output folder: {output_folder}")
-    logger.info("-" * 60)
-
-    # Extract
-    logger.info(f"STAGE 1: EXTRACT - Reading from {source}")
-    print(f"Extracting from {source}...")
-    try:
-        if source == "clipboard":
-            logger.debug("Calling extract_from_clipboard()")
-            raw_text = extract_from_clipboard()
-        elif source == "file":
-            if not file_path:
-                raise ValueError("--file is required when --source=file")
-            logger.debug(f"Calling extract_from_file({file_path})")
-            raw_text = extract_from_file(file_path)
-        else:
-            raise ValueError(f"Invalid source: {source}")
-
-        logger.info(f"✓ Extracted {len(raw_text)} characters")
-        logger.debug(f"First 200 chars: {raw_text[:200]!r}")
-        logger.info("-" * 60)
-    except Exception as e:
-        logger.error(f"✗ EXTRACT FAILED: {type(e).__name__}: {e}")
-        logger.debug(traceback.format_exc())
-        raise
-
-    # Transform - Normalize
-    logger.info("STAGE 2: NORMALIZE - Cleaning text")
-    print("Normalizing text...")
-    try:
-        logger.debug("Calling normalize_text()")
-        normalized_text = normalize_text(raw_text)
-        logger.info(f"✓ Normalized to {len(normalized_text)} characters")
-        logger.debug(f"First 200 chars: {normalized_text[:200]!r}")
-        logger.info("-" * 60)
-    except Exception as e:
-        logger.error(f"✗ NORMALIZE FAILED: {type(e).__name__}: {e}")
-        logger.debug(traceback.format_exc())
-        raise
-
-    # Transform - Enhance
-    logger.info("STAGE 3: ENHANCE - Detecting paragraphs and speakers")
-    print("Enhancing text (paragraphs, speakers)...")
-    try:
-        logger.debug("Calling enhance_text()")
-        enhanced_text, speaker_map = enhance_text(normalized_text, ui_callback=ui_callback)
-        logger.info(f"✓ Enhanced to {len(enhanced_text)} characters")
-        logger.info(f"✓ Identified {len(speaker_map)} speakers: {speaker_map}")
-        logger.debug(f"First 200 chars: {enhanced_text[:200]!r}")
-        print(f"Identified speakers: {speaker_map if speaker_map else 'None'}")
-        logger.info("-" * 60)
-    except Exception as e:
-        logger.error(f"✗ ENHANCE FAILED: {type(e).__name__}: {e}")
-        logger.debug(traceback.format_exc())
-        raise
-
-    # Parse enhanced text into Document model
-    logger.info("STAGE 4: PARSE - Building document structure")
-    print("Parsing document structure...")
-    try:
-        logger.debug("Calling parse_enhanced_text()")
-        document = parse_enhanced_text(enhanced_text)
-        logger.info(f"✓ Parsed document with {len(document.sections)} sections")
-        for i, section in enumerate(document.sections):
-            logger.debug(
-                f"  Section {i+1}: {
-                    section.section_type.value
-                }, {len(section.paragraphs)} paragraphs"
-            )
-        logger.info("-" * 60)
-    except Exception as e:
-        logger.error(f"✗ PARSE FAILED: {type(e).__name__}: {e}")
-        logger.debug(traceback.format_exc())
-        raise
-
-    # Load - Format and save
-    logger.info(f"STAGE 5: LOAD - Formatting to {output_format.upper()}")
-    print(f"Formatting to {output_format.upper()}...")
-    try:
-        output_path = Path(output_folder) / output_name
-        logger.debug(f"Output path: {output_path}")
-
-        # Format based on output format
-        if output_format == "docx":
-            logger.debug("Calling format_to_docx()")
-            format_to_docx(document, str(output_path))
-        elif output_format == "rtf":
-            logger.debug("Calling format_to_rtf()")
-            format_to_rtf(document, str(output_path))
-        elif output_format == "md":
-            logger.debug("Calling format_to_md()")
-            format_to_md(document, str(output_path))
-        else:
-            raise ValueError(f"Unsupported format: {output_format}")
-
-        logger.info(f"✓ Output saved to: {output_path}")
-        print(f"✓ Output saved to: {output_path}")
-        logger.info("=" * 60)
-        logger.info("PIPELINE COMPLETED SUCCESSFULLY")
-        logger.info("=" * 60)
-    except Exception as e:
-        logger.error(f"✗ LOAD FAILED: {type(e).__name__}: {e}")
-        logger.debug(traceback.format_exc())
-        raise
-
-    # Save the output folder to config
-    config.save_last_output_folder(output_folder)
+    # Delegate to unified pipeline for backward compatibility
+    run_unified_pipeline(
+        mode="new",
+        output_format=output_format,
+        output_name=output_name,
+        output_folder=output_folder,
+        transcript_source=source,
+        transcript_file=file_path,
+        ui_callback=ui_callback,
+    )
 
 
 def main(args: list[str] | None = None) -> int:
@@ -232,7 +423,6 @@ def main(args: list[str] | None = None) -> int:
         Exit code (0 for success, non-zero for error)
     """
     # Set up logging first thing
-    # log_file = Path.home() / "artifacts" / "pipeline.log"
     log_file = Path(__file__).resolve().parents[2] / "artifacts" / "pipeline.log"
     setup_logging(str(log_file))
     logger.info("Transcript ETL Pipeline starting...")
@@ -240,29 +430,35 @@ def main(args: list[str] | None = None) -> int:
     parser = create_parser()
     parsed_args = parser.parse_args(args)
 
-    # Validate arguments
+    # Extract arguments
+    mode = parsed_args.mode
+    update_file = parsed_args.update_file
+    update_action = parsed_args.update_action
     source = parsed_args.source
     file_path = parsed_args.file
+    notes_source = parsed_args.notes_source
+    notes_file = parsed_args.notes_file
+    notes_label = parsed_args.notes_label
     output_format = parsed_args.format
     output_name = parsed_args.output_name
     output_folder = parsed_args.output_folder
 
     logger.debug(
-        f"Parsed arguments: source={source}, file={file_path}, "
+        f"Parsed arguments: mode={mode}, source={source}, notes_source={notes_source}, "
         + f"format={output_format}, name={output_name}, folder={output_folder}"
     )
 
-    # Try to use UI for missing arguments
+    # Determine if we need to prompt UI for source
+    has_source = (source is not None) or (notes_source is not None)
+    use_ui = not has_source or not output_folder
+
+    # Try to import UI module
     from transcript_etl_pipeline.transform.speakers import SpeakerResolutionUI
 
     ui_callback: SpeakerResolutionUI | None = None
-    use_ui = not all([source, output_folder])
-
-    logger.debug(f"Use UI: {use_ui}")
-
-    # Try to import UI module (but don't create callback yet - do it lazily)
     ui_module_available = False
     ui_module = None
+
     try:
         logger.debug("Importing UI module")
         from transcript_etl_pipeline import ui as ui_module
@@ -271,8 +467,8 @@ def main(args: list[str] | None = None) -> int:
 
         # Only prompt for missing CLI arguments if use_ui is True
         if use_ui:
-            # Prompt for source if missing
-            if not source:
+            # For new mode without any source, prompt for transcript source
+            if mode == "new" and not source and not notes_source:
                 logger.debug("Prompting for source selection")
                 source = ui_module.prompt_source_selection()
                 if not source:
@@ -289,15 +485,14 @@ def main(args: list[str] | None = None) -> int:
                     print("Operation cancelled by user.")
                     return 1
 
-            # Prompt for format if not specified (though it has a default)
-            if not parsed_args.format:
-                logger.debug("Prompting for format selection")
-                fmt = ui_module.prompt_format_selection()
-                if not fmt:
-                    logger.warning("User cancelled format selection")
+            # Prompt for notes file if notes_source is file and notes_file is missing
+            if notes_source == "file" and not notes_file:
+                logger.debug("Prompting for notes file selection")
+                notes_file = ui_module.prompt_file_selection()
+                if not notes_file:
+                    logger.warning("User cancelled notes file selection")
                     print("Operation cancelled by user.")
                     return 1
-                output_format = fmt
 
             # Generate default filename if not provided
             if not output_name:
@@ -322,65 +517,63 @@ def main(args: list[str] | None = None) -> int:
     except RuntimeError as e:
         logger.error(f"UI initialization failed: {e}")
         logger.debug(traceback.format_exc())
-        # If UI fails but we were only trying to get speaker callback, continue
         if use_ui:
-            # UI was needed for CLI arguments - this is a hard error
             print(f"Error: {e}")
             print("Please provide all required CLI arguments.")
             parser.print_help()
             return 1
         else:
-            # UI was only for speaker resolution - log warning and continue
             logger.warning(f"UI unavailable for speaker resolution: {e}")
             logger.info("Speaker resolution will be skipped if auto-detect fails")
             ui_module_available = False
             ui_module = None
 
-    # Create UI callback lazily - only if UI module is available
-    # This will be passed to run_pipeline and created just before use
+    # Create UI callback lazily
     if ui_module_available and ui_module is not None:
         logger.debug("UI module available for speaker resolution")
         ui_callback = ui_module.create_speaker_resolution_callback()
     else:
         logger.debug("UI module not available - speaker resolution will use auto-detection only")
 
+    # Validate arguments based on mode
+    if mode == "update":
+        if not update_file:
+            print("Error: --update-file is required when --mode=update")
+            return 1
+        if not update_action:
+            print("Error: --update-action is required when --mode=update")
+            return 1
+        if not Path(update_file).exists():
+            print(f"Error: Update file not found: {update_file}")
+            return 1
+
     # If not using UI, check for missing required args
     if not use_ui:
-        missing_args: list[str] = []
-
-        if not source:
-            missing_args.append("--source")
-
-        if source == "file" and not file_path:
-            missing_args.append("--file (required when --source=file)")
-
         if not output_name:
-            # Generate default filename
             output_name = generate_default_filename(output_format)
             logger.info(f"Using default filename: {output_name}")
             print(f"Using default filename: {output_name}")
 
         if not output_folder:
-            # Try to use last folder from config
             last_folder = config.load_last_output_folder()
             if last_folder:
                 output_folder = last_folder
                 logger.info(f"Using last output folder: {output_folder}")
                 print(f"Using last output folder: {output_folder}")
             else:
-                missing_args.append("--output-folder")
+                print("Error: --output-folder is required")
+                parser.print_help()
+                return 1
 
-        # If any required args are missing, show error
-        if missing_args:
-            logger.error(f"Missing required arguments: {missing_args}")
-            print(f"Error: Missing required arguments: {', '.join(missing_args)}")
-            parser.print_help()
-            return 1
-
-    # Validate file path if provided
+    # Validate file paths
     if source == "file" and file_path and not Path(file_path).exists():
         logger.error(f"File not found: {file_path}")
         print(f"Error: File not found: {file_path}")
+        return 1
+
+    if notes_source == "file" and notes_file and not Path(notes_file).exists():
+        logger.error(f"Notes file not found: {notes_file}")
+        print(f"Error: Notes file not found: {notes_file}")
         return 1
 
     # Validate output folder
@@ -395,20 +588,25 @@ def main(args: list[str] | None = None) -> int:
             print(f"Error: Output folder is not a directory: {output_folder}")
             return 1
 
-    # At this point, all required arguments must be present
-    assert source is not None, "source must be set"
+    # At this point, ensure required values are set
     assert output_name is not None, "output_name must be set"
     assert output_folder is not None, "output_folder must be set"
 
     # Run the pipeline
     try:
         logger.info("Starting pipeline execution...")
-        run_pipeline(
-            source=source,
-            file_path=file_path,
+        run_unified_pipeline(
+            mode=mode,
             output_format=output_format,
             output_name=output_name,
             output_folder=output_folder,
+            transcript_source=source,
+            transcript_file=file_path,
+            notes_source=notes_source,
+            notes_file=notes_file,
+            notes_label=notes_label,
+            update_file=update_file,
+            update_action=update_action,
             ui_callback=ui_callback,
         )
         logger.info("Pipeline completed successfully!")
@@ -423,5 +621,3 @@ def main(args: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     run_with_callgraph(main)
-    # sys.exit(run_with_callgraph(main))
-    # sys.exit(main())

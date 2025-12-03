@@ -30,10 +30,13 @@ class SpacingRule:
 # Font definitions
 LABEL_FONT = FontStyle(name="Calibri", size_pt=10.0, bold=True)
 BODY_FONT = FontStyle(name="Calibri", size_pt=10.0, bold=False)
+NOTES_HEADER_FONT = FontStyle(name="Calibri", size_pt=14.0, bold=True)
 
 # Spacing rules by section type
 SPACING_RULES = {
     SectionType.METADATA: SpacingRule(before_pt=0.0, after_pt=0.0, line_spacing=1.0),
+    SectionType.NOTES_HEADER: SpacingRule(before_pt=12.0, after_pt=0.0, line_spacing=1.0),
+    SectionType.NOTES_BODY: SpacingRule(before_pt=6.0, after_pt=0.0, line_spacing=1.0),
     SectionType.TRANSCRIPT_LABEL: SpacingRule(before_pt=12.0, after_pt=0.0, line_spacing=1.0),
     SectionType.SPEAKER_PARAGRAPH: SpacingRule(before_pt=12.0, after_pt=0.0, line_spacing=1.0),
     SectionType.REGULAR_PARAGRAPH: SpacingRule(before_pt=6.0, after_pt=0.0, line_spacing=1.0),
