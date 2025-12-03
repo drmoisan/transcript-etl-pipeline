@@ -1,6 +1,6 @@
 # Developer Tooling
 
-This document summarizes the core developer tooling for `quicken_helper`: what it is for, and the basic commands you should run during everyday development.
+This document summarizes the core developer tooling for `transcript-etl-pipeline`: what it is for, and the basic commands you should run during everyday development.
 
 All commands below assume you are in the project root and have run:
 
@@ -8,6 +8,8 @@ All commands below assume you are in the project root and have run:
 - `poetry run pre-commit install` – install local git hooks that mirror CI behavior.
 
 You can either activate the Poetry virtualenv (`poetry shell`) or prefix commands with `poetry run`.
+
+**Note**: For the complete development workflow including when to run these tools, see [code-change.instructions.md](code-change.instructions.md).
 
 ## Formatting – Black
 
@@ -26,9 +28,10 @@ You can either activate the Poetry virtualenv (`poetry shell`) or prefix command
 
 ## Type Checking – Pyright
 
-- **Purpose**: Enforce strict typing (`typeCheckingMode = "strict"`) for the `quicken_helper` package.
+- **Purpose**: Enforce strict typing (`typeCheckingMode = "strict"`) for the `transcript_etl_pipeline` package.
 - **Primary command**: `poetry run pyright`
-  - Configuration: `[tool.pyright]` in `pyproject.toml` (tests are currently excluded).
+  - Configuration: `[tool.pyright]` in `pyproject.toml`.
+  - All source code and tests are type-checked in strict mode.
 - **When to use**: Before any non-trivial change is merged. Avoid adding new Pyright errors.
 
 ## Testing – Pytest
@@ -63,30 +66,48 @@ If you use VS Code, `.vscode/tasks.json` defines one-click tasks that wrap the c
 - `Black: format` – runs `poetry run black .`
 - `Ruff: lint` – runs `poetry run ruff check`
 - `Pyright: type-check` – runs `poetry run pyright`
-- `Pyright: log output` – runs Pyright and writes a detailed log to `pyright.log`
 - `Pytest: run tests` – runs `poetry run pytest`
-- `Coverage: html report` – runs tests with coverage and generates an HTML report
-- `Coverage: Codecov upload` – prepares coverage XML and calls `codecov` (requires `CODECOV_TOKEN`)
+- `Run All Checks` – runs all quality checks sequentially (Black → Ruff → Pyright → Pytest)
+- `Fix All` – runs the automated fix script (`scripts/fix-all.ps1`)
 
-You can invoke these via **Terminal → Run Task…** (or the Command Palette: “Tasks: Run Task”).
+You can invoke these via **Terminal → Run Task…** (or the Command Palette: "Tasks: Run Task").
+
+## PowerShell Scripts
+
+The repository includes several PowerShell scripts in the `scripts/` directory for automation:
+
+### fix-all.ps1
+
+- **Purpose**: Automated fix-and-validate workflow that runs all quality checks sequentially.
+- **Command**: `.\scripts\fix-all.ps1` or via VS Code task: "Fix All"
+- **Behavior**:
+  1. Runs Black formatter
+  2. Runs Ruff linter
+  3. Runs Pyright type checker
+  4. Runs Pytest test suite
+  5. Exits on first failure, providing clear error messages
+- **When to use**: Quick validation before committing or when you want to run the full quality check sequence.
+
+### collect-commit-context.ps1
+
+- **Purpose**: Generate comprehensive commit context for creating detailed commit messages.
+- **Command**: `.\scripts\collect-commit-context.ps1`
+- **Output**: Creates `artifacts/commit_context.txt` with:
+  - Repository remotes and branch information
+  - Git status (staged and unstaged files)
+  - Full unified diffs of all changes
+  - Diff statistics
+  - List of changed Python files
+  - Last commit information
+- **When to use**: Before committing significant changes to generate context for commit messages.
 
 ## Profiling – VizTracer
 
 - **Purpose**: Profile and visualize performance hotspots in the codebase.
 - **Usage examples**:
-  - Profile a specific test module:`poetry run viztracer -m pytest tests/path/to/test_module.py`
-  - Profile a script or entry point:
-    `poetry run viztracer python -m quicken_helper.gui_viewers.app`
+  - Profile a specific test module:
+    `poetry run viztracer -m pytest tests/path/to/test_module.py`
+  - Profile the CLI entry point:
+    `poetry run viztracer python -m transcript_etl_pipeline.cli run --source clipboard --format docx`
 - **Output**: VizTracer produces a trace file that you can open in a browser to inspect timelines and call stacks.
-
-## Recommended Local Workflow
-
-For each change, aim to follow this sequence:
-
-1. Format: `poetry run black .`
-2. Lint: `poetry run ruff check`
-3. Type-check: `poetry run pyright`
-4. Test: `poetry run pytest`
-5. (Optional) Coverage / profiling for larger refactors
-
-This keeps the codebase consistent, typed, and well-tested as it evolves.
+- **When to use**: When investigating performance issues or optimizing critical paths.
