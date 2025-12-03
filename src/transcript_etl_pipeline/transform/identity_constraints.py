@@ -92,7 +92,11 @@ def detect_addresses_to_person(sentence: str) -> list[str]:
     Direct address patterns:
     - "Name, what..." (vocative with comma at start)
     - "..., Name." (vocative with comma at end)
+    - "..., Name." (vocative before final punctuation)
     - "Thanks, Name" or "Thank you, Name"
+    - "Oh, interesting, Name" (reactionary phrase + name)
+    - "Exactly, Name" (acknowledgment + name)
+    - "Good point, Name" (positive feedback + name)
     - "Name mentioned/said..." (attribution)
 
     NOT direct address (excluded patterns):
@@ -156,6 +160,14 @@ def detect_addresses_to_person(sentence: str) -> list[str]:
         "Oh",
         "Well",
         "Now",
+        "Exactly",
+        "True",
+        "Fair",
+        "Interesting",
+        "Right",
+        "Ha",
+        "Wow",
+        "Nice",
     }
 
     # Filter out excluded words and phrases
@@ -216,33 +228,38 @@ def detect_addresses_to_person(sentence: str) -> list[str]:
         # Check for direct address patterns
         is_direct_address = False
 
-        # "Name, " with vocative comma
-        if (
-            re.search(rf"\b{name_lower},\s", sentence_lower)
-            or re.search(
-                rf"^\s*{name_lower}\s+(what|where|when|why|how|who|can|could|would|will|tell|explain|show)",
-                sentence_lower,
-            )
-            or re.search(rf",\s*{name_lower}[.,!?]?\s*$", sentence_lower)
-            or re.search(rf"\b(thanks|thank you),?\s+{name_lower}\b", sentence_lower)
-            or re.search(
-                rf"\b{name_lower}\s+(mentioned|said|thinks|believes|suggested)\b",
-                sentence_lower,
-            )
-        ):
-            is_direct_address = True
+        # Check various vocative patterns
+        vocative_patterns = [
+            # "Name, " with vocative comma at start
+            rf"\b{name_lower},\s",
+            # "Name what/where/..." vocative without comma
+            rf"^\s*{name_lower}\s+(what|where|when|why|how|who|can|could|would|will|tell|explain|show)",
+            # ", Name." or ", Name?" or ", Name!" at the end
+            rf",\s*{name_lower}[.,!?]?\s*$",
+            # "thanks Name" or "thank you Name"
+            rf"\b(thanks|thank you),?\s+{name_lower}\b",
+            # "Name mentioned/said..." (attribution)
+            rf"\b{name_lower}\s+(mentioned|said|thinks|believes|suggested)\b",
+        ]
 
-        # Questions asking about someone: "Can Name...", "Does Name...", "Will Name..."
-        # Note: This is asking ABOUT the person, but for constraint purposes, it indicates
-        # the speaker is NOT that person, which is the same as addressing them.
-        # However, this might be too broad. Let's be more conservative and NOT include this
-        # pattern in addresses_to_person, as it's more of a "mentions" pattern.
-        # Commenting out for now:
-        # elif re.search(
-        #     rf"\b(can|could|does|did|will|would|should|has|have)\s+{name_lower}\b",
-        #     sentence_lower,
-        # ):
-        #     is_direct_address = True
+        for pattern in vocative_patterns:
+            if re.search(pattern, sentence_lower):
+                is_direct_address = True
+                break
+
+        # New patterns for P2.1:
+        # "Oh, interesting, Name" - reactionary phrase followed by name
+        # This handles patterns like "Oh, interesting, Devin"
+        if not is_direct_address:
+            reactionary_patterns = [
+                r"oh,?\s+(interesting|really|wow),?\s+" + name_lower,
+                r"(interesting|really|exactly|true|fair),?\s+" + name_lower,
+                r"(good point|great point|nice catch),?\s+" + name_lower,
+            ]
+            for pattern in reactionary_patterns:
+                if re.search(pattern, sentence_lower):
+                    is_direct_address = True
+                    break
 
         if is_direct_address:
             addressed_names.append(name)
