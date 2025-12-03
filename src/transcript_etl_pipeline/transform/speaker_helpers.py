@@ -19,6 +19,11 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Round-robin assignment thresholds for multi-speaker detection
+# When segments/num_speakers falls between these ratios, use round-robin assignment
+MIN_ROUND_ROBIN_RATIO = 4
+MAX_ROUND_ROBIN_RATIO = 8
+
 __all__ = [
     "ensure_nltk_data",
     "ensure_sentence_tokenizer",
@@ -52,6 +57,15 @@ ACKNOWLEDGMENTS = frozenset(
         "great",
         "perfect",
         "excellent",
+        "exactly",
+        "true",
+        "fair",
+        "definitely",
+        "certainly",
+        "agreed",
+        "correct",
+        "indeed",
+        "interesting",
     }
 )
 TURN_TAKING_CUES = frozenset({"well", "so", "but", "actually", "anyway", "however", "let's", "now"})
@@ -173,6 +187,13 @@ def tokenize_into_sentences(text: str) -> list[str]:
 
     # Normalize the text - replace line breaks with spaces
     normalized = text.replace("\r\n", " ").replace("\r", " ").replace("\n", " ")
+
+    # Normalize curly quotes to straight quotes for better sentence tokenization
+    # NLTK handles straight quotes more reliably for sentence boundary detection
+    normalized = normalized.replace("\u201c", '"').replace("\u201d", '"')  # "..."
+    normalized = normalized.replace("\u2018", "'").replace("\u2019", "'")  # '...'
+    normalized = normalized.replace("\u2014", "—")  # em dash
+
     # Collapse multiple spaces
     normalized = re.sub(r"\s+", " ", normalized).strip()
 
@@ -265,7 +286,8 @@ def detect_dialogue_markers(sentence: str) -> dict[str, bool]:
 
     Markers include:
     - Greetings (hello, hi, hey)
-    - Acknowledgments (yes, no, yeah, okay, sure, right)
+    - Acknowledgments (yes, no, yeah, okay, sure, right, exactly, etc.)
+    - Exclamations (Ha!, Wow!, Nice!, Cool!)
     - Turn-taking cues (well, so, but, actually)
     - Response patterns (I think, I believe, I agree)
 
@@ -292,12 +314,18 @@ def detect_dialogue_markers(sentence: str) -> dict[str, bool]:
 
     # Check for acknowledgments at start
     first_word = sentence_lower.split()[0] if sentence_lower.split() else ""
-    first_word = first_word.rstrip(".,!?")
-    if first_word in ACKNOWLEDGMENTS:
+    first_word_clean = first_word.rstrip(".,!?")
+    if first_word_clean in ACKNOWLEDGMENTS:
+        markers["is_acknowledgment"] = True
+
+    # Check for exclamation acknowledgments (Ha!, Wow!, Nice!, Cool!)
+    # These typically indicate a speaker change - someone is reacting
+    exclamation_acks = {"ha", "haha", "wow", "nice", "cool", "whoa", "oh", "aha", "ooh"}
+    if first_word_clean in exclamation_acks:
         markers["is_acknowledgment"] = True
 
     # Check for turn-taking cues at start
-    if first_word in TURN_TAKING_CUES:
+    if first_word_clean in TURN_TAKING_CUES:
         markers["is_turn_taking"] = True
 
     # Check for response patterns
@@ -517,7 +545,18 @@ def group_sentences_by_similarity(
 
     # If we have fewer segments than speakers, or very few change points,
     # use round-robin assignment at change points to ensure multiple speakers
-    if len(segments) <= num_speakers or len(change_points) <= num_speakers:
+    # Also use round-robin when segments are roughly divisible by speakers
+    # (suggesting a regular turn-taking pattern)
+    use_round_robin = (
+        len(segments) <= num_speakers
+        or len(change_points) <= num_speakers
+        or (
+            len(segments) >= num_speakers * MIN_ROUND_ROBIN_RATIO
+            and len(segments) <= num_speakers * MAX_ROUND_ROBIN_RATIO
+        )
+    )
+
+    if use_round_robin:
         # Simple round-robin: each segment gets a different speaker
         for seg_idx, (start, end) in enumerate(segments):
             speaker_idx = seg_idx % num_speakers

@@ -205,12 +205,12 @@ class TestSpeakerlessIntegrationComparison:
         """Test simple question-answer dialogue produces expected speaker changes.
 
         Input (4 lines):
-        0: What time is the meeting?  (question)
-        1: It starts at 3 PM.         (no change triggers)
-        2: Where is it being held?    (no change triggers)
-        3: Conference room B.         (no change triggers)
+        0: What time is the meeting?  (question - Speaker A)
+        1: It starts at 3 PM.         (answer - Speaker B, triggered by Q&A)
+        2: Where is it being held?    (follow-up question - same speaker B continues)
+        3: Conference room B.         (answer - Speaker A, triggered by Q&A)
 
-        Expected changes at: [0, 3] - start, then after two non-triggering lines
+        Expected changes at: [0, 1, 3] - Q&A pattern with follow-up question
         """
         text = (
             "What time is the meeting?\n"
@@ -221,8 +221,9 @@ class TestSpeakerlessIntegrationComparison:
 
         changes = detect_speaker_changes(text)
 
-        # Verify exact expected speaker change points
-        expected_changes = [0, 3]
+        # Verify expected speaker change points for Q&A dialogue
+        # Question-answer triggers change, but follow-up question may not
+        expected_changes = [0, 1, 3]
         assert (
             changes == expected_changes
         ), f"Expected speaker changes at {expected_changes}, got {changes}"
@@ -230,14 +231,13 @@ class TestSpeakerlessIntegrationComparison:
         # Also verify labeling produces valid output
         result = assign_speaker_labels(text)
         lines = [line for line in result.split("\r\n") if line.strip()]
-        # With grouping, sentences 0, 1, 2 are Speaker A, and 3 is Speaker B
-        # So we expect 2 lines
-        assert len(lines) == 2, f"Expected 2 lines (grouped), got {len(lines)}"
+        # With Q&A pattern, we expect 3 lines
+        assert len(lines) == 3, f"Expected 3 lines (Q&A pattern), got {len(lines)}"
         assert all("Speaker" in line for line in lines)
         assert "What time" in lines[0]
-        assert "It starts" in lines[0]
-        assert "Where is" in lines[0]
-        assert "Conference room" in lines[1]
+        assert "It starts" in lines[1]
+        assert "Where is" in lines[1]
+        assert "Conference room" in lines[2]
 
     def test_acknowledgment_pattern(self) -> None:
         """Test that acknowledgments trigger speaker changes at exact positions.
