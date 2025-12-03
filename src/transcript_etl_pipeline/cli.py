@@ -80,6 +80,13 @@ def create_parser() -> argparse.ArgumentParser:
         help="Path to transcript file (required if --source=file)",
     )
 
+    parser.add_argument(
+        "--num-speakers",
+        type=int,
+        default=None,
+        help="Number of speakers for speakerless transcripts (default: auto-detect 2-4)",
+    )
+
     # Notes source
     parser.add_argument(
         "--notes-source",
@@ -198,6 +205,8 @@ def run_unified_pipeline(
     update_action: str | None = None,
     # UI callback
     ui_callback: SpeakerResolutionUI | None = None,
+    # Speakerless detection
+    num_speakers: int | None = None,
 ) -> None:
     """Run the unified ETL pipeline supporting notes and transcript.
 
@@ -214,6 +223,7 @@ def run_unified_pipeline(
         update_file: Path to existing file for update mode
         update_action: Action for update mode
         ui_callback: Optional UI callback for speaker resolution
+        num_speakers: Optional number of speakers for speakerless detection
 
     Raises:
         ValueError: If invalid parameters are provided
@@ -251,7 +261,12 @@ def run_unified_pipeline(
             if not transcript_source:
                 raise ValueError("--source is required for transcript update")
             _process_transcript_update(
-                document, transcript_source, transcript_file, update_action, ui_callback
+                document,
+                transcript_source,
+                transcript_file,
+                update_action,
+                ui_callback,
+                num_speakers,
             )
         else:
             raise ValueError(f"Invalid update action: {update_action}")
@@ -273,7 +288,9 @@ def run_unified_pipeline(
         if transcript_source:
             logger.info(f"PROCESSING TRANSCRIPT from {transcript_source}")
             print(f"Processing transcript from {transcript_source}...")
-            transcript_doc = _process_transcript(transcript_source, transcript_file, ui_callback)
+            transcript_doc = _process_transcript(
+                transcript_source, transcript_file, ui_callback, num_speakers
+            )
             # Merge transcript sections into document
             for section in transcript_doc.sections:
                 document.add_section(section)
@@ -300,6 +317,7 @@ def _process_transcript(
     source: str,
     file_path: str | None,
     ui_callback: SpeakerResolutionUI | None,
+    num_speakers: int | None = None,
 ) -> Document:
     """Process transcript text through the full pipeline.
 
@@ -307,6 +325,7 @@ def _process_transcript(
         source: Source of transcript text
         file_path: Path to file if source is "file"
         ui_callback: UI callback for speaker resolution
+        num_speakers: Optional number of speakers for speakerless detection
 
     Returns:
         Processed Document
@@ -320,7 +339,9 @@ def _process_transcript(
     logger.info(f"✓ Normalized to {len(normalized_text)} characters")
 
     # Enhance
-    enhanced_text, speaker_map = enhance_text(normalized_text, ui_callback=ui_callback)
+    enhanced_text, speaker_map = enhance_text(
+        normalized_text, ui_callback=ui_callback, num_speakers=num_speakers
+    )
     logger.info(f"✓ Enhanced, identified {len(speaker_map)} speakers")
     print(f"Identified speakers: {speaker_map if speaker_map else 'None'}")
 
@@ -361,6 +382,7 @@ def _process_transcript_update(
     file_path: str | None,
     action: str,
     ui_callback: SpeakerResolutionUI | None,
+    num_speakers: int | None = None,
 ) -> None:
     """Process transcript update on existing document.
 
@@ -370,8 +392,9 @@ def _process_transcript_update(
         file_path: Path to file if source is "file"
         action: Either "add-transcript" or "replace-transcript"
         ui_callback: UI callback for speaker resolution
+        num_speakers: Optional number of speakers for speakerless detection
     """
-    transcript_doc = _process_transcript(source, file_path, ui_callback)
+    transcript_doc = _process_transcript(source, file_path, ui_callback, num_speakers)
 
     mode = "add" if action == "add-transcript" else "replace"
     document.merge_transcript(transcript_doc.sections, mode=mode)
@@ -385,6 +408,7 @@ def run_pipeline(
     output_name: str,
     output_folder: str,
     ui_callback: SpeakerResolutionUI | None = None,
+    num_speakers: int | None = None,
 ) -> None:
     """Run the complete ETL pipeline (legacy transcript-only mode).
 
@@ -395,6 +419,7 @@ def run_pipeline(
         output_name: Name for output file (with extension)
         output_folder: Folder to save output file
         ui_callback: Optional UI callback for speaker resolution
+        num_speakers: Optional number of speakers for speakerless detection
 
     Raises:
         ValueError: If invalid parameters are provided
@@ -410,6 +435,7 @@ def run_pipeline(
         transcript_source=source,
         transcript_file=file_path,
         ui_callback=ui_callback,
+        num_speakers=num_speakers,
     )
 
 
@@ -442,10 +468,12 @@ def main(args: list[str] | None = None) -> int:
     output_format = parsed_args.format
     output_name = parsed_args.output_name
     output_folder = parsed_args.output_folder
+    num_speakers = parsed_args.num_speakers
 
     logger.debug(
         f"Parsed arguments: mode={mode}, source={source}, notes_source={notes_source}, "
-        + f"format={output_format}, name={output_name}, folder={output_folder}"
+        + f"format={output_format}, name={output_name}, folder={output_folder}, "
+        + f"num_speakers={num_speakers}"
     )
 
     # Determine if we need to prompt UI for source
@@ -608,6 +636,7 @@ def main(args: list[str] | None = None) -> int:
             update_file=update_file,
             update_action=update_action,
             ui_callback=ui_callback,
+            num_speakers=num_speakers,
         )
         logger.info("Pipeline completed successfully!")
         return 0

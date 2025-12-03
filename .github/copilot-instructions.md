@@ -172,6 +172,31 @@ Implement in `transform/normalize.py`.
 
 ## **5.2 Enhance Requirements**
 
+### **5.2.0 Speakerless Detection (Entry Point)**
+
+**Before** processing speakers, check if the transcript has speaker labels using `has_speaker_labels()`:
+
+```python
+from transcript_etl_pipeline.transform.speakerless import (
+    has_speaker_labels,
+    assign_speaker_labels,
+)
+
+if not has_speaker_labels(normalized_text):
+    # Apply speakerless detection - adds generic Speaker A, Speaker B, etc.
+    text_with_speakers = assign_speaker_labels(normalized_text, num_speakers)
+    speaker_map = {}  # No name resolution for generic speakers
+else:
+    # Proceed with speaker resolution for transcripts with labels
+    text_with_speakers, speaker_map = resolve_speakers(normalized_text, ui_callback)
+```
+
+This ensures transcripts without explicit speaker labels are handled correctly by applying NLTK-based speakerless detection before speaker resolution.
+
+**Parameters:**
+- `num_speakers`: Optional parameter (default None = auto-detect 2-4 speakers)
+- Can be specified via CLI: `--num-speakers 3`
+
 ### **5.2.1 Paragraph Detection**
 
 Implement in `transform/paragraphs.py`.

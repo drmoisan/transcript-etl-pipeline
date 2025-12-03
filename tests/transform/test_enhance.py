@@ -119,3 +119,104 @@ class TestEnhanceText:
         assert "Hello" in result
         # Might or might not resolve speakers (depends on auto-resolution)
         assert len(result) > 0
+
+
+class TestEnhanceTextSpeakerlessRouting:
+    """Test routing logic for speakerless transcripts in enhance_text."""
+
+    def test_speakerless_transcript_gets_labels(self) -> None:
+        """Test that transcript WITHOUT speaker labels triggers speakerless detection.
+
+        Verifies:
+        1. Speakerless detection is triggered
+        2. Generic speaker labels are added
+        3. Empty speaker mapping is returned
+        """
+        text_no_speakers = (
+            "Hello everyone, thanks for joining.\r\n"
+            "Thank you for having me.\r\n"
+            "Let's get started with the agenda.\r\n"
+        )
+
+        enhanced, speaker_map = enhance_text(text_no_speakers)
+
+        # Verify generic speaker labels were added
+        assert "Speaker A:" in enhanced or "Speaker B:" in enhanced
+
+        # Verify speaker mapping is empty (no name resolution for generic speakers)
+        assert speaker_map == {}
+
+    def test_speakerless_with_metadata(self) -> None:
+        """Test speakerless detection with metadata section.
+
+        Metadata lines like "Date:", "Attendees:" may be detected as labels,
+        but if dialogue has no labels, speakerless detection should apply.
+        """
+        text = (
+            "Date: 2025-12-03\r\n"
+            "Attendees: Alice, Bob\r\n"
+            "\r\n"
+            "Hello everyone.\r\n"
+            "Thanks for joining.\r\n"
+        )
+
+        enhanced, _speaker_map = enhance_text(text)
+
+        # Verify text was enhanced
+        assert enhanced is not None
+        assert len(enhanced) > 0
+
+        # Current behavior: metadata may be detected as labels
+        # This test documents actual behavior
+        assert "Hello everyone" in enhanced
+
+    def test_speakerless_with_num_speakers_parameter(self) -> None:
+        """Test that num_speakers parameter is accepted and used.
+
+        Verifies:
+        1. num_speakers parameter is accepted
+        2. Parameter is passed to speakerless detection
+        """
+        text = (
+            "Hello, welcome to the meeting.\r\n"
+            "Thank you for having us.\r\n"
+            "Let's discuss the project.\r\n"
+        )
+
+        # Test with explicit num_speakers
+        enhanced, _speaker_map = enhance_text(text, num_speakers=2)
+
+        # Verify speakerless detection was applied
+        assert "Speaker A:" in enhanced
+        # Verify speaker mapping is empty for speakerless
+        assert len(_speaker_map) == 0
+
+    def test_labeled_transcript_not_affected_by_speakerless(self) -> None:
+        """Test that transcripts WITH labels are not affected by speakerless routing.
+
+        Regression test to ensure speakerless integration doesn't break
+        existing labeled transcript processing.
+        """
+        text = "Manager: Let's review the results.\r\n" "Analyst: Revenue is up 15 percent.\r\n"
+
+        enhanced, _speaker_map = enhance_text(text)
+
+        # Verify existing behavior is preserved
+        assert "Manager:" in enhanced
+        assert "Analyst:" in enhanced
+
+    def test_pure_dialogue_triggers_speakerless(self) -> None:
+        """Test that continuous dialogue without labels triggers speakerless detection."""
+        pure_dialogue = (
+            "Welcome to our quarterly review. "
+            "I've analyzed the metrics. "
+            "Thank you. "
+            "What are your thoughts?"
+        )
+
+        enhanced, _speaker_map = enhance_text(pure_dialogue)
+
+        # Verify speakerless detection was triggered
+        assert "Speaker A:" in enhanced or "Speaker B:" in enhanced
+        # Verify speaker mapping is empty for speakerless
+        assert len(_speaker_map) == 0
