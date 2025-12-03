@@ -19,6 +19,11 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Round-robin assignment thresholds for multi-speaker detection
+# When segments/num_speakers falls between these ratios, use round-robin assignment
+MIN_ROUND_ROBIN_RATIO = 4
+MAX_ROUND_ROBIN_RATIO = 8
+
 __all__ = [
     "ensure_nltk_data",
     "ensure_sentence_tokenizer",
@@ -545,7 +550,10 @@ def group_sentences_by_similarity(
     use_round_robin = (
         len(segments) <= num_speakers
         or len(change_points) <= num_speakers
-        or (len(segments) >= num_speakers * 4 and len(segments) <= num_speakers * 8)
+        or (
+            len(segments) >= num_speakers * MIN_ROUND_ROBIN_RATIO
+            and len(segments) <= num_speakers * MAX_ROUND_ROBIN_RATIO
+        )
     )
 
     if use_round_robin:

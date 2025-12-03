@@ -39,6 +39,9 @@ from transcript_etl_pipeline.transform.speaker_helpers import (
 
 logger = logging.getLogger(__name__)
 
+# Number of characters to check at start of sentence for first-person pronouns
+SENTENCE_START_CHECK_LENGTH = 10
+
 __all__ = [
     "has_speaker_labels",
     "detect_speaker_changes",
@@ -174,7 +177,7 @@ def _detect_topic_shift(prev_sentence: str, curr_sentence: str) -> bool:
         # Combine conditions: starts with contrastive starter AND previous doesn't have "i"
         if (
             curr_lower.startswith(starter)
-            and "i " not in prev_lower[:10]
+            and "i " not in prev_lower[:SENTENCE_START_CHECK_LENGTH]
             and not prev_lower.startswith("i")
         ):
             return True

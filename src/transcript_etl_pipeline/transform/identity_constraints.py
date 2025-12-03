@@ -19,6 +19,15 @@ from typing import Literal
 
 logger = logging.getLogger(__name__)
 
+# Reactionary phrase pattern templates for addressee detection
+# These patterns match phrases like "Oh, interesting, Name" where the speaker
+# is directly addressing someone by name in a reactionary way
+REACTIONARY_PATTERN_TEMPLATES = [
+    r"oh,?\s+(interesting|really|wow),?\s+{name}",
+    r"(interesting|really|exactly|true|fair),?\s+{name}",
+    r"(good point|great point|nice catch),?\s+{name}",
+]
+
 __all__ = [
     "IdentityConstraint",
     "extract_identity_constraints",
@@ -247,16 +256,11 @@ def detect_addresses_to_person(sentence: str) -> list[str]:
                 is_direct_address = True
                 break
 
-        # New patterns for P2.1:
-        # "Oh, interesting, Name" - reactionary phrase followed by name
-        # This handles patterns like "Oh, interesting, Devin"
+        # Reactionary phrase patterns: "Oh, interesting, Name"
+        # Uses module-level templates for efficiency
         if not is_direct_address:
-            reactionary_patterns = [
-                r"oh,?\s+(interesting|really|wow),?\s+" + name_lower,
-                r"(interesting|really|exactly|true|fair),?\s+" + name_lower,
-                r"(good point|great point|nice catch),?\s+" + name_lower,
-            ]
-            for pattern in reactionary_patterns:
+            for template in REACTIONARY_PATTERN_TEMPLATES:
+                pattern = template.format(name=name_lower)
                 if re.search(pattern, sentence_lower):
                     is_direct_address = True
                     break
