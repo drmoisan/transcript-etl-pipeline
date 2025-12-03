@@ -6,17 +6,12 @@ applyTo: "**"
 
 ## **Purpose of This Document**
 
-You (the agent) are responsible for autonomously developing the **entire transcript ETL pipeline** in this repository.
+This document contains instructions for **future enhancements** to the transcript ETL pipeline.
 
-You must:
-
-1. Follow the technical objectives precisely.
-2. Follow the repo’s policy files (link only; do not restate).
-3. Produce correct, maintainable, test-covered, tool-compliant code.
-4. Implement CLI **and** thin UI functionality.
-5. Produce DOCX, RTF, and Markdown outputs correctly formatted.
-
-Your work should be structured, incremental, and fully validated through tests.
+**Note**: The core ETL pipeline (Phases 1-9 + Speakerless Detection) is **fully complete**.
+For completed implementation details, see:
+- **Completed Instructions**: [`docs/archive/core_etl/core_etl_instructions.md`](../docs/archive/core_etl/core_etl_instructions.md)
+- **Completed Status**: [`docs/archive/core_etl/core_etl_status.md`](../docs/archive/core_etl/core_etl_status.md)
 
 ---
 
@@ -27,7 +22,7 @@ When implementing **any** code, tests, or tasks, you must adhere to these repo p
 * **Coding Standards, Workflow, PR/commit procedures:**
   [code-change.instructions.md](../docs/code-change.instructions.md)
 
-* **Developer Tooling: Poetry, Black, Ruff, Pyright, Pytest, pytest-cov, coverage, pre-commit, VSCode tasks, tools for EXE bundling:**
+* **Developer Tooling: Poetry, Black, Ruff, Pyright, Pytest, pytest-cov, coverage, pre-commit, VSCode tasks:**
   [developer-tooling.md](../docs/developer-tooling.md)
 
 * **Unit Test Policy (independence, determinism, clarity, AAA, etc.):**
@@ -37,548 +32,130 @@ When implementing **any** code, tests, or tasks, you must adhere to these repo p
 
 ---
 
-# **2. High-Level Architecture**
+# **2. Future Enhancement Work**
 
-Create a modular, testable architecture:
+## **2.1 Notes Conversion Features** 🟢 PARTIALLY COMPLETE
 
-```
-src/
-  transcript_etl_pipeline/
-    __init__.py
-    cli.py
-    ui.py
-    config.py
+**Status**: Basic infrastructure implemented, enhancement features remain
 
-    extract/
-      __init__.py
-      from_file.py
-      from_clipboard.py
+**Completed**:
+- ✅ `transform/notes.py` - Basic note conversion
+- ✅ Notes CLI integration (`--notes-source`, `--notes-file`)
+- ✅ Notes update mode (`--mode update`, `--update-action`)
 
-    transform/
-      __init__.py
-      normalize.py
-      enhance.py
-      paragraphs.py
-      speakers.py
+**Remaining Work**:
+- [ ] Advanced note formatting features
+- [ ] Note categorization and organization
+- [ ] Smart note merging algorithms
+- [ ] Note conflict resolution
+- [ ] Enhanced metadata extraction from notes
 
-    document/
-      __init__.py
-      model.py          # Represents labels, paragraphs, metadata, etc.
-      parser.py         # Parse enhanced text into Document model
-      formatting_rules.py
-
-    formatters/
-      __init__.py
-      docx_formatter.py
-      rtf_formatter.py
-      md_formatter.py
-
-tests/
-  ... (full coverage per policy)
-```
+**Reference**: See user stories in [`docs/features/notes_feature/notes-feature-user-story.md`](../docs/features/notes_feature/notes-feature-user-story.md)
 
 ---
 
-# **3. Pipeline Requirements**
+## **2.2 Speaker Logic Enhancement** 🔴 NOT STARTED
 
-The pipeline has **three stages**: Extract → Transform → Load.
-Implement each stage in its own subpackage.
-Each stage must be independently unit-testable.
-All I/O must be thin wrappers around pure functions.
+**Status**: Infrastructure complete, algorithmic improvements needed
 
----
+**Work Plan**: [`docs/features/speaker_logic_enhancement/speaker_logic_enhancement.agent.md`](../docs/features/speaker_logic_enhancement/speaker_logic_enhancement.agent.md)
 
-# **4. Extract Stage (Clipboard & File)**
+**Goal**: Improve 3+ speaker detection accuracy from current baseline
 
-### **4.1 Requirements**
+**Current State**:
+- ✅ Basic speakerless detection working (2-speaker scenarios)
+- ❌ 3-speaker SpaceX test failing (XFAIL marker)
+- ❌ Multi-sentence turn grouping needs improvement
+- ❌ Rhetorical question handling not implemented
+- ❌ Enhanced acknowledgment patterns missing
 
-Implement extractors enabling two ingestion sources:
+**Priorities** (documented in work plan):
+1. Multi-sentence turn grouping (0% complete)
+2. Addressee detection enhancement (80% complete)
+3. Enhanced acknowledgment detection (20% complete)
+4. Rhetorical question handling (0% complete)
+5. Three-speaker similarity refinement (40% complete)
 
-1. **Clipboard Input**
-
-   * Use `tkinter` or a lightweight clipboard helper.
-   * Must support Windows reliably.
-   * Provide an abstraction layer for testability.
-   * Use fallback logic if clipboard is empty.
-
-2. **File Input**
-
-   * Accept text files (.txt, .md) in UTF-8 or UTF-16 automatically detected.
-   * Raise helpful error messages on unsupported types.
-
-### **4.2 CLI**
-
-Implement in `cli.py`:
-
-```
---source clipboard | file
---file path-to-file    (required if --source=file)
-```
-
-### **4.3 Thin UI**
-
-In `ui.py` (tkinter):
-
-* If the user does not provide CLI flags:
-
-  * Display a small dialog to select:
-
-    * Source: Clipboard / File
-    * If File -> File picker dialog
-  * Cancel → graceful abort with popup message.
+**Test Target**: Pass `test_3speaker_spacex_discussion.py` (currently XFAIL)
 
 ---
 
-# **5. Transform Stage**
+## **2.3 Optional Enhancements** 🔵 DEFERRED
 
-The transform stage consists of **Normalize** then **Enhance**.
+These are nice-to-have features for future consideration:
 
-## **5.1 Normalize Requirements**
+### **2.3.1 Additional Output Formats**
+- [ ] PDF generation (via reportlab or similar)
+- [ ] HTML output with styling
+- [ ] Plain text with formatting markers
+- [ ] JSON structured output
 
-Implement in `transform/normalize.py`.
+### **2.3.2 Advanced Formatting Options**
+- [ ] Custom font selection
+- [ ] Custom spacing rules
+- [ ] Theme/template support
+- [ ] Header/footer customization
 
-### **Normalization Rules**
+### **2.3.3 Distribution**
+- [ ] EXE bundling for Windows (PyInstaller)
+- [ ] macOS app bundle
+- [ ] Linux package (DEB/RPM)
+- [ ] Standalone binary distribution
 
-1. **Line endings**
+### **2.3.4 Performance Optimization**
+- [ ] Parallel processing for large transcripts
+- [ ] Caching for repeated operations
+- [ ] Memory optimization for huge files
+- [ ] Streaming processing mode
 
-   * Convert all line endings to **Windows CRLF** (`\r\n`).
-
-2. **Whitespace cleanup**
-
-   * Remove duplicate spaces.
-   * Remove trailing spaces.
-   * Collapse multiple blank lines → a single blank line.
-   * Remove all-empty lines where they are structurally meaningless.
-
-3. **Label normalization**
-
-   * A “label” is any **1-word capitalized token ending with `:`**.
-
-     * Examples: `John:`, `Manager:`, `Intro:`
-   * A label must:
-
-     1. Appear at the **beginning** of a line, and
-     2. Be followed by exactly **one space**.
-   * If a label appears mid-line:
-
-     * Insert a CRLF before it.
-     * Continue processing.
-
-4. **Output**
-
-   * Return a list of normalized text blocks or a structured internal representation (your choice), but it must be consumed by the *Enhance* stage.
+### **2.3.5 Advanced Features**
+- [ ] Multi-language support
+- [ ] Audio timestamp integration
+- [ ] Sentiment analysis integration
+- [ ] Topic extraction and summarization
+- [ ] Export to presentation formats (PPTX)
 
 ---
 
-## **5.2 Enhance Requirements**
+# **3. Development Guidelines**
 
-### **5.2.0 Speakerless Detection (Entry Point)**
+## **3.1 Before Starting Any New Work**
 
-**Before** processing speakers, check if the transcript has speaker labels using `has_speaker_labels()`:
+1. Review the relevant work plan document
+2. Check [`docs/features/feature_status.md`](../docs/features/feature_status.md) for current priorities
+3. Run full test suite to ensure baseline: `pytest --tb=short`
+4. Verify quality checks pass:
+   - `black --check .`
+   - `ruff check`
+   - `pyright`
 
-```python
-from transcript_etl_pipeline.transform.speakerless import (
-    has_speaker_labels,
-    assign_speaker_labels,
-)
+## **3.2 During Development**
 
-if not has_speaker_labels(normalized_text):
-    # Apply speakerless detection - adds generic Speaker A, Speaker B, etc.
-    text_with_speakers = assign_speaker_labels(normalized_text, num_speakers)
-    speaker_map = {}  # No name resolution for generic speakers
-else:
-    # Proceed with speaker resolution for transcripts with labels
-    text_with_speakers, speaker_map = resolve_speakers(normalized_text, ui_callback)
-```
+1. Follow incremental development approach
+2. Write tests alongside code (test-first when possible)
+3. Run quality checks frequently
+4. Update relevant work plan documents with progress
+5. Commit small, logical changes with clear messages
 
-This ensures transcripts without explicit speaker labels are handled correctly by applying NLTK-based speakerless detection before speaker resolution.
+## **3.3 After Completing Work**
 
-**Parameters:**
-- `num_speakers`: Optional parameter (default None = auto-detect 2-4 speakers)
-- Can be specified via CLI: `--num-speakers 3`
-
-### **5.2.1 Paragraph Detection**
-
-Implement in `transform/paragraphs.py`.
-
-Rules:
-
-* Raw transcripts often have many lines without paragraph breaks.
-* Use paragraph detection heuristics:
-
-  * Sentence endings (`.`, `?`, `!`).
-  * Major pause indicators (long lines followed by shorter lines).
-  * Label boundaries.
-  * Metadata termination (first label marks end of metadata block).
-* As paragraphs are detected:
-
-  * Insert a CRLF **after** each paragraph.
-  * **Never** insert an extra CRLF at the very end of the document.
-
-### **5.2.2 Speaker Handling**
-
-Implement in `transform/speakers.py`.
-
-Speaker label format:
-
-```
-Speaker A:
-Speaker B:
-Speaker C:
-Speaker: B
-Speaker: C
-```
-
-**Rules:**
-
-1. If a line begins with a Speaker label, detect which person it represents.
-
-2. **Determine who "Dan Moisan" is.**
-
-   * If text contains “Dan” as part of a speaker label → **that is NOT me.**
-   * Identify my real presence using context:
-
-     * Look for lines that reference me in conversation:
-
-       * “Dan, what do you think?”
-       * “As Dan mentioned…”
-     * Or by unique phrasing associated with my responses.
-   * Once identified, replace that speaker label with:
-
-     ```
-     Dan Moisan:
-     ```
-
-3. **Other attendees**
-
-   * Attempt auto-detection using:
-
-     * Names found in the metadata.
-     * Names referenced in dialogue.
-     * Distinct linguistic patterns (optional but helpful).
-   * If confidence is low:
-
-     * Trigger UI dialog:
-
-       * Show 2–3 sample utterances for “Speaker B”.
-       * Let user map “Speaker B” → person name.
-       * Allow Cancel, which yields:
-
-         * Speaker B remains as given.
+1. Run full test suite: `pytest`
+2. Run all quality checks: `.\scripts\fix-all.ps1`
+3. Update work plan documents with completion status
+4. Update [`docs/features/feature_status.md`](../docs/features/feature_status.md)
+5. Generate commit context: `.\scripts\collect-commit-context.ps1`
 
 ---
 
-## **5.3 Formatting Rules**
+# **4. Agent Contract**
 
-Implement in:
-
-* `document/model.py` (document structure)
-* `document/formatting_rules.py` (spacing, fonts)
-
-Formatting must be **identical across DOCX, RTF, and Markdown**, within each format’s natural limits.
-
-### **Rules to Implement**
-
-1. **Single spaced text (1.0 line spacing)**
-
-   * Except where vertical spacing rules override.
-
-2. **Font**
-
-   * 10pt Calibri for main body and labels.
-   * Labels are **bold**, followed by normal text.
-
-3. **Metadata block**
-
-   * Located at the top.
-   * **Single spaced.**
-   * Never treated as a paragraph.
-   * Do not add before/after spacing.
-
-4. **"Transcript:" label**
-
-   * Add **12pt space above** it.
-
-5. **Lines beginning with a name label**
-
-   * Add **12pt space above**.
-
-6. **All other paragraphs**
-
-   * Add **6pt space above**.
-
-7. **Paragraph wrapping**
-
-   * If a paragraph spans multiple lines, wrap internally but maintain single spacing.
-
----
-
-# **6. Load Stage (DOCX, RTF, MD)**
-
-### **6.1 Output Format Selection**
-
-Provide via CLI:
-
-```
---format docx | rtf | md
-```
-
-Default = `docx`.
-
-If not provided:
-
-* Thin UI prompts user to pick one.
-
-### **6.2 Document Naming**
-
-Rules:
-
-1. CLI flag:
-
-   ```
-   --output-name "custom_name"
-   ```
-
-2. If omitted:
-
-   * UI dialog prompts for filename.
-   * Cancel → graceful abort.
-
-3. Default auto-generated name:
-
-   ```
-   YYYY MM dd <MeetingTitle>.docx|rtf|md
-   ```
-
-   Where `<MeetingTitle>` is inferred from:
-
-   * Metadata fields, or
-   * First clear topic heading, or
-   * A fallback like “Transcript”.
-
-### **6.3 Output Folder**
-
-CLI:
-
-```
---output-folder <path>
-```
-
-Rules:
-
-* If invalid path → CLI fails with explanation.
-* If not provided → UI folder picker dialog.
-* Default = most recent folder used by the app (store in a simple config file under `~/.transcript_etl/last_output_folder.json`).
-
-### **6.4 Formatters**
-
-Implement:
-
-* `formatters/docx_formatter.py` using `python-docx`
-* `formatters/rtf_formatter.py` using string-based RTF
-* `formatters/md_formatter.py` outputting plain Markdown
-
-Each must:
-
-* Apply all spacing rules.
-* Apply proper font and bold styling.
-* Respect paragraph model from `document/model.py`.
-
----
-
-# **6.5 Document Parser**
-
-Implement in `document/parser.py`:
-
-* **Purpose**: Parse enhanced text (post-transform) into the structured `Document` model for formatting
-* **Features**:
-  * Smart metadata detection (lines before first label)
-  * Automatic section type inference
-  * Label extraction and paragraph building
-  * Line continuation handling (multi-line paragraphs)
-* **Benefits**: Bridges transform output to formatter input cleanly
-
-# **6.6 Type Safety Requirements**
-
-* **Pyright strict mode compliance**: All code passes strict type checking
-* **Protocol-based design**: Use `Protocol` for extensible interfaces (e.g., `SpeakerResolutionUI`)
-* **TYPE_CHECKING patterns**: Handle untyped third-party libraries gracefully
-* **Benefits**: Catch errors at development time, improve IDE support, enable refactoring confidence
-
-# **6.7 Error Handling Requirements**
-
-* **Graceful degradation**: Handle tkinter unavailability with clear error messages
-* **Encoding detection**: Automatic UTF-8/UTF-16 detection for file input
-* **User-facing messages**: All errors provide actionable guidance
-* **Benefits**: Smooth user experience across different environments
-
----
-
-# **7. CLI Specification**
-
-Build a complete CLI in `cli.py`.
-
-Commands:
-
-```
-transcript-etl extract [--source clipboard|file] [--file path]
-transcript-etl transform [--input path] [--output path]
-transcript-etl run [--source ...] [--format ...] [--output-name ...] [--output-folder ...]
-```
-
-Or, simpler:
-
-```
-transcript-etl run [flags]
-```
-
-### **Behavior**
-
-* If `--source`, `--format`, or `--output-name` are missing → launch the thin UI.
-* CLI errors must be explicit and actionable.
-
----
-
-# **8. Tests — Mandatory**
-
-All code must be tested according to:
-➜ [`docs/unit-test-policy.md`](docs/unit-test-policy.md)
-
-You must create tests for:
-
-### **Extract**
-
-* Clipboard fallback logic (mocked).
-* File encoding detection.
-* Error handling.
-
-### **Normalize**
-
-* Line endings.
-* Whitespace removal.
-* Label normalization logic.
-* Mid-line label CRLF insertion.
-
-### **Enhance**
-
-* Paragraph detection heuristics.
-* Speaker identification logic.
-* Dan Moisan identity logic.
-* Auto-detection of attendees.
-* UI fallback for unresolved speakers (mock UI).
-
-### **Formatters**
-
-* DOCX paragraph spacing.
-* RTF structure correctness.
-* Markdown formatting consistency.
-
-### **End-to-end tests**
-
-* An input transcript string → a full DOCX/RTF/MD file matching rules.
-
----
-
-# **9. Development Expectations**
-
-### **Coding Style**
-
-* Follow repo coding standards:
-  [`docs/code-change.instructions.md`](docs/code-change.instructions.md)
-
-### **Tooling**
-
-* Poetry environment must remain clean.
-* All output must pass:
-
-  * Black
-  * Ruff
-  * Pyright
-  * Pytest
-  * pytest-cov (minimum standard set by policies)
-
-As defined in:
-[`docs/developer-tooling.md`](docs/developer-tooling.md)
-
-### **Autonomous Workflows**
-
-You may:
-
-* Create new modules.
-* Refactor code.
-* Update configuration files.
-* Add VSCode tasks if needed.
-* Add pre-commit hooks.
-* Add missing dependencies to `pyproject.toml`.
-
-But you must comply with policy instructions at all times.
-
----
-
-# **10. Implementation Strategy For the Agent**
-
-When prompted or operating autonomously:
-
-### **Step 1 — Create data models**
-
-* Build a document model.
-* Create simple abstractions first.
-
-### **Step 2 — Implement normalize stage**
-
-* Convert raw text → normalized blocks.
-* Add tests immediately.
-
-### **Step 3 — Implement enhance stage**
-
-* Speaker resolver.
-* Paragraph detector.
-* Name remapping.
-
-### **Step 4 — Implement formatting model**
-
-* Document section classes.
-* Spacing rules.
-
-### **Step 5 — Implement formatters**
-
-* DOCX first (primary output).
-* Then RTF.
-* Then Markdown.
-
-### **Step 6 — Build the CLI**
-
-* Wire extract → transform → load.
-
-### **Step 7 — Add Thin UI**
-
-* Dialogs for:
-
-  * Source selection.
-  * Speaker resolution.
-  * Output naming.
-  * Output folder selection.
-
-### **Step 8 — Ensure full test coverage**
-
-* Write unit tests for each module.
-* Write end-to-end tests.
-
-### **Step 9 — Validate against policies**
-
-* Run linting and type checks.
-* Run full pytest with coverage.
-
----
-
-# **The Agent’s Contract**
-
-As the agent:
+As an agent working on this codebase:
 
 * **Do not guess.** Follow these instructions exactly.
 * **Do not restate the project policies.** Link to them.
 * **Do not omit tests.**
 * **Do not introduce inconsistent architecture.**
-* **Implement the complete ETL pipeline end-to-end.**
-* **Maintain a high level of internal documentation and type hints.**
-
+* **Maintain the high quality bar** established by the core ETL pipeline.
+* **Update tracking documents** as you complete work.
+* **Preserve type safety** (Pyright strict mode, 0 errors).
+* **Maintain test coverage** (core modules >95%).
