@@ -3,7 +3,8 @@
 param(
     [Parameter(Mandatory = $true)]
     [string] $FeatureName,
-    [switch] $Force
+    [switch] $Force,
+    [string] $IssueNumber
 )
 
 function Format-Checklist {
@@ -104,16 +105,29 @@ if ($potentialFile) {
     $criteria = if ($criteriaRaw) { Format-Checklist $criteriaRaw } else { '' }
     $testsFormatted = if ($tests) { Format-Checklist $tests } else { '' }
 
+    $issueMeta = $null
+    if ($IssueNumber -and (Get-Command gh -ErrorAction SilentlyContinue)) {
+        $json = & gh issue view $IssueNumber --json number,title,url,author,updatedAt
+        if ($LASTEXITCODE -eq 0 -and $json) {
+            $issueMeta = $json | ConvertFrom-Json
+        }
+    }
+
+    $issueField = if ($issueMeta.number) { "#$($issueMeta.number)" } elseif ($IssueNumber) { "#$IssueNumber" } else { "#<id>" }
+    $ownerField = if ($issueMeta.author.login) { $issueMeta.author.login } else { "name" }
+    $updatedField = if ($issueMeta.updatedAt) { ([datetime]$issueMeta.updatedAt).ToString('yyyy-MM-dd') } else { "YYYY-MM-DD" }
+
     $userStoryPath = Join-Path $target 'user-story.md'
     $specPath = Join-Path $target 'spec.md'
+    $planPath = Join-Path $target 'plan.md'
 
     $userStoryContent = @"
 # $FeatureName - User Story
 
-- Issue: #<id>
-- Owner: name
+- Issue: $issueField
+- Owner: $ownerField
 - Status: Draft | In Progress | Complete
-- Last Updated: YYYY-MM-DD
+- Last Updated: $updatedField
 
 ## Problem / Why
 
@@ -141,9 +155,9 @@ Call out what is explicitly excluded from this feature.
     $specContent = @"
 # $FeatureName - Spec
 
-- Issue: #<id>
-- Owner: name
-- Last Updated: YYYY-MM-DD
+- Issue: $issueField
+- Owner: $ownerField
+- Last Updated: $updatedField
 
 ## Overview
 
@@ -182,8 +196,48 @@ $constraints
 $testsFormatted
 "@
 
+    $planContent = @"
+# $FeatureName - Plan
+
+- Issue: $issueField
+- Owner: $ownerField
+- Last Updated: $updatedField
+
+## Required References (read, do not restate)
+
+- Coding workflow and standards: [`docs/code-change.instructions.md`](../../code-change.instructions.md)
+- Unit test policy: [`docs/unit-test-policy.md`](../../unit-test-policy.md)
+
+**All work must comply with these policies; do not duplicate their content here.**
+
+## Phases (nest work under each phase)
+
+- Phase 1: <scope/goal>
+  - [ ] Work item 1 (small enough for one prompt/session)
+  - [ ] Work item 2
+  - [ ] Tests/docs for this phase
+- Phase 2: <scope/goal>
+  - [ ] Work item 1
+  - [ ] Work item 2
+- Phase 3: <scope/goal>
+  - [ ] Work item 1
+  - [ ] Work item 2
+
+## Test Plan
+
+- Unit: ...
+- Integration: ...
+- CLI/UX examples: ...
+- Performance/edge cases: ...
+
+## Open Questions / Notes
+
+Document decisions, risks, and follow-ups here.
+"@
+
     Set-Content -Path $userStoryPath -Value $userStoryContent -Encoding UTF8
     Set-Content -Path $specPath -Value $specContent -Encoding UTF8
+    Set-Content -Path $planPath -Value $planContent -Encoding UTF8
 
     Write-Host "Seeded user-story.md and spec.md from potential: $($potentialFile.Name)"
 }

@@ -139,24 +139,26 @@
       },
       "detail": "Creates a feature issue from a potential file using gh issue create (non-interactive)."
     },
-    {
-      "label": "Feature: Create Active Folder",
-      "type": "shell",
-      "command": "pwsh",
-      "args": [
-        "-NoLogo",
-        "-NoProfile",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-File",
-        "${workspaceFolder}/scripts/new-active-feature-folder.ps1",
-        "-FeatureName",
-        "${input:ActiveFeatureName}"
-      ],
-      "options": {
-        "cwd": "${workspaceFolder}"
-      },
-      "problemMatcher": [],
+        {
+            "label": "Feature: Create Active Folder",
+            "type": "shell",
+            "command": "pwsh",
+            "args": [
+                "-NoLogo",
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}/scripts/new-active-feature-folder.ps1",
+                "-FeatureName",
+                "${input:ActiveFeatureName}",
+                "-IssueNumber",
+                "${input:ActiveIssueNumber}"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [],
       "presentation": {
         "reveal": "always",
         "panel": "new"
@@ -222,11 +224,17 @@
       "description": "Path to potential feature file",
       "default": "docs/features/potential/2025-12-01-notes-feature.md"
     },
-    {
-      "id": "ActiveFeatureName",
-      "type": "promptString",
-      "description": "Feature folder name (kebab/underscore-case, e.g., notes_feature)",
-      "default": "notes_feature"
-    }
-  ]
+        {
+            "id": "ActiveFeatureName",
+            "type": "promptString",
+            "description": "Feature folder name (kebab/underscore-case, e.g., notes_feature)",
+            "default": "notes_feature"
+        },
+        {
+            "id": "ActiveIssueNumber",
+            "type": "promptString",
+            "description": "Issue number (optional, e.g., 14)",
+            "default": ""
+        }
+    ]
 }

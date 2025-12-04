@@ -96,8 +96,71 @@ $tmp = [System.IO.Path]::ChangeExtension([System.IO.Path]::GetTempFileName(), '.
 Set-Content -Path $tmp -Value $body -Encoding UTF8
 
 Write-Host "Creating issue: $issueTitle"
-& gh issue create --title "$issueTitle" --body-file "$tmp" --label "enhancement"
+$result = & gh issue create --title "$issueTitle" --body-file "$tmp" --label "enhancement"
 $exit = $LASTEXITCODE
+
+if ($exit -ne 0) {
+    Write-Host $result
+    Remove-Item $tmp -ErrorAction SilentlyContinue
+    exit $exit
+}
+
+Write-Host $result
+
+$issueUrl = $null
+$issueNumber = $null
+
+$urlMatch = ($result | Select-String -Pattern 'https?://\S+/issues/(\d+)' -AllMatches)
+if ($urlMatch.Matches.Count -gt 0) {
+    $issueUrl = $urlMatch.Matches[0].Groups[0].Value
+    $issueNumber = $urlMatch.Matches[0].Groups[1].Value
+}
+
+$issueData = $null
+if ($issueNumber) {
+    $json = & gh issue view $issueNumber --json number,title,url,author,updatedAt
+    if ($LASTEXITCODE -eq 0 -and $json) {
+        $issueData = $json | ConvertFrom-Json
+    }
+}
+
+# Write metadata back to the potential file (issue number, URL, last updated)
+if ($issueNumber -and $issueUrl) {
+    $lines = New-Object System.Collections.Generic.List[string]
+    $lines.AddRange((Get-Content -Path $resolved))
+
+    $metaEnd = $lines.Count
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ($lines[$i] -match '^\s*##\s+') { $metaEnd = $i; break }
+    }
+
+    function UpsertLine([System.Collections.Generic.List[string]] $arr, [string] $label, [string] $value, [ref] $metaEndRef) {
+        $pattern = "^- $label:"
+        $found = $false
+        for ($j = 0; $j -lt $arr.Count; $j++) {
+            if ($arr[$j] -match $pattern) {
+                $arr[$j] = "- $label: $value"
+                $found = $true
+                break
+            }
+        }
+        if (-not $found) {
+            $arr.Insert([int]$metaEndRef.Value, "- $label: $value")
+            $metaEndRef.Value++
+        }
+    }
+
+    $metaEndRef = [ref] $metaEnd
+    UpsertLine -arr $lines -label 'Issue' -value "#$issueNumber" -metaEndRef $metaEndRef
+    UpsertLine -arr $lines -label 'Issue URL' -value $issueUrl -metaEndRef $metaEndRef
+    if ($issueData -and $issueData.updatedAt) {
+        $updated = $issueData.updatedAt.Substring(0,10)
+        UpsertLine -arr $lines -label 'Last Updated' -value $updated -metaEndRef $metaEndRef
+    }
+
+    Set-Content -Path $resolved -Value $lines -Encoding UTF8
+    Write-Host "Updated potential file with issue metadata: $resolved"
+}
 
 Remove-Item $tmp -ErrorAction SilentlyContinue
 exit $exit

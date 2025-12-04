@@ -11,18 +11,20 @@
 
 **All work must comply with these policies; do not duplicate their content here.**
 
-## Phases (nest work under each phase)
+## Phases
 
-- Phase 1: <scope/goal>
-  - [ ] Work item 1 (small enough for one prompt/session)
-  - [ ] Work item 2
-  - [ ] Tests/docs for this phase
-- Phase 2: <scope/goal>
-  - [ ] Work item 1
-  - [ ] Work item 2
-- Phase 3: <scope/goal>
-  - [ ] Work item 1
-  - [ ] Work item 2
+### Phase 1: <scope/goal> [0%]
+- [ ] Work item 1 (small enough for one prompt/session)
+- [ ] Work item 2
+- [ ] Tests/docs for this phase
+
+### Phase 2: <scope/goal> [0%]
+- [ ] Work item 1
+- [ ] Work item 2
+
+### Phase 3: <scope/goal> [0%]
+- [ ] Work item 1
+- [ ] Work item 2
 
 ## Test Plan
 
