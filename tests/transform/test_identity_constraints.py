@@ -214,7 +214,7 @@ class TestDetectAddressesToPerson:
 
     def test_mid_sentence_is_name_article_excluded(self) -> None:
         """Test mid-sentence 'is Name a/an/the' pattern is excluded."""
-        # This tests line 192: when 'is Name a/an/the' appears mid-sentence
+        # Tests the third-person question exclusion: 'is Name a/an/the' mid-sentence
         sentence = "And is Dan a good choice for this role?"
         result = detect_addresses_to_person(sentence)
         # "is Dan a..." mid-sentence asks ABOUT Dan, not TO Dan
