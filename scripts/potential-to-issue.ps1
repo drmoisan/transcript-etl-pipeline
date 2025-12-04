@@ -8,8 +8,9 @@ param(
 function Fail($msg) {
     Write-Host $msg
     exit 1
-$workspace = Split-Path -Parent $PSScriptRoot
 }
+
+$workspace = Split-Path -Parent $PSScriptRoot
 
 $resolved = $null
 try {
@@ -128,8 +129,9 @@ if ($issueNumber) {
 
 # Write metadata back to the potential file (issue number, URL, last updated)
 if ($issueNumber -and $issueUrl) {
+    $rawLines = (Get-Content -Path $resolved -Raw) -split "`r?`n"
     $lines = New-Object System.Collections.Generic.List[string]
-    $lines.AddRange((Get-Content -Path $resolved))
+    $lines.AddRange([string[]]$rawLines)
 
     $metaEnd = $lines.Count
     for ($i = 0; $i -lt $lines.Count; $i++) {
@@ -137,17 +139,17 @@ if ($issueNumber -and $issueUrl) {
     }
 
     function UpsertLine([System.Collections.Generic.List[string]] $arr, [string] $label, [string] $value, [ref] $metaEndRef) {
-        $pattern = "^- $label:"
+        $pattern = "^- $($label):"
         $found = $false
         for ($j = 0; $j -lt $arr.Count; $j++) {
             if ($arr[$j] -match $pattern) {
-                $arr[$j] = "- $label: $value"
+                $arr[$j] = "- $($label): $value"
                 $found = $true
                 break
             }
         }
         if (-not $found) {
-            $arr.Insert([int]$metaEndRef.Value, "- $label: $value")
+            $arr.Insert([int]$metaEndRef.Value, "- $($label): $value")
             $metaEndRef.Value++
         }
     }
@@ -156,7 +158,7 @@ if ($issueNumber -and $issueUrl) {
     UpsertLine -arr $lines -label 'Issue' -value "#$issueNumber" -metaEndRef $metaEndRef
     UpsertLine -arr $lines -label 'Issue URL' -value $issueUrl -metaEndRef $metaEndRef
     if ($issueData -and $issueData.updatedAt) {
-        $updated = $issueData.updatedAt.Substring(0,10)
+        $updated = ([datetime]$issueData.updatedAt).ToString('yyyy-MM-dd')
         UpsertLine -arr $lines -label 'Last Updated' -value $updated -metaEndRef $metaEndRef
     }
     $promotedValue = "Promoted -> docs/features/active/$featurePath/ (Issue #$issueNumber)"
