@@ -1,113 +1,84 @@
 # Developer Tooling
 
-This document summarizes the core developer tooling for `transcript-etl-pipeline`: what it is for, and the basic commands you should run during everyday development.
+Summary of the core tooling and automation for `transcript-etl-pipeline`.
 
-All commands below assume you are in the project root and have run:
+Prereqs (run from repo root):
 
-- `poetry install` – create the managed `.venv` with runtime + dev dependencies.
-- `poetry run pre-commit install` – install local git hooks that mirror CI behavior.
+- `poetry install` (managed `.venv`)
+- `poetry run pre-commit install` (local hooks mirroring CI)
 
-You can either activate the Poetry virtualenv (`poetry shell`) or prefix commands with `poetry run`.
+See `docs/code-change.instructions.md` for the end-to-end workflow.
 
-**Note**: For the complete development workflow including when to run these tools, see [code-change.instructions.md](code-change.instructions.md).
+## Formatting - Black
 
-## Formatting – Black
+- Format: `poetry run black .`
+- Check only: `poetry run black --check .`
 
-- **Purpose**: Enforce a consistent, automatic code style across the project.
-- **Primary command**:
-  - Format in place: `poetry run black .`
-  - Check only (no writes): `poetry run black --check .`
-- **When to use**: Before committing, or whenever you touch Python code.
+## Linting - Ruff
 
-## Linting – Ruff
+- Lint: `poetry run ruff check`
+- Config: `pyproject.toml` (`[tool.ruff]`, `[tool.ruff.lint]`)
 
-- **Purpose**: Catch common bugs and style issues (imports, unused variables, etc.).
-- **Primary command**: `poetry run ruff check`
-  - Configuration lives in `pyproject.toml` under `[tool.ruff]` and `[tool.ruff.lint]`.
-- **When to use**: After formatting and before committing or opening a PR.
+## Type Checking - Pyright
 
-## Type Checking – Pyright
+- Type-check: `poetry run pyright`
+- Config: `pyproject.toml` (`[tool.pyright]`, strict mode)
 
-- **Purpose**: Enforce strict typing (`typeCheckingMode = "strict"`) for the `transcript_etl_pipeline` package.
-- **Primary command**: `poetry run pyright`
-  - Configuration: `[tool.pyright]` in `pyproject.toml`.
-  - All source code and tests are type-checked in strict mode.
-- **When to use**: Before any non-trivial change is merged. Avoid adding new Pyright errors.
+## Testing - Pytest
 
-## Testing – Pytest
+- Run tests: `poetry run pytest`
+- Config: `pytest.ini`, `docs/unit-test-policy.md`
 
-- **Purpose**: Run the automated test suite to validate behavior.
-- **Primary command**: `poetry run pytest`
-  - Test configuration: `pytest.ini` and `docs/unit-test-policy.md`.
-- **When to use**: Before pushing changes, and after any change to production code or tests.
+## Coverage
 
-## Coverage – Coverage.py / pytest-cov
-
-- **Purpose**: Measure and report how much of the codebase is exercised by tests.
-- **Typical commands**:
-  - Run tests with coverage: `poetry run pytest --cov=. --cov-report=term-missing`
-  - Generate HTML report: `poetry run coverage html` (open `htmlcov/index.html`).
-- **When to use**: When validating how well new or refactored code is covered by tests.
+- With coverage: `poetry run pytest --cov=. --cov-report=term-missing`
+- HTML report: `poetry run coverage html` → `htmlcov/index.html`
 
 ## Pre-commit Hooks
 
-- **Purpose**: Automatically run checks on changed files before every commit.
-- **Configuration**: `.pre-commit-config.yaml` (Black, Ruff, Pyright, plus custom grep hooks).
-- **Setup (once per machine)**: `poetry run pre-commit install`
-- **Manual run** (optional): `poetry run pre-commit run --all-files`
-- **Behavior**:
-  - Reject commits that contain `DELETE_ME` or `REMOVE_BEFORE_MERGE` markers in Python code.
-  - Format, lint, and type-check Python files according to project configuration.
+- Install: `poetry run pre-commit install`
+- Manual run: `poetry run pre-commit run --all-files`
+- Hooks include Black, Ruff, Pyright, plus guard rails.
 
-## VS Code Tasks
+## VS Code Tasks (`.vscode/tasks.json`)
 
-If you use VS Code, `.vscode/tasks.json` defines one-click tasks that wrap the commands above:
+- `Black: format` → `poetry run black .`
+- `Ruff: lint` → `poetry run ruff check`
+- `Pyright: type-check` → `poetry run pyright`
+- `Pytest: run tests` → `poetry run pytest`
+- `Run All Checks` → Black → Ruff → Pyright → Pytest
+- `Fix All` → `scripts/fix-all.ps1`
+- Feature helpers:
+  - `Feature: New Potential Entry` → `scripts/new-potential-entry.ps1`
+  - `GitHub: Feature Issue from Potential` → `scripts/potential-to-issue.ps1`
+  - `Feature: Create Active Folder` → `scripts/new-active-feature-folder.ps1`
+  - `GitHub: Link Feature Docs` → `scripts/link-feature-docs.ps1`
+- Run via Terminal → Run Task (or Command Palette “Tasks: Run Task”).
 
-- `Black: format` – runs `poetry run black .`
-- `Ruff: lint` – runs `poetry run ruff check`
-- `Pyright: type-check` – runs `poetry run pyright`
-- `Pytest: run tests` – runs `poetry run pytest`
-- `Run All Checks` – runs all quality checks sequentially (Black → Ruff → Pyright → Pytest)
-- `Fix All` – runs the automated fix script (`scripts/fix-all.ps1`)
-
-You can invoke these via **Terminal → Run Task…** (or the Command Palette: "Tasks: Run Task").
-
-## PowerShell Scripts
-
-The repository includes several PowerShell scripts in the `scripts/` directory for automation:
+## PowerShell Scripts (`scripts/`)
 
 ### fix-all.ps1
 
-- **Purpose**: Automated fix-and-validate workflow that runs all quality checks sequentially.
-- **Command**: `.\scripts\fix-all.ps1` or via VS Code task: "Fix All"
-- **Behavior**:
-  1. Runs Black formatter
-  2. Runs Ruff linter
-  3. Runs Pyright type checker
-  4. Runs Pytest test suite
-  5. Exits on first failure, providing clear error messages
-- **When to use**: Quick validation before committing or when you want to run the full quality check sequence.
+- Runs Black → Ruff → Pyright → Pytest; stops on first failure.
 
 ### collect-commit-context.ps1
 
-- **Purpose**: Generate comprehensive commit context for creating detailed commit messages.
-- **Command**: `.\scripts\collect-commit-context.ps1`
-- **Output**: Creates `artifacts/commit_context.txt` with:
-  - Repository remotes and branch information
-  - Git status (staged and unstaged files)
-  - Full unified diffs of all changes
-  - Diff statistics
-  - List of changed Python files
-  - Last commit information
-- **When to use**: Before committing significant changes to generate context for commit messages.
+- Builds `artifacts/commit_context.txt` with remotes, status, diffs, stats, and last commit info.
 
-## Profiling – VizTracer
+### collect-pull-request-context.ps1
 
-- **Purpose**: Profile and visualize performance hotspots in the codebase.
-- **Usage examples**:
-  - Profile a specific test module:
-    `poetry run viztracer -m pytest tests/path/to/test_module.py`
-  - Profile the CLI entry point:
-    `poetry run viztracer python -m transcript_etl_pipeline.cli run --source clipboard --format docx`
-- **Output**: VizTracer produces a trace file that you can open in a browser to inspect timelines and call stacks.
-- **When to use**: When investigating performance issues or optimizing critical paths.
+- Builds `artifacts/pr_context.txt` for PR drafting (branch info, diffs, summaries).
+
+### Feature workflow helpers
+
+- `new-potential-entry.ps1`Create dated potential doc from template; opens the file + backlog.
+- `potential-to-issue.ps1`Promote potential to GitHub issue via `gh`; moves doc to `docs/features/potential/promoted/` and stamps issue info.
+- `new-active-feature-folder.ps1`Seed `docs/features/active/<feature>/` from templates; auto-fill headers; seed sections from matching potential/promoted doc; can auto-read issue number.
+- `link-feature-docs.ps1`
+  Add/update “Feature Docs” section in a GitHub issue with links to user-story/spec/plan; skips if issue body is empty.
+
+## Profiling - VizTracer
+
+- Profile a test: `poetry run viztracer -m pytest tests/path/to/test_module.py`
+- Profile CLI: `poetry run viztracer python -m transcript_etl_pipeline.cli run --source clipboard --format docx`
+- Open the generated trace in a browser to inspect timelines and call stacks.
