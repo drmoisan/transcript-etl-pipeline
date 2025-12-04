@@ -5,21 +5,47 @@
 - Status: Complete
 - Last Updated: 2025-12-03
 
+## Story Statement
+
+- As a meeting host using Granola.ai, I want to merge notes and transcripts that arrive at different times into a single consolidated document, so that I have one complete record without manual copy-pasting.
+- As a user revising existing documents, I want to add or replace notes/transcript sections with predictable merge behavior, so that I don't accidentally lose prior content.
+
 ## Problem / Why
 
-Granola.ai produces two artifacts (markdown notes and transcript) that arrive at different times; the pipeline cannot ingest notes, merge them with transcripts, or update an existing document, so users can’t get a single consolidated, consistently formatted document.
+Granola.ai produces two artifacts (markdown notes and transcript) that arrive at different times; the pipeline cannot ingest notes, merge them with transcripts, or update an existing document, so users can't get a single consolidated, consistently formatted document.
 
 ## Personas & Scenarios
 
-- Persona: Meeting host using Granola.ai  
-  - Scenario: Notes arrive first via clipboard, transcript arrives later via file; needs both merged into one doc.
-- Persona: Analyst revising an existing doc  
-  - Scenario: Adds or replaces notes/transcript in an existing output without losing prior content unintentionally.
+- **Persona: Meeting Coordinator (Professional Context)**
+  - **Who they are**: A team lead who uses Granola.ai to capture meeting notes and transcripts for team records
+  - **What they care about**: Having a single, well-formatted document with both notes and full transcript; maintaining consistency across all meeting records
+  - **Their constraints**: Notes arrive via clipboard immediately after meetings; transcripts come later as files; limited time to manually merge artifacts
+  - **Their goals**: Create consolidated meeting records without copy-paste errors; update documents when new content arrives without losing existing content
+  - **Their frustrations**: Current tools require manual merging of two separate artifacts; risk of losing content when updating documents; inconsistent formatting across meeting records
+  - **Their context**: Hosts 3-5 meetings per week; needs reliable automation to maintain meeting archive
 
-## User Stories
-
-- As a user, I want to create a consolidated document with notes at the top and transcript at the bottom, even when they arrive at different times.
-- As a user, I want to add or replace notes/transcript in an existing document with deterministic, predictable merge behavior.
+- **Scenario: Consolidating Meeting Artifacts**
+  - **Who is acting?** Lisa, a project coordinator managing weekly team meetings with Granola.ai
+  - **What triggered the action?** Lisa received meeting notes via clipboard immediately after a strategy session, but the full transcript won't arrive until later
+  - **What steps do they take?**
+    1. Lisa pastes the Granola.ai markdown notes from clipboard into the ETL pipeline
+    2. The tool prompts whether to create a new document or update an existing one
+    3. Lisa chooses "new document" and the notes render at the top with proper formatting
+    4. Later, when the transcript file arrives, Lisa runs the tool again
+    5. The tool detects the existing notes section and prompts for transcript placement
+    6. Lisa chooses "add below notes" and the transcript renders under the notes section
+    7. The final document has notes at top, transcript at bottom, consistent formatting throughout
+  - **What obstacles or decisions occur?**
+    - Artifacts arrive at different times (notes immediate, transcript delayed)
+    - Must decide whether to create new document or update existing one
+    - Must choose add vs replace behavior when updating sections
+    - Notes need clear labels when multiple note blocks exist (timestamps or user labels)
+  - **What outcome do they expect?**
+    - Single consolidated document with notes above transcript
+    - Deterministic merge behavior (add/replace as chosen)
+    - No accidental content loss when updating
+    - Consistent formatting following ETL conventions
+    - Clear errors if invalid input (empty clipboard, non-markdown notes)
 
 ## Acceptance Criteria
 

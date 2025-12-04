@@ -1,4 +1,4 @@
-# notes-feature (Potential)
+# notes-feature (Issue #14)
 
 - Date captured: 2025-12-01
 - Author: Dan Moisan

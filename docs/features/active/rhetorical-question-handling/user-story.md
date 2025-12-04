@@ -1,9 +1,9 @@
-# `<feature-name>` — User Story
+# `rhetorical-question-handling` — User Story
 
-- Issue: #`<id>`
-- Owner: name
+- Issue: #19
+- Owner: drmoisan
 - Status: Draft | In Progress | Complete
-- Last Updated: YYYY-MM-DD
+- Last Updated: 2025-12-04
 
 ## Story Statement
 
@@ -12,7 +12,8 @@
 
 ## Problem / Why
 
-What customer/user problem does this solve?
+Rhetorical/tag questions (e.g., “Right?”, “You know?”, “..., didn’t it?”) are currently treated as speaker changes, causing over-splitting of multi-sentence turns (SpaceX test: 12 lines vs 18 expected).
+
 
 ## Personas & Scenarios
 
@@ -33,10 +34,12 @@ What customer/user problem does this solve?
 
 ## Acceptance Criteria
 
-- [ ] Criterion 1
-- [ ] Criterion 2
-- [ ] Criterion 3
+- [ ] Rhetorical question detection prevents speaker change on short/tag questions.
+- [ ] Trailing tag questions do not trigger a change when they continue prior content.
+- [ ] SpaceX test trend improves toward 18 lines (currently 12); no regressions in other speakerless tests.
+
 
 ## Non-Goals
 
 Call out what is explicitly excluded from this feature.
+

@@ -1,4 +1,4 @@
-# multi-sentence-turn-grouping (Potential)
+# multi-sentence-turn-grouping (Issue: #16)
 
 - Date captured: 2025-12-03
 - Author: Dan Moisan
