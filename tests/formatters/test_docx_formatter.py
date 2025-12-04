@@ -96,7 +96,7 @@ class TestFormatToDocx:
         docx_doc = DocxDocument(str(output_path))  # type: ignore[no-untyped-call]
         for para in docx_doc.paragraphs:
             # Metadata should have 0pt space before
-            # pyright: ignore[reportUnknownMemberType] - python-docx is untyped
+            # python-docx is untyped - space_before has unknown type
             assert para.paragraph_format.space_before == Pt(0)  # type: ignore[reportUnknownMemberType]
 
     def test_transcript_label_spacing(self, tmp_path: Path) -> None:
