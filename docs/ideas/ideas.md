@@ -1,50 +1,57 @@
-## 🔵 **Optional Enhancements** (Deferred)
+## ?? Ideas Backlog (Deferred)
 
-These are nice-to-have features for future consideration:
+These are nice-to-have features for future consideration.
 
-### **Additional Output Formats**
+### Notes Feature Enhancements
+- [ ] Advanced note formatting features
+- [ ] Note categorization and organization
+- [ ] Smart note merging algorithms
+- [ ] Note conflict resolution
+- [ ] Enhanced metadata extraction from notes
+
+### Additional Output Formats
 - [ ] PDF generation (reportlab or weasyprint)
 - [ ] HTML output with CSS styling
 - [ ] Plain text with formatting markers
 - [ ] JSON structured output
 
-### **Advanced Formatting**
+### Advanced Formatting
 - [ ] Custom font selection
 - [ ] Custom spacing rules
 - [ ] Theme/template support
 - [ ] Header/footer customization
 
-### **Distribution**
+### Distribution
 - [ ] Windows EXE (PyInstaller)
 - [ ] macOS app bundle
 - [ ] Linux packages (DEB/RPM)
 - [ ] Standalone binaries
 
-### **Performance**
+### Performance
 - [ ] Parallel processing for large files
 - [ ] Operation caching
 - [ ] Memory optimization
 - [ ] Streaming mode
 
-### **Advanced Features**
+### Advanced Features
 - [ ] Multi-language support
 - [ ] Audio timestamp integration
 - [ ] Sentiment analysis
 - [ ] Topic extraction
 - [ ] PPTX export
 
-### **Enhanced Speaker Resolution**
+### Enhanced Speaker Resolution
 - [ ] Fuzzy name matching
 - [ ] Nickname support
 - [ ] Machine learning-based speaker identification
 - [ ] Persistent speaker mapping across sessions
 
-### **Configuration UI**
+### Configuration UI
 - [ ] Settings dialog for formatting preferences
 - [ ] Speaker mapping management
 - [ ] Template selection for output styles
 
-### **Batch Processing**
+### Batch Processing
 - [ ] Process multiple files in one run
 - [ ] Directory watching for auto-processing
 - [ ] Parallel processing for large batches

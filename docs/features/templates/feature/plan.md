@@ -1,22 +1,30 @@
-# <feature-name> — Plan
+# <feature-name> - Plan
 
 - Issue: #<id>
 - Owner: name
 - Last Updated: YYYY-MM-DD
 
-## Milestones / Phases
+## Required References (read, do not restate)
 
-- [ ] Phase 1: ...
-- [ ] Phase 2: ...
-- [ ] Phase 3: ...
+- Coding workflow and standards: [`docs/code-change.instructions.md`](../../code-change.instructions.md)
+- Unit test policy: [`docs/unit-test-policy.md`](../../unit-test-policy.md)
 
-## Work Items
+**All work must comply with these policies; do not duplicate their content here.**
 
-- [ ] Design updates (docs/features/active/<feature-name>/...)
-- [ ] Tests to add/update
-- [ ] Implementation tasks
-- [ ] Telemetry/logging (if needed)
-- [ ] Migration/upgrade steps (if any)
+## Phases
+
+### Phase 1: <scope/goal> [0%]
+- [ ] Work item 1 (small enough for one prompt/session)
+- [ ] Work item 2
+- [ ] Tests/docs for this phase
+
+### Phase 2: <scope/goal> [0%]
+- [ ] Work item 1
+- [ ] Work item 2
+
+### Phase 3: <scope/goal> [0%]
+- [ ] Work item 1
+- [ ] Work item 2
 
 ## Test Plan
 
@@ -24,13 +32,6 @@
 - Integration: ...
 - CLI/UX examples: ...
 - Performance/edge cases: ...
-
-## Rollout / Validation
-
-- [ ] Run `poetry run pytest`
-- [ ] Run `poetry run ruff check`
-- [ ] Run `poetry run pyright`
-- [ ] Run `poetry run black --check .`
 
 ## Open Questions / Notes
 

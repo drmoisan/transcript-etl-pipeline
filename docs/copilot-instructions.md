@@ -48,4 +48,4 @@ Read each policy document **thoroughly** before starting work. Implement them **
 
 For detailed status on current development work, see:
 - **Current Focus**: [docs/features/feature_status.md](features/feature_status.md) - Notes enhancement and Speaker Logic improvement
-- **Optional Features**: [docs/ideas/potential_features.md](ideas/potential_features.md) - Deferred enhancements for future consideration
+- **Optional Features**: [docs/ideas/ideas.md](ideas/ideas.md) - Deferred enhancements for future consideration
