@@ -8,11 +8,6 @@ applyTo: "**"
 
 This document contains instructions for **future enhancements** to the transcript ETL pipeline.
 
-**Note**: The core ETL pipeline (Phases 1-9 + Speakerless Detection) is **fully complete**.
-For completed implementation details, see:
-- **Completed Instructions**: [docs/archive/core_etl/core_etl_instructions.md](archive/core_etl/core_etl_instructions.md)
-- **Completed Status**: [docs/archive/core_etl/core_etl_status.md](archive/core_etl/core_etl_status.md)
-
 ---
 
 # **1. Policies — Always Follow These**
@@ -22,7 +17,7 @@ For completed implementation details, see:
 Read each policy document **thoroughly** before starting work. Implement them **exactly as written**. Do not interpret, modify, or skip any requirements.
 
 * **Coding Standards, Workflow, PR/commit procedures:**
-  [code-change.instructions.md](code-change.instructions.md)
+  [code-change.instructions.md](../docs/code-change.instructions.md)
   
   This document defines the complete development workflow including:
   - Pre-implementation requirements (clarify objectives, document plans)
@@ -31,12 +26,12 @@ Read each policy document **thoroughly** before starting work. Implement them **
   - Post-implementation requirements (quality checks, documentation updates)
 
 * **Developer Tooling: Poetry, Black, Ruff, Pyright, Pytest, pytest-cov, coverage, pre-commit, VSCode tasks:**
-  [developer-tooling.md](developer-tooling.md)
+  [developer-tooling.md](../docs/developer-tooling.md)
   
   This document covers all tooling setup and usage.
 
 * **Unit Test Policy (independence, determinism, clarity, AAA, etc.):**
-  [unit-test-policy.md](unit-test-policy.md)
+  [unit-test-policy.md](../docs/unit-test-policy.md)
   
   This document defines mandatory testing standards. Every test must comply.
 
@@ -47,5 +42,5 @@ Read each policy document **thoroughly** before starting work. Implement them **
 # **2. Future Enhancement Work**
 
 For detailed status on current development work, see:
-- **Current Focus**: [docs/features/feature_status.md](features/feature_status.md) - Notes enhancement and Speaker Logic improvement
-- **Optional Features**: [docs/ideas/ideas.md](ideas/ideas.md) - Deferred enhancements for future consideration
+- **Current Focus**: [`docs/features/backlog.md`](../docs/features/backlog.md) - Feature backlog and priorities
+- **Optional Features**: [`docs/features/ideas/ideas.md`](../docs/features/ideas/ideas.md) - Deferred enhancements for future consideration

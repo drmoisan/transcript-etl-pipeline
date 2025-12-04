@@ -172,7 +172,7 @@ $specPath = Join-Path $target 'spec.md'
 $planPath = Join-Path $target 'plan.md'
 
 # Helper to replace common header placeholders in a template file
-function Apply-HeaderPlaceholders {
+function Set-HeaderPlaceholders {
     param(
         [string] $Content
     )
@@ -187,7 +187,7 @@ function Apply-HeaderPlaceholders {
 # Update user-story from template + potential content
 if (Test-Path $userStoryPath) {
     $content = Get-Content -Raw -Path $userStoryPath
-    $content = Apply-HeaderPlaceholders -Content $content
+    $content = Set-HeaderPlaceholders -Content $content
     if ($problem) {
         $content = Set-Section -Content $content -Name 'Problem / Why' -Body $problem
     }
@@ -201,7 +201,7 @@ if (Test-Path $userStoryPath) {
 # Update spec from template + potential content
 if (Test-Path $specPath) {
     $content = Get-Content -Raw -Path $specPath
-    $content = Apply-HeaderPlaceholders -Content $content
+    $content = Set-HeaderPlaceholders -Content $content
     if ($problem) {
         $content = Set-Section -Content $content -Name 'Overview' -Body $problem
     }
@@ -221,7 +221,7 @@ if (Test-Path $specPath) {
 # Update plan headers from template (no section seeding yet)
 if (Test-Path $planPath) {
     $content = Get-Content -Raw -Path $planPath
-    $content = Apply-HeaderPlaceholders -Content $content
+    $content = Set-HeaderPlaceholders -Content $content
     $content = $content -replace '<feature-name>', $FeatureName
     Set-Content -Path $planPath -Value $content -Encoding UTF8
 }
@@ -232,9 +232,9 @@ if ($potentialFile) {
 
 $codeCmd = Get-Command code -ErrorAction SilentlyContinue
 if ($codeCmd) {
-    $args = $filesToOpen | Where-Object { Test-Path $_ }
-    if ($args.Count -gt 0) {
-        Start-Process code -ArgumentList $args
+    $filesToEdit = $filesToOpen | Where-Object { Test-Path $_ }
+    if ($filesToEdit.Count -gt 0) {
+        Start-Process code -ArgumentList $filesToEdit
     }
 } else {
     Write-Host "VS Code 'code' command not found. Files to edit:"

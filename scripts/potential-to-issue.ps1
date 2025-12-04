@@ -5,7 +5,7 @@ param(
     [string] $PotentialPath
 )
 
-function Fail($msg) {
+function Stop-ScriptWithError($msg) {
     Write-Host $msg
     exit 1
 }
@@ -16,16 +16,16 @@ $resolved = $null
 try {
     $resolved = (Resolve-Path $PotentialPath -ErrorAction Stop).Path
 } catch {
-    Fail "Potential file not found: $PotentialPath"
+    Stop-ScriptWithError "Potential file not found: $PotentialPath"
 }
 
 if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
-    Fail "gh CLI not found on PATH. Install gh and authenticate first."
+    Stop-ScriptWithError "gh CLI not found on PATH. Install gh and authenticate first."
 }
 
 $content = Get-Content -Raw -Path $resolved
 if ([string]::IsNullOrWhiteSpace($content)) {
-    Fail "Potential file is empty: $resolved"
+    Stop-ScriptWithError "Potential file is empty: $resolved"
 }
 
 $headingMatch = [regex]::Match(
@@ -143,7 +143,7 @@ if ($issueNumber -and $issueUrl) {
         if ($lines[$i] -match '^\s*##\s+') { $metaEnd = $i; break }
     }
 
-    function UpsertLine([System.Collections.Generic.List[string]] $arr, [string] $label, [string] $value, [ref] $metaEndRef) {
+    function Set-LineValue([System.Collections.Generic.List[string]] $arr, [string] $label, [string] $value, [ref] $metaEndRef) {
         $pattern = "^- $($label):"
         $found = $false
         for ($j = 0; $j -lt $arr.Count; $j++) {
@@ -160,14 +160,14 @@ if ($issueNumber -and $issueUrl) {
     }
 
     $metaEndRef = [ref] $metaEnd
-    UpsertLine -arr $lines -label 'Issue' -value "#$issueNumber" -metaEndRef $metaEndRef
-    UpsertLine -arr $lines -label 'Issue URL' -value $issueUrl -metaEndRef $metaEndRef
+    Set-LineValue -arr $lines -label 'Issue' -value "#$issueNumber" -metaEndRef $metaEndRef
+    Set-LineValue -arr $lines -label 'Issue URL' -value $issueUrl -metaEndRef $metaEndRef
     if ($issueData -and $issueData.updatedAt) {
         $updated = ([datetime]$issueData.updatedAt).ToString('yyyy-MM-dd')
-        UpsertLine -arr $lines -label 'Last Updated' -value $updated -metaEndRef $metaEndRef
+        Set-LineValue -arr $lines -label 'Last Updated' -value $updated -metaEndRef $metaEndRef
     }
     $promotedValue = "Promoted -> docs/features/active/$featurePath/ (Issue #$issueNumber)"
-    UpsertLine -arr $lines -label 'Status' -value $promotedValue -metaEndRef $metaEndRef
+    Set-LineValue -arr $lines -label 'Status' -value $promotedValue -metaEndRef $metaEndRef
 
     Set-Content -Path $resolved -Value $lines -Encoding UTF8
     Write-Host "Updated potential file with issue metadata: $resolved"

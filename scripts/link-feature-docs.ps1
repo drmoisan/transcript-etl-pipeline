@@ -7,24 +7,24 @@ param(
     [string] $FeatureName
 )
 
-function Fail($msg) {
+function Stop-ScriptWithError($msg) {
     Write-Host $msg
     exit 1
 }
 
 if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
-    Fail "gh CLI not found on PATH. Install gh and authenticate first."
+    Stop-ScriptWithError "gh CLI not found on PATH. Install gh and authenticate first."
 }
 
 $issueJson = & gh issue view $IssueNumber --json body
 if ($LASTEXITCODE -ne 0 -or -not $issueJson) {
-    Fail "Unable to fetch issue #$IssueNumber. Check the number and gh auth."
+    Stop-ScriptWithError "Unable to fetch issue #$IssueNumber. Check the number and gh auth."
 }
 
 $issue = $issueJson | ConvertFrom-Json
 $body = $issue.body
 if ([string]::IsNullOrWhiteSpace($body)) {
-    Fail "Issue #$IssueNumber has an empty body; aborting to avoid overwriting content."
+    Stop-ScriptWithError "Issue #$IssueNumber has an empty body; aborting to avoid overwriting content."
 }
 
 # Normalize feature name to both underscore and hyphen variants for paths
@@ -37,7 +37,7 @@ $docsBlock = @"
 - [Plan](docs/features/active/$featurePath/plan.md)
 "@
 
-function Replace-Or-AppendSection {
+function Set-OrAppendSection {
     param(
         [string] $Content,
         [string] $SectionHeading,
@@ -57,7 +57,7 @@ function Replace-Or-AppendSection {
     return $Content.TrimEnd() + "`n`n" + $Replacement.TrimEnd()
 }
 
-$newBody = Replace-Or-AppendSection -Content $body -SectionHeading "## Feature Docs" -Replacement $docsBlock
+$newBody = Set-OrAppendSection -Content $body -SectionHeading "## Feature Docs" -Replacement $docsBlock
 
 $tmp = [System.IO.Path]::ChangeExtension([System.IO.Path]::GetTempFileName(), '.md')
 Set-Content -Path $tmp -Value $newBody -Encoding UTF8
@@ -69,5 +69,5 @@ Remove-Item $tmp -ErrorAction SilentlyContinue
 if ($exit -eq 0) {
     Write-Host "Updated issue #$IssueNumber with Feature Docs links."
 } else {
-    Fail "Failed to update issue #$IssueNumber."
+    Stop-ScriptWithError "Failed to update issue #$IssueNumber."
 }
