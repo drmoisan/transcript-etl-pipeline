@@ -8,6 +8,7 @@ param(
 function Fail($msg) {
     Write-Host $msg
     exit 1
+$workspace = Split-Path -Parent $PSScriptRoot
 }
 
 $resolved = $null
@@ -41,6 +42,7 @@ if (-not $featureName) {
     $featureName = (Split-Path $resolved -Leaf) -replace '\.md$', ''
 }
 $issueTitle = "Feature: $featureName"
+$featurePath = ($featureName -replace '\s+', '_') -replace '[^A-Za-z0-9_-]', ''
 
 function Get-Section([string] $name) {
     $escaped = [regex]::Escape($name)
@@ -157,10 +159,20 @@ if ($issueNumber -and $issueUrl) {
         $updated = $issueData.updatedAt.Substring(0,10)
         UpsertLine -arr $lines -label 'Last Updated' -value $updated -metaEndRef $metaEndRef
     }
+    $promotedValue = "Promoted -> docs/features/active/$featurePath/ (Issue #$issueNumber)"
+    UpsertLine -arr $lines -label 'Status' -value $promotedValue -metaEndRef $metaEndRef
 
     Set-Content -Path $resolved -Value $lines -Encoding UTF8
     Write-Host "Updated potential file with issue metadata: $resolved"
 }
+
+$promotedDir = Join-Path $workspace 'docs/features/potential/promoted'
+if (-not (Test-Path $promotedDir)) {
+    New-Item -ItemType Directory -Path $promotedDir | Out-Null
+}
+$destPath = Join-Path $promotedDir (Split-Path $resolved -Leaf)
+Move-Item -Path $resolved -Destination $destPath -Force
+Write-Host "Moved potential file to promoted folder: $destPath"
 
 Remove-Item $tmp -ErrorAction SilentlyContinue
 exit $exit

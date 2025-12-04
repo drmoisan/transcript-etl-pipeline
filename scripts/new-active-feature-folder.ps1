@@ -83,12 +83,21 @@ $filesToOpen += (Join-Path $target 'plan.md')
 # Seed from a similarly named potential feature, if present
 $normalizedName = $FeatureName -replace '_', '-'
 $potentialDir = Join-Path $workspace 'docs/features/potential'
+$promotedDir = Join-Path $potentialDir 'promoted'
 $potentialFile = $null
 if (Test-Path $potentialDir) {
     $potentialFile = Get-ChildItem $potentialDir -File |
         Where-Object {
             $_.Name -like "*$normalizedName*.md" -and
             $_.Name -notin @('template.md', 'README.md')
+        } |
+        Sort-Object Name -Descending |
+        Select-Object -First 1
+}
+if (-not $potentialFile -and (Test-Path $promotedDir)) {
+    $potentialFile = Get-ChildItem $promotedDir -File |
+        Where-Object {
+            $_.Name -like "*$normalizedName*.md"
         } |
         Sort-Object Name -Descending |
         Select-Object -First 1
@@ -104,6 +113,13 @@ if ($potentialFile) {
 
     $criteria = if ($criteriaRaw) { Format-Checklist $criteriaRaw } else { '' }
     $testsFormatted = if ($tests) { Format-Checklist $tests } else { '' }
+
+    if (-not $IssueNumber) {
+        $issueMatch = [regex]::Match($potentialContent, '^\s*-\s*Issue\s*:\s*#?(\d+)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+        if ($issueMatch.Success) {
+            $IssueNumber = $issueMatch.Groups[1].Value
+        }
+    }
 
     $issueMeta = $null
     if ($IssueNumber -and (Get-Command gh -ErrorAction SilentlyContinue)) {
