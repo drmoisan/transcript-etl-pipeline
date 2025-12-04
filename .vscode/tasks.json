@@ -139,6 +139,32 @@
       },
       "detail": "Creates a feature issue from a potential file using gh issue create (non-interactive)."
     },
+    {
+      "label": "GitHub: Link Feature Docs",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoLogo",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/link-feature-docs.ps1",
+        "-IssueNumber",
+        "${input:LinkIssueNumber}",
+        "-FeatureName",
+        "${input:LinkFeatureName}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "detail": "Adds/updates a Feature Docs section in an issue with links to user-story/spec/plan."
+    },
         {
             "label": "Feature: Create Active Folder",
             "type": "shell",
@@ -218,11 +244,11 @@
       "description": "Short name (kebab-case, e.g., notes-feature)",
       "default": "notes-feature"
     },
-    {
-      "id": "PotentialFilePath",
-      "type": "promptString",
-      "description": "Path to potential feature file",
-      "default": "docs/features/potential/2025-12-01-notes-feature.md"
+        {
+            "id": "PotentialFilePath",
+            "type": "promptString",
+            "description": "Path to potential feature file",
+            "default": "docs/features/potential/2025-12-01-notes-feature.md"
     },
         {
             "id": "ActiveFeatureName",
@@ -235,6 +261,18 @@
             "type": "promptString",
             "description": "Issue number (optional, e.g., 14)",
             "default": ""
+        },
+        {
+            "id": "LinkIssueNumber",
+            "type": "promptString",
+            "description": "Issue number to update (e.g., 14)",
+            "default": ""
+        },
+        {
+            "id": "LinkFeatureName",
+            "type": "promptString",
+            "description": "Feature folder name (e.g., notes_feature)",
+            "default": "notes_feature"
         }
     ]
 }
