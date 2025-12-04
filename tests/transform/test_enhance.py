@@ -375,8 +375,8 @@ class TestEnhanceTextIdentityConstraints:
             elif line.startswith("Speaker C:"):
                 speaker_labels.add("C")
 
-        # Should have at least 2 different speakers with these change signals
-        assert len(speaker_labels) >= 1  # Document actual behavior
+        # Strong change signals (question, response, greeting) produce distinct speakers
+        assert len(speaker_labels) >= 2
 
 
 class TestEnhanceTextNormalizationInteractions:
@@ -536,8 +536,8 @@ class TestEnhanceTextEdgeCases:
             elif line.startswith("Speaker B:"):
                 speaker_labels.add("B")
 
-        # Should have speaker changes for Q&A
-        assert len(speaker_labels) >= 1
+        # Q&A pattern produces speaker changes - should have 2 speakers
+        assert len(speaker_labels) >= 2
 
     def test_pronoun_shift_detection(self) -> None:
         """Test pronoun shift pattern (I/you exchange) affects speaker assignment.
