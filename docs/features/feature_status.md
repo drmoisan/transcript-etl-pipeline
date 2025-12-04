@@ -12,11 +12,7 @@
 - ✅ Merge strategies (add/replace)
 
 **Remaining Work**:
-- [ ] Advanced note formatting features
-- [ ] Note categorization and organization
-- [ ] Smart note merging algorithms
-- [ ] Note conflict resolution
-- [ ] Enhanced metadata extraction from notes
+- Deferred ideas moved to `docs/ideas/ideas.md` (Notes Feature Enhancements)
 
 **Reference**: [`docs/notes-feature-user-story.md`](notes-feature-user-story.md)
 

@@ -2,7 +2,10 @@
 
 - Date captured: 2025-12-01
 - Author: Dan Moisan
-- Status: Draft
+- Issue: #14
+- Issue URL: https://github.com/drmoisan/transcript-etl-pipeline/issues/14
+- Last Updated: 2025-12-03
+- Status: Promoted -> docs/features/active/notes-feature/ (Issue #14)
 
 ## Problem / Why
 
