@@ -43,9 +43,40 @@ function Get-Section {
     return ''
 }
 
+function Set-Section {
+    param(
+        [string] $Content,
+        [string] $Name,
+        [string] $Body
+    )
+    if ([string]::IsNullOrWhiteSpace($Body)) {
+        return $Content
+    }
+
+    $escaped = [regex]::Escape($Name)
+    $pattern = "(^##\s+$escaped\s*\r?\n)(.*?)(?=^\s*##\s+|\z)"
+    $options = [System.Text.RegularExpressions.RegexOptions]::Singleline -bor [System.Text.RegularExpressions.RegexOptions]::Multiline
+    $replacement = "`$1$Body`r`n`r`n"
+
+    if ([regex]::IsMatch($Content, $pattern, $options)) {
+        return [regex]::Replace($Content, $pattern, $replacement, $options)
+    }
+
+    return $Content.TrimEnd() + "`r`n`r`n## $Name`r`n$Body`r`n"
+}
+
 if ([string]::IsNullOrWhiteSpace($FeatureName)) {
     Write-Host 'Aborted: no feature name provided. Use -FeatureName.'
     exit 1
+}
+
+# Normalize empty/sentinel issue values to $null so auto-discovery can run.
+if ($PSBoundParameters.ContainsKey('IssueNumber')) {
+    if ([string]::IsNullOrWhiteSpace($IssueNumber)) {
+        $IssueNumber = $null
+    } elseif ($IssueNumber.Trim().ToLowerInvariant() -eq 'auto') {
+        $IssueNumber = $null
+    }
 }
 
 $namePattern = '^[a-z0-9]+([-_][a-z0-9]+)*$'
@@ -120,142 +151,83 @@ if ($potentialFile) {
             $IssueNumber = $issueMatch.Groups[1].Value
         }
     }
+}
 
-    $issueMeta = $null
-    if ($IssueNumber -and (Get-Command gh -ErrorAction SilentlyContinue)) {
-        $json = & gh issue view $IssueNumber --json number,title,url,author,updatedAt
-        if ($LASTEXITCODE -eq 0 -and $json) {
-            $issueMeta = $json | ConvertFrom-Json
-        }
+# Always attempt to fetch issue metadata (if issue number is known) for headers.
+$issueMeta = $null
+if ($IssueNumber -and (Get-Command gh -ErrorAction SilentlyContinue)) {
+    $json = & gh issue view $IssueNumber --json number,title,url,author,updatedAt
+    if ($LASTEXITCODE -eq 0 -and $json) {
+        $issueMeta = $json | ConvertFrom-Json
     }
+}
 
-    $issueField = if ($issueMeta.number) { "#$($issueMeta.number)" } elseif ($IssueNumber) { "#$IssueNumber" } else { "#<id>" }
-    $ownerField = if ($issueMeta.author.login) { $issueMeta.author.login } else { "name" }
-    $updatedField = if ($issueMeta.updatedAt) { ([datetime]$issueMeta.updatedAt).ToString('yyyy-MM-dd') } else { "YYYY-MM-DD" }
+$issueField = if ($issueMeta.number) { "#$($issueMeta.number)" } elseif ($IssueNumber) { "#$IssueNumber" } else { "#<id>" }
+$ownerField = if ($issueMeta.author.login) { $issueMeta.author.login } else { "name" }
+$updatedField = if ($issueMeta.updatedAt) { ([datetime]$issueMeta.updatedAt).ToString('yyyy-MM-dd') } else { "YYYY-MM-DD" }
 
-    $userStoryPath = Join-Path $target 'user-story.md'
-    $specPath = Join-Path $target 'spec.md'
-    $planPath = Join-Path $target 'plan.md'
+# Paths to active files
+$userStoryPath = Join-Path $target 'user-story.md'
+$specPath = Join-Path $target 'spec.md'
+$planPath = Join-Path $target 'plan.md'
 
-    $userStoryContent = @"
-# $FeatureName - User Story
+# Helper to replace common header placeholders in a template file
+function Apply-HeaderPlaceholders {
+    param(
+        [string] $Content
+    )
+    $result = $Content
+    $result = $result -replace '<feature-name>', $FeatureName
+    $result = [regex]::Replace($result, '#`?<id>`?', $issueField)
+    $result = [regex]::Replace($result, '^- Owner:\s+name', "- Owner: $ownerField", 'Multiline')
+    $result = [regex]::Replace($result, '^- Last Updated:\s+YYYY-MM-DD', "- Last Updated: $updatedField", 'Multiline')
+    return $result
+}
 
-- Issue: $issueField
-- Owner: $ownerField
-- Status: Draft | In Progress | Complete
-- Last Updated: $updatedField
+# Update user-story from template + potential content
+if (Test-Path $userStoryPath) {
+    $content = Get-Content -Raw -Path $userStoryPath
+    $content = Apply-HeaderPlaceholders -Content $content
+    if ($problem) {
+        $content = Set-Section -Content $content -Name 'Problem / Why' -Body $problem
+    }
+    if ($criteria) {
+        $content = Set-Section -Content $content -Name 'Acceptance Criteria' -Body $criteria
+    }
+    $content = $content -replace '<feature-name>', $FeatureName
+    Set-Content -Path $userStoryPath -Value $content -Encoding UTF8
+}
 
-## Problem / Why
+# Update spec from template + potential content
+if (Test-Path $specPath) {
+    $content = Get-Content -Raw -Path $specPath
+    $content = Apply-HeaderPlaceholders -Content $content
+    if ($problem) {
+        $content = Set-Section -Content $content -Name 'Overview' -Body $problem
+    }
+    if ($behavior) {
+        $content = Set-Section -Content $content -Name 'Behavior' -Body $behavior
+    }
+    if ($constraints) {
+        $content = Set-Section -Content $content -Name 'Constraints & Risks' -Body $constraints
+    }
+    if ($testsFormatted) {
+        $content = Set-Section -Content $content -Name 'Seeded Test Conditions (from potential)' -Body $testsFormatted
+    }
+    $content = $content -replace '<feature-name>', $FeatureName
+    Set-Content -Path $specPath -Value $content -Encoding UTF8
+}
 
-$problem
+# Update plan headers from template (no section seeding yet)
+if (Test-Path $planPath) {
+    $content = Get-Content -Raw -Path $planPath
+    $content = Apply-HeaderPlaceholders -Content $content
+    $content = $content -replace '<feature-name>', $FeatureName
+    Set-Content -Path $planPath -Value $content -Encoding UTF8
+}
 
-## Personas & Scenarios
-
-- Persona: ...
-  - Scenario: ...
-
-## User Stories
-
-- As a ..., I want ..., so that ...
-- As a ..., I want ..., so that ...
-
-## Acceptance Criteria
-
-$criteria
-
-## Non-Goals
-
-Call out what is explicitly excluded from this feature.
-"@
-
-    $specContent = @"
-# $FeatureName - Spec
-
-- Issue: $issueField
-- Owner: $ownerField
-- Last Updated: $updatedField
-
-## Overview
-
-$problem
-
-## Behavior
-
-$behavior
-
-## Inputs / Outputs
-
-- Inputs (CLI flags, files, env vars)
-- Outputs (artifacts, logs, telemetry)
-
-## API / CLI Surface
-
-List commands, flags, request/response shapes, and examples.
-
-## Data & State
-
-Data flow, storage, or state changes introduced by this feature.
-
-## Constraints & Risks
-
-$constraints
-
-## Definition of Done
-
-- [ ] Behavior matches acceptance criteria (see user story)
-- [ ] Tests updated/added
-- [ ] Docs updated (README, docs/features/active/... links)
-- [ ] Telemetry/logging (if applicable)
-
-## Seeded Test Conditions (from potential)
-
-$testsFormatted
-"@
-
-    $planContent = @"
-# $FeatureName - Plan
-
-- Issue: $issueField
-- Owner: $ownerField
-- Last Updated: $updatedField
-
-## Required References (read, do not restate)
-
-- Coding workflow and standards: [`docs/code-change.instructions.md`](../../code-change.instructions.md)
-- Unit test policy: [`docs/unit-test-policy.md`](../../unit-test-policy.md)
-
-**All work must comply with these policies; do not duplicate their content here.**
-
-## Phases (nest work under each phase)
-
-- Phase 1: <scope/goal>
-  - [ ] Work item 1 (small enough for one prompt/session)
-  - [ ] Work item 2
-  - [ ] Tests/docs for this phase
-- Phase 2: <scope/goal>
-  - [ ] Work item 1
-  - [ ] Work item 2
-- Phase 3: <scope/goal>
-  - [ ] Work item 1
-  - [ ] Work item 2
-
-## Test Plan
-
-- Unit: ...
-- Integration: ...
-- CLI/UX examples: ...
-- Performance/edge cases: ...
-
-## Open Questions / Notes
-
-Document decisions, risks, and follow-ups here.
-"@
-
-    Set-Content -Path $userStoryPath -Value $userStoryContent -Encoding UTF8
-    Set-Content -Path $specPath -Value $specContent -Encoding UTF8
-    Set-Content -Path $planPath -Value $planContent -Encoding UTF8
-
-    Write-Host "Seeded user-story.md and spec.md from potential: $($potentialFile.Name)"
+if ($potentialFile) {
+    Write-Host "Seeded docs from potential: $($potentialFile.Name)"
 }
 
 $codeCmd = Get-Command code -ErrorAction SilentlyContinue

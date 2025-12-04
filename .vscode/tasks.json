@@ -260,7 +260,7 @@
             "id": "ActiveIssueNumber",
             "type": "promptString",
             "description": "Issue number (optional, e.g., 14)",
-            "default": ""
+            "default": "auto"
         },
         {
             "id": "LinkIssueNumber",

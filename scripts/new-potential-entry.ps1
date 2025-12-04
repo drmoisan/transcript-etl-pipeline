@@ -23,6 +23,19 @@ $backlog = Join-Path $workspace 'docs/features/backlog.md'
 Copy-Item $template $target -Force
 Write-Host "Created: $target"
 
+# Populate placeholders in the new file
+$author = (git config user.name) 2>$null
+if (-not $author -or [string]::IsNullOrWhiteSpace($author)) {
+    $author = $env:USERNAME
+}
+if (-not $author) { $author = 'Unknown' }
+
+$content = Get-Content -Raw -Path $target
+$content = $content -replace '<feature-name>', $ShortName
+$content = $content -replace 'YYYY-MM-DD', $today
+$content = $content -replace '- Author: name', "- Author: $author"
+Set-Content -Path $target -Value $content -Encoding UTF8
+
 $codeCmd = Get-Command code -ErrorAction SilentlyContinue
 if ($codeCmd) {
     Start-Process code -ArgumentList @($target, $backlog)

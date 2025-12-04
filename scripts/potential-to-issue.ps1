@@ -133,6 +133,11 @@ if ($issueNumber -and $issueUrl) {
     $lines = New-Object System.Collections.Generic.List[string]
     $lines.AddRange([string[]]$rawLines)
 
+    # Update title with issue number
+    if ($lines.Count -gt 0) {
+        $lines[0] = "# $featureName (Issue #$issueNumber)"
+    }
+
     $metaEnd = $lines.Count
     for ($i = 0; $i -lt $lines.Count; $i++) {
         if ($lines[$i] -match '^\s*##\s+') { $metaEnd = $i; break }

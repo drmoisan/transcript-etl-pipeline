@@ -23,7 +23,9 @@ if ($LASTEXITCODE -ne 0 -or -not $issueJson) {
 
 $issue = $issueJson | ConvertFrom-Json
 $body = $issue.body
-if (-not $body) { $body = "" }
+if ([string]::IsNullOrWhiteSpace($body)) {
+    Fail "Issue #$IssueNumber has an empty body; aborting to avoid overwriting content."
+}
 
 # Normalize feature name to both underscore and hyphen variants for paths
 $featurePath = $FeatureName
@@ -41,18 +43,18 @@ function Replace-Or-AppendSection {
         [string] $SectionHeading,
         [string] $Replacement
     )
-    $pattern = "(?ms)^" + [regex]::Escape($SectionHeading) + "\s*\R.*?(?=^\#\#\s+|\z)"
-    $regex = [regex]$pattern
+    $pattern = "(?ms)^" + [regex]::Escape($SectionHeading) + "\s*\r?\n.*?(?=^\#\#\s+|\z)"
+    $regex = New-Object System.Text.RegularExpressions.Regex(
+        $pattern,
+        [System.Text.RegularExpressions.RegexOptions]::Multiline -bor [System.Text.RegularExpressions.RegexOptions]::Singleline
+    )
     if ($regex.IsMatch($Content)) {
         return $regex.Replace($Content, $Replacement.TrimEnd())
     }
-    else {
-        if ($Content.Trim().Length -eq 0) {
-            return $Replacement.TrimEnd()
-        } else {
-            return $Content.TrimEnd() + "`n`n" + $Replacement.TrimEnd()
-        }
+    if ($Content.Trim().Length -eq 0) {
+        return $Replacement.TrimEnd()
     }
+    return $Content.TrimEnd() + "`n`n" + $Replacement.TrimEnd()
 }
 
 $newBody = Replace-Or-AppendSection -Content $body -SectionHeading "## Feature Docs" -Replacement $docsBlock
