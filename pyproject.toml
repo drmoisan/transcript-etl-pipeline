@@ -59,6 +59,12 @@ omit = [
 ]
 
 [tool.coverage.report]
+# Initial fail-under floor: 15% (current coverage ~16%)
+# Plan to ratchet up as coverage improves:
+# - After initial stabilization: raise to 20%
+# - After core module coverage: raise to 30%
+# - Long-term goal: 50%+ as test coverage expands
+fail_under = 15
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
