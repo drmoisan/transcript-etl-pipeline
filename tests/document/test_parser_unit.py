@@ -155,3 +155,66 @@ class TestParserHelpers:
         """Ensure metadata label list supports the meeting title entry without a colon."""
         assert is_metadata_label("Meeting Title") is True
         assert is_metadata_label("Unknown:") is False
+
+    def test_extract_label_empty_line_returns_none(self) -> None:
+        """Ensure extract_label returns None for an empty line."""
+        assert extract_label("") is None
+
+    def test_extract_label_whitespace_only_returns_none(self) -> None:
+        """Ensure extract_label returns None for whitespace-only line."""
+        # Empty string case
+        assert extract_label("") is None
+
+
+class TestParserSpeakerParagraphTransition:
+    """Tests for parser behavior when transitioning from metadata to speaker sections."""
+
+    def test_non_transcript_label_in_metadata_creates_speaker_section(self) -> None:
+        """Non-metadata label creates SPEAKER_PARAGRAPH section."""
+        # This tests line 57: current_section_type = SectionType.SPEAKER_PARAGRAPH
+        text = "Date: 2025-11-29\r\n" "CustomSpeaker: Hello everyone.\r\n"
+
+        doc = parse_enhanced_text(text)
+
+        # Should have 2 sections: metadata and speaker paragraph
+        assert len(doc.sections) == 2
+        assert doc.sections[0].section_type == SectionType.METADATA
+        assert doc.sections[1].section_type == SectionType.SPEAKER_PARAGRAPH
+
+        # Verify the speaker paragraph content
+        speaker_section = doc.sections[1]
+        assert len(speaker_section.paragraphs) == 1
+        assert speaker_section.paragraphs[0].label is not None
+        assert speaker_section.paragraphs[0].label.text == "CustomSpeaker:"
+        assert speaker_section.paragraphs[0].text == "Hello everyone."
+
+    def test_speaker_label_directly_after_metadata(self) -> None:
+        """Non-transcript label transitions metadata to speaker section."""
+        text = "Date: 2025-01-01\r\n" "Time: 10:00 AM\r\n" "JohnDoe: Starting the discussion.\r\n"
+
+        doc = parse_enhanced_text(text)
+
+        # First section should be metadata with Date and Time
+        assert doc.sections[0].section_type == SectionType.METADATA
+        assert len(doc.sections[0].paragraphs) == 2
+
+        # Second section should be speaker paragraph
+        assert doc.sections[1].section_type == SectionType.SPEAKER_PARAGRAPH
+        assert doc.sections[1].paragraphs[0].label is not None
+        assert doc.sections[1].paragraphs[0].label.text == "JohnDoe:"
+
+    def test_multiple_speaker_labels_without_transcript(self) -> None:
+        """Multiple non-metadata labels create speaker paragraphs."""
+        text = "Date: 2025-01-01\r\n" "Alice: Good morning.\r\n" "Bob: Good morning to you too.\r\n"
+
+        doc = parse_enhanced_text(text)
+
+        # Should have 2 sections: metadata and speaker paragraph
+        assert len(doc.sections) == 2
+        assert doc.sections[0].section_type == SectionType.METADATA
+        assert doc.sections[1].section_type == SectionType.SPEAKER_PARAGRAPH
+
+        # Speaker section should contain both speakers
+        speaker_section = doc.sections[1]
+        labels = [p.label.text if p.label else None for p in speaker_section.paragraphs]
+        assert labels == ["Alice:", "Bob:"]

@@ -277,3 +277,60 @@ class TestFormatToMD:
             assert "**Speaker:** Line one.\nLine two." in content
         finally:
             Path(output_path).unlink()
+
+
+class TestNotesSectionFormatting:
+    """Tests for notes section formatting edge cases."""
+
+    def test_notes_header_not_first_gets_blank_line(self) -> None:
+        """Notes header not first in section gets a blank line before it."""
+        # Arrange - two notes header paragraphs in same section
+        doc = Document()
+        section = DocumentSection(section_type=SectionType.NOTES_HEADER)
+        section.add_paragraph(Paragraph(text="First Header"))
+        section.add_paragraph(Paragraph(text="Second Header"))
+        doc.add_section(section)
+
+        # Act
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+            output_path = f.name
+
+        try:
+            format_to_md(doc, output_path)
+
+            # Assert
+            content = Path(output_path).read_text(encoding="utf-8")
+            lines = content.split("\n")
+            # Find position of Second Header
+            second_idx = next(i for i, line in enumerate(lines) if "Second Header" in line)
+            # There should be a blank line before Second Header
+            assert lines[second_idx - 1] == ""
+        finally:
+            Path(output_path).unlink()
+
+    def test_multiple_notes_headers_spacing(self) -> None:
+        """Multiple notes headers in same section have blank lines between them."""
+        # Arrange
+        doc = Document()
+        section = DocumentSection(section_type=SectionType.NOTES_HEADER)
+        section.add_paragraph(Paragraph(text="Header One"))
+        section.add_paragraph(Paragraph(text="Header Two"))
+        section.add_paragraph(Paragraph(text="Header Three"))
+        doc.add_section(section)
+
+        # Act
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+            output_path = f.name
+
+        try:
+            format_to_md(doc, output_path)
+
+            # Assert
+            content = Path(output_path).read_text(encoding="utf-8")
+            # First header should have no blank line before
+            assert content.startswith("# Header One")
+            # Subsequent headers should have blank lines
+            assert "\n\n# Header Two" in content
+            assert "\n\n# Header Three" in content
+        finally:
+            Path(output_path).unlink()

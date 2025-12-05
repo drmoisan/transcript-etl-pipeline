@@ -249,3 +249,149 @@ class TestFormatToRTF:
             assert r"\fs20" in content
         finally:
             Path(output_path).unlink()
+
+
+class TestRtfNotesFormatting:
+    """Tests for RTF notes section formatting edge cases."""
+
+    def test_notes_body_non_bullet_paragraph(self) -> None:
+        """Notes body with non-bullet paragraph has regular text (no bullet char)."""
+        # Arrange
+        doc = Document()
+        section = DocumentSection(section_type=SectionType.NOTES_BODY)
+        section.add_paragraph(Paragraph(text="Regular notes text.", is_bullet=False))
+        doc.add_section(section)
+
+        # Act
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".rtf", delete=False) as f:
+            output_path = f.name
+
+        try:
+            format_to_rtf(doc, output_path)
+
+            # Assert
+            content = Path(output_path).read_text(encoding="utf-8")
+            # Text should be present
+            assert "Regular notes text." in content
+            # Should NOT have bullet character
+            assert r"\u8226" not in content
+            # Should have paragraph end marker
+            assert r"\par" in content
+        finally:
+            Path(output_path).unlink()
+
+    def test_notes_body_mixed_bullet_and_regular(self) -> None:
+        """Notes body with mix of bullet and non-bullet paragraphs."""
+        # Arrange
+        doc = Document()
+        section = DocumentSection(section_type=SectionType.NOTES_BODY)
+        section.add_paragraph(Paragraph(text="Intro text", is_bullet=False))
+        section.add_paragraph(Paragraph(text="Bullet point", is_bullet=True))
+        section.add_paragraph(Paragraph(text="More regular text", is_bullet=False))
+        doc.add_section(section)
+
+        # Act
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".rtf", delete=False) as f:
+            output_path = f.name
+
+        try:
+            format_to_rtf(doc, output_path)
+
+            # Assert
+            content = Path(output_path).read_text(encoding="utf-8")
+            # All text should be present
+            assert "Intro text" in content
+            assert "Bullet point" in content
+            assert "More regular text" in content
+            # Only the bullet point should have bullet character
+            assert content.count(r"\u8226") == 1
+        finally:
+            Path(output_path).unlink()
+
+    def test_notes_body_spacing(self) -> None:
+        """Notes body uses 6pt spacing above (120 twips)."""
+        # Arrange
+        doc = Document()
+        section = DocumentSection(section_type=SectionType.NOTES_BODY)
+        section.add_paragraph(Paragraph(text="Notes text", is_bullet=False))
+        doc.add_section(section)
+
+        # Act
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".rtf", delete=False) as f:
+            output_path = f.name
+
+        try:
+            format_to_rtf(doc, output_path)
+
+            # Assert
+            content = Path(output_path).read_text(encoding="utf-8")
+            # 6pt * 20 twips/pt = 120 twips
+            assert r"\sb120" in content
+        finally:
+            Path(output_path).unlink()
+
+    def test_newline_escaping_in_rtf(self) -> None:
+        """Newlines in text are properly escaped to RTF paragraph markers."""
+        # Arrange
+        doc = Document()
+        section = DocumentSection(section_type=SectionType.REGULAR_PARAGRAPH)
+        section.add_paragraph(Paragraph(text="Line one\nLine two"))
+        doc.add_section(section)
+
+        # Act
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".rtf", delete=False) as f:
+            output_path = f.name
+
+        try:
+            format_to_rtf(doc, output_path)
+
+            # Assert
+            content = Path(output_path).read_text(encoding="utf-8")
+            # \n should be escaped to \par
+            assert r"Line one\par Line two" in content
+        finally:
+            Path(output_path).unlink()
+
+    def test_crlf_escaping_in_rtf(self) -> None:
+        """CRLF in text are properly escaped to RTF paragraph markers."""
+        # Arrange
+        doc = Document()
+        section = DocumentSection(section_type=SectionType.REGULAR_PARAGRAPH)
+        section.add_paragraph(Paragraph(text="Line one\r\nLine two"))
+        doc.add_section(section)
+
+        # Act
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".rtf", delete=False) as f:
+            output_path = f.name
+
+        try:
+            format_to_rtf(doc, output_path)
+
+            # Assert
+            content = Path(output_path).read_text(encoding="utf-8")
+            # \r\n should be escaped to \par
+            assert r"Line one\par Line two" in content
+        finally:
+            Path(output_path).unlink()
+
+    def test_carriage_return_escaping_in_rtf(self) -> None:
+        """Carriage returns in text are properly escaped to RTF paragraph markers."""
+        # Arrange
+        doc = Document()
+        section = DocumentSection(section_type=SectionType.REGULAR_PARAGRAPH)
+        section.add_paragraph(Paragraph(text="Line one\rLine two"))
+        doc.add_section(section)
+
+        # Act
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".rtf", delete=False) as f:
+            output_path = f.name
+
+        try:
+            format_to_rtf(doc, output_path)
+
+            # Assert
+            content = Path(output_path).read_text(encoding="utf-8")
+            # \r should be escaped to \par
+            assert r"Line one\par Line two" in content
+        finally:
+            Path(output_path).unlink()
