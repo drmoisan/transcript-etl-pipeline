@@ -156,6 +156,84 @@ class TestDetectAddressesToPerson:
         result = detect_addresses_to_person(sentence)
         assert "Peter Parker" in result
 
+    def test_thanks_followed_by_name_extracts_name(self) -> None:
+        """Test extracting name after excluded word in phrase like 'Thanks Frank'."""
+        # "Thanks Frank" should extract "Frank" as addressed name
+        sentence = "Thanks Frank for helping us today."
+        result = detect_addresses_to_person(sentence)
+        assert "Frank" in result
+
+    def test_hello_followed_by_name_extracts_name(self) -> None:
+        """Test extracting name after 'Hello' prefix."""
+        sentence = "Hello Sarah, nice to meet you."
+        result = detect_addresses_to_person(sentence)
+        # "Sarah" should be detected from vocative comma pattern
+        assert "Sarah" in result
+
+    def test_short_single_char_name_excluded(self) -> None:
+        """Test that single-character tokens are not treated as names."""
+        # Single-char tokens like "I" should be excluded (len < 2)
+        sentence = "I think we should proceed."
+        result = detect_addresses_to_person(sentence)
+        assert result == []
+
+    def test_standalone_name_question_excluded(self) -> None:
+        """Test standalone name as question is excluded (e.g., 'Fred?')."""
+        sentence = "Fred?"
+        result = detect_addresses_to_person(sentence)
+        # A standalone question like "Fred?" is not direct address
+        assert "Fred" not in result
+
+    def test_standalone_name_question_with_context_excluded(self) -> None:
+        """Test standalone name question with context is excluded."""
+        sentence = "Wait, Fred?"
+        result = detect_addresses_to_person(sentence)
+        # Asking "Fred?" is a question about the person, not to them
+        assert "Fred" not in result
+
+    def test_is_name_article_noun_excluded(self) -> None:
+        """Test 'is Name a/an/the [noun]' pattern is excluded."""
+        sentence = "Is Dan a leader in this group?"
+        result = detect_addresses_to_person(sentence)
+        # "Is Dan a..." asks ABOUT Dan, not TO Dan
+        assert "Dan" not in result
+
+    def test_is_name_an_expert_excluded(self) -> None:
+        """Test 'is Name an [noun]' pattern is excluded."""
+        sentence = "Is Alice an expert in this field?"
+        result = detect_addresses_to_person(sentence)
+        # "Is Alice an..." asks ABOUT Alice, not TO Alice
+        assert "Alice" not in result
+
+    def test_is_name_the_person_excluded(self) -> None:
+        """Test 'is Name the [noun]' pattern is excluded."""
+        sentence = "Is Bob the manager here?"
+        result = detect_addresses_to_person(sentence)
+        # "Is Bob the..." asks ABOUT Bob, not TO Bob
+        assert "Bob" not in result
+
+    def test_mid_sentence_is_name_article_excluded(self) -> None:
+        """Test mid-sentence 'is Name a/an/the' pattern is excluded."""
+        # Tests the third-person question exclusion: 'is Name a/an/the' mid-sentence
+        sentence = "And is Dan a good choice for this role?"
+        result = detect_addresses_to_person(sentence)
+        # "is Dan a..." mid-sentence asks ABOUT Dan, not TO Dan
+        assert "Dan" not in result
+
+    def test_mid_sentence_is_name_an_excluded(self) -> None:
+        """Test mid-sentence 'is Name an' pattern is excluded."""
+        sentence = "I wonder, is Charlie an expert here?"
+        result = detect_addresses_to_person(sentence)
+        # "is Charlie an..." mid-sentence asks ABOUT Charlie, not TO Charlie
+        assert "Charlie" not in result
+
+    def test_mid_sentence_is_name_the_excluded(self) -> None:
+        """Test mid-sentence 'is Name the' pattern is excluded."""
+        sentence = "But is Sarah the right person for this?"
+        result = detect_addresses_to_person(sentence)
+        # "is Sarah the..." mid-sentence asks ABOUT Sarah, not TO Sarah
+        assert "Sarah" not in result
+
 
 class TestExtractIdentityConstraints:
     """Tests for extracting all identity constraints from sentences."""
