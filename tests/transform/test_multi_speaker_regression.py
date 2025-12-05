@@ -102,7 +102,9 @@ class TestThreeSpeakerDetection:
         """Verify speaker changes are detected in 3-speaker transcripts."""
         changes = detect_speaker_changes(fixture.input_text)
 
-        # Should detect at least as many changes as expected speaker turns
+        # A reasonable lower bound for speaker changes: at least half the expected lines.
+        # This accounts for speaker turns being grouped (e.g., consecutive sentences from
+        # the same speaker), while still verifying the algorithm detects meaningful changes.
         min_expected_changes = len(fixture.expected_lines) // 2
         assert len(changes) >= min_expected_changes, (
             f"Expected at least {min_expected_changes} speaker changes, " f"got {len(changes)}"
@@ -177,6 +179,14 @@ class TestSpeakerAssignment:
 class TestContentPreservation:
     """Test that content is preserved during speaker assignment."""
 
+    # Minimum word length to consider as a "key word" for content verification
+    # Shorter words are often function words that don't indicate content preservation
+    _MIN_KEY_WORD_LENGTH = 5
+
+    # Common short words that should be excluded from key word matching
+    # even if they meet the length threshold
+    _EXCLUDED_COMMON_WORDS = frozenset({"their", "there", "these", "those"})
+
     @pytest.mark.parametrize(
         "fixture",
         ALL_MULTI_SPEAKER_FIXTURES,
@@ -193,13 +203,17 @@ class TestContentPreservation:
 
         # Check that significant words from expected content are present
         for expected in fixture.expected_lines[:5]:  # Check first 5 lines
-            # Extract key words (skip common short words)
+            # Extract key words (words longer than threshold, excluding common words)
             key_words = [
                 word.strip(".,!?")
                 for word in expected.content.split()
-                if len(word) > 4 and word.lower() not in {"their", "there", "these", "those"}
+                if (
+                    len(word) >= self._MIN_KEY_WORD_LENGTH
+                    and word.lower() not in self._EXCLUDED_COMMON_WORDS
+                )
             ]
-            # Check at least some key words are present
+            # Check at least half the key words are present
+            # (allows for sentence restructuring while still verifying content)
             words_found = sum(1 for word in key_words if word in result)
             assert words_found >= len(key_words) // 2, (
                 f"Expected content keywords not found: {expected.content[:50]}... "
@@ -404,7 +418,10 @@ class TestSpaceXDiscussionRegression:
 
         lines = [line for line in result.split("\r\n") if line.strip()]
 
-        # Compare actual vs expected for each line
+        # Compare actual vs expected for each line.
+        # Using strict=False because sentence tokenization may produce a different
+        # number of output lines than expected. This test is xfail anyway, but
+        # we want to catch speaker mismatches even when line counts differ.
         mismatches: list[str] = []
         zipped = zip(lines, fixture.expected_lines, strict=False)
         for i, (actual_line, expected) in enumerate(zipped):

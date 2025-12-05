@@ -30,10 +30,6 @@ Usage Example:
 """
 
 from dataclasses import dataclass
-from pathlib import Path
-
-# Path to sample transcripts directory
-SAMPLE_TRANSCRIPTS_DIR = Path(__file__).parent / "sample_transcripts"
 
 
 @dataclass(frozen=True)
@@ -70,24 +66,6 @@ class MultiSpeakerFixture:
     input_text: str
     expected_lines: tuple[ExpectedSpeakerLine, ...]
     characteristics: tuple[str, ...]
-
-
-def load_fixture_file(filename: str) -> str:
-    """Load a fixture file from the sample_transcripts directory.
-
-    Args:
-        filename: Name of the file to load
-
-    Returns:
-        The file contents as a string
-
-    Raises:
-        FileNotFoundError: If the file doesn't exist
-    """
-    path = SAMPLE_TRANSCRIPTS_DIR / filename
-    if not path.exists():
-        raise FileNotFoundError(f"Fixture file not found: {path}")
-    return path.read_text(encoding="utf-8")
 
 
 # =============================================================================
