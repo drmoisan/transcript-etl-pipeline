@@ -235,6 +235,28 @@
                 "panel": "new"
             },
             "detail": "Creates a dated potential feature file from the template and opens it plus backlog.md for editing."
+        },
+        {
+            "label": "Git: Collect Commit Context",
+            "type": "shell",
+            "command": "pwsh",
+            "args": [
+                "-NoLogo",
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}/scripts/collect-commit-context.ps1"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "detail": "Collects git diff, status, and context into artifacts/commit_context.txt for commit message generation."
         }
     ],
   "inputs": [
