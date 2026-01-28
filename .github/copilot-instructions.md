@@ -10,37 +10,36 @@ This document contains instructions for **future enhancements** to the transcrip
 
 ---
 
-# **1. Policies — Always Follow These**
+## 1. Policies - Always Follow These
 
-**CRITICAL**: When implementing **any** code, tests, or tasks, you **must** adhere to these repo policies **without exception**. These are not guidelines—they are requirements.
+**CRITICAL**: When implementing **any** code, tests, or tasks, you **must** strictly adhere to these policies **without exception**. These are not guidelines—they are requirements.
 
 Read each policy document **thoroughly** before starting work. Implement them **exactly as written**. Do not interpret, modify, or skip any requirements.
 
-* **Coding Standards, Workflow, PR/commit procedures:**
-  [code-change.instructions.md](../docs/code-change.instructions.md)
-  
-  This document defines the complete development workflow including:
-  - Pre-implementation requirements (clarify objectives, document plans)
-  - Python coding standards (formatting, linting, typing, testing)
-  - Design principles (simplicity, reusability, extensibility, separation of concerns)
-  - Post-implementation requirements (quality checks, documentation updates)
+- **Reading order / authority:** General instructions first, then language-specific instructions, then unit-test addenda. developer-tooling.md and CI docs are operational guidance layered underneath.
+- **Coding standards & workflow:** [general-code-change.instructions.md](./instructions/general-code-change.instructions.md)
+- **Language-specific coding:** [python-code-change.instructions.md](./instructions/python-code-change.instructions.md)
+- **Unit test policy (general):** [general-unit-test.instructions.md](./instructions/general-unit-test.instructions.md)
+- **Unit test policy (Python):** [python-unit-test.instructions.md](./instructions/python-unit-test.instructions.md)
 
 * **Developer Tooling: Poetry, Black, Ruff, Pyright, Pytest, pytest-cov, coverage, pre-commit, VSCode tasks:**
   [developer-tooling.md](../docs/developer-tooling.md)
   
   This document covers all tooling setup and usage.
 
-* **Unit Test Policy (independence, determinism, clarity, AAA, etc.):**
-  [unit-test-policy.md](../docs/unit-test-policy.md)
-  
-  This document defines mandatory testing standards. Every test must comply.
-
 **Do not guess. Do not omit steps. Do not introduce inconsistencies. Follow the policies exactly.**
 
 ---
 
-# **2. Future Enhancement Work**
+## 2. Future Enhancement Work
 
-For detailed status on current development work, see:
-- **Current Focus**: [`docs/features/backlog.md`](../docs/features/backlog.md) - Feature backlog and priorities
-- **Optional Features**: [`docs/features/ideas/ideas.md`](../docs/features/ideas/ideas.md) - Deferred enhancements for future consideration
+- Current backlog and priorities: [/docs/features/backlog.md](../docs/features/backlog.md)
+- Active initiatives: [/docs/features/active/](../docs/features/active/) 
+- Idea parking lot: [/docs/features/ideas/ideas.md](../docs/features/ideas/ideas.md)
+
+Use these sources to align scope, status, and acceptance criteria before starting changes.
+
+## 3. Operational Reminders
+
+- Architecture/behavior reference: see [README.md](../README.md).
+- Secrets: never commit keys
