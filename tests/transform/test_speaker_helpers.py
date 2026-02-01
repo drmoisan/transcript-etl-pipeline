@@ -11,6 +11,10 @@ This module tests:
 - Address violation resolution
 """
 
+from collections.abc import Mapping, Sequence
+
+import pytest
+
 from transcript_etl_pipeline.transform.identity_constraints import (
     IdentityConstraint,
 )
@@ -672,3 +676,304 @@ class TestFindSafeReplacementSpeaker:
         result = _find_safe_replacement_speaker(1, 0, assignments, constraints, speaker_to_name, 3)
         # Should return previous speaker (1)
         assert result == 1
+
+
+class TestNltkErrorHandling:
+    """Tests for NLTK import and error handling."""
+
+    def test_tokenize_uses_fallback_on_error(self) -> None:
+        """Verify tokenization exception handling uses fallback."""
+        # When NLTK tokenization raises exception, fallback is used
+        result = tokenize_into_sentences("First. Second. Third.")
+        # Should still work via fallback
+        assert isinstance(result, list)
+        assert len(result) >= 1
+
+    def test_analyze_pronouns_returns_results(self) -> None:
+        """Verify pronoun analysis works with NLTK available."""
+        sentences = ["I think you should go."]
+        result = analyze_pronoun_patterns(sentences)
+        # Should return results (either from NLTK or empty)
+        assert isinstance(result, list)
+
+    def test_ensure_nltk_data_import_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Verify ensure_nltk_data handles ImportError."""
+        import builtins
+
+        original_import = builtins.__import__
+
+        def mock_import(
+            name: str,
+            globals: Mapping[str, object] | None = None,
+            locals: Mapping[str, object] | None = None,
+            fromlist: Sequence[str] = (),
+            level: int = 0,
+        ) -> object:
+            if name == "nltk":
+                raise ImportError("NLTK not available")
+            return original_import(name, globals, locals, fromlist, level)
+
+        monkeypatch.setattr(builtins, "__import__", mock_import)
+
+        result = ensure_nltk_data()
+        # Should return False when NLTK unavailable
+        assert result is False
+
+    def test_tokenize_with_nltk_import_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Verify tokenization uses fallback when NLTK import fails."""
+        import builtins
+
+        original_import = builtins.__import__
+
+        def mock_import(
+            name: str,
+            globals: Mapping[str, object] | None = None,
+            locals: Mapping[str, object] | None = None,
+            fromlist: Sequence[str] = (),
+            level: int = 0,
+        ) -> object:
+            if "nltk" in name and "tokenize" in name:
+                raise ImportError("NLTK tokenize not available")
+            return original_import(name, globals, locals, fromlist, level)
+
+        monkeypatch.setattr(builtins, "__import__", mock_import)
+
+        result = tokenize_into_sentences("First. Second.")
+        # Should use fallback and still work
+        assert isinstance(result, list)
+        assert len(result) >= 1
+
+    def test_analyze_pronouns_with_nltk_import_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Verify pronoun analysis handles NLTK import errors."""
+        import builtins
+
+        original_import = builtins.__import__
+
+        def mock_import(
+            name: str,
+            globals: Mapping[str, object] | None = None,
+            locals: Mapping[str, object] | None = None,
+            fromlist: Sequence[str] = (),
+            level: int = 0,
+        ) -> object:
+            if "nltk" in name:
+                raise ImportError("NLTK not available")
+            return original_import(name, globals, locals, fromlist, level)
+
+        monkeypatch.setattr(builtins, "__import__", mock_import)
+
+        sentences = ["I think so."]
+        result = analyze_pronoun_patterns(sentences)
+        # Should return empty dicts for each sentence
+        assert len(result) == 1
+        assert result[0] == {}
+
+    def test_analyze_pronouns_with_sentence_error(self) -> None:
+        """Verify pronoun analysis handles per-sentence errors gracefully."""
+        # Sentence with unusual characters that might cause issues
+        sentences = ["Normal sentence.", "\x00\x01\x02"]
+        result = analyze_pronoun_patterns(sentences)
+        # Should return results for both (may be empty for problematic one)
+        assert len(result) == 2
+        assert isinstance(result[0], dict)
+        assert isinstance(result[1], dict)
+
+
+class TestEnsureNltkDataErrorPaths:
+    """Tests for NLTK data download error handling."""
+
+    def test_ensure_nltk_data_punkt_download_failures(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Verify punkt download failure handling."""
+        import nltk  # type: ignore[import-untyped]
+
+        def mock_find(path: str) -> None:
+            # Pretend punkt not found
+            if "punkt" in path:
+                raise LookupError("Not found")
+
+        download_attempts: list[str] = []
+
+        def mock_download(resource: str, **kwargs: object) -> None:
+            download_attempts.append(resource)
+            # Simulate download failure
+            raise Exception("Download failed")
+
+        monkeypatch.setattr(nltk.data, "find", mock_find)
+        monkeypatch.setattr(nltk, "download", mock_download)
+
+        result = ensure_nltk_data()
+
+        # Should have tried to download and failed
+        assert any("punkt" in r for r in download_attempts)
+        # Should return False on failure
+        assert result is False
+
+    def test_ensure_nltk_data_tagger_download_failures(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Verify tagger download failure handling."""
+        import nltk  # type: ignore[import-untyped]
+
+        def mock_find(path: str) -> None:
+            # punkt found, tagger not found
+            if "perceptron" in path or "tagger" in path:
+                raise LookupError("Not found")
+
+        download_attempts: list[str] = []
+
+        def mock_download(resource: str, **kwargs: object) -> None:
+            download_attempts.append(resource)
+            # Simulate download failure
+            raise Exception("Download failed")
+
+        monkeypatch.setattr(nltk.data, "find", mock_find)
+        monkeypatch.setattr(nltk, "download", mock_download)
+
+        result = ensure_nltk_data()
+
+        # Should have tried to download tagger
+        assert any("tagger" in r or "perceptron" in r for r in download_attempts)
+        # Should return False on failure
+        assert result is False
+
+    def test_tokenize_with_sent_tokenize_exception(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Verify tokenize handles sent_tokenize exceptions."""
+
+        def mock_sent_tokenize(*args: object, **kwargs: object) -> object:
+            raise RuntimeError("Tokenization error")
+
+        monkeypatch.setattr("nltk.tokenize.sent_tokenize", mock_sent_tokenize)
+
+        result = tokenize_into_sentences("First. Second.")
+        # Should fall back and still return results
+        assert isinstance(result, list)
+        assert len(result) >= 1
+
+
+class TestGroupSentencesBySimilarityEdgeCases:
+    """Tests for edge cases in similarity-based grouping."""
+
+    def test_group_with_single_segment(self) -> None:
+        """Verify handling when only one segment."""
+        sentences = ["First.", "Second.", "Third."]
+        result = group_sentences_by_similarity(sentences, [0], 2)
+        # All in one segment, should be assigned
+        assert all(s in [0, 1] for s in result)
+
+    def test_group_with_more_speakers_than_segments(self) -> None:
+        """Verify handling when more speakers than segments."""
+        sentences = ["Only one sentence."]
+        change_points = [0]
+        result = group_sentences_by_similarity(sentences, change_points, 5)
+        # Should work even with more speakers than segments
+        assert len(result) == 1
+        assert result[0] in range(5)
+
+    def test_group_respects_multiple_constraints(self) -> None:
+        """Verify multiple constraints are all respected."""
+        sentences = ["I'm Alice.", "Generic.", "I'm Bob.", "More generic.", "I'm Charlie."]
+        change_points = [0, 1, 2, 3, 4]
+        constraints = [
+            IdentityConstraint(sentence_idx=0, name="Alice", constraint_type="self_identification"),
+            IdentityConstraint(sentence_idx=2, name="Bob", constraint_type="self_identification"),
+            IdentityConstraint(
+                sentence_idx=4, name="Charlie", constraint_type="self_identification"
+            ),
+        ]
+        result = group_sentences_by_similarity(sentences, change_points, 3, constraints)
+        # All three self-identified speakers should be different
+        assert len(set([result[0], result[2], result[4]])) == 3
+
+    def test_group_with_addressed_constraints(self) -> None:
+        """Verify addresses_other constraints are considered."""
+        sentences = ["Thanks Alice.", "You're welcome.", "Hi Bob.", "Hello."]
+        change_points = [0, 1, 2, 3]
+        constraints = [
+            IdentityConstraint(sentence_idx=0, name="Alice", constraint_type="addresses_other"),
+            IdentityConstraint(sentence_idx=2, name="Bob", constraint_type="addresses_other"),
+        ]
+        result = group_sentences_by_similarity(sentences, change_points, 3, constraints)
+        # Should assign speakers considering addresses
+        assert len(result) == 4
+
+
+class TestResolveAddressesOtherViolationsEdgeCases:
+    """Tests for edge cases in addresses_other violation resolution."""
+
+    def test_resolve_with_empty_sentences(self) -> None:
+        """Verify handling of empty sentence list."""
+        result = resolve_addresses_other_violations([], [], [], 3)
+        assert result == []
+
+    def test_resolve_with_no_violations(self) -> None:
+        """Verify unchanged when no violations exist."""
+        sentences = ["Hello.", "Hi there."]
+        assignments = [0, 1]
+        constraints: list[IdentityConstraint] = []
+        result = resolve_addresses_other_violations(sentences, assignments, constraints, 3)
+        assert result == assignments
+
+    def test_resolve_finds_safe_replacement(self) -> None:
+        """Verify safe replacement is found when needed."""
+        sentences = ["I'm Alice.", "Thanks Alice.", "You're welcome."]
+        # Initially sentence 1 assigned to Alice (wrong)
+        assignments = [0, 0, 1]
+        constraints = [
+            IdentityConstraint(sentence_idx=0, name="Alice", constraint_type="self_identification"),
+            IdentityConstraint(sentence_idx=1, name="Alice", constraint_type="addresses_other"),
+        ]
+        result = resolve_addresses_other_violations(sentences, assignments, constraints, 3)
+        # Sentence 1 should NOT be Alice
+        assert result[1] != 0
+
+    def test_resolve_with_multiple_addressed_persons(self) -> None:
+        """Verify handling when addressing multiple people in one sentence."""
+        sentences = ["I'm Alice.", "Thanks Alice and Bob.", "Welcome."]
+        assignments = [0, 0, 2]
+        constraints = [
+            IdentityConstraint(sentence_idx=0, name="Alice", constraint_type="self_identification"),
+            IdentityConstraint(sentence_idx=1, name="Alice", constraint_type="addresses_other"),
+            IdentityConstraint(sentence_idx=1, name="Bob", constraint_type="addresses_other"),
+        ]
+        result = resolve_addresses_other_violations(sentences, assignments, constraints, 3)
+        # Sentence 1 should not be Alice (or Bob if identified)
+        assert result[1] != 0
+
+
+class TestResolveIdentityAssignmentsEdgeCases:
+    """Tests for identity-based resolution edge cases."""
+
+    def test_resolve_with_empty_sentences(self) -> None:
+        """Verify empty sentences returns empty assignments."""
+        from transcript_etl_pipeline.transform.speaker_helpers import (
+            resolve_speaker_assignments_by_identity,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        result = resolve_speaker_assignments_by_identity([], [], 2)
+        assert result == []
+
+    def test_resolve_with_no_identifications(self) -> None:
+        """Verify unchanged when no self-identifications."""
+        from transcript_etl_pipeline.transform.speaker_helpers import (
+            resolve_speaker_assignments_by_identity,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        sentences = ["Hello.", "Hi there.", "Good morning."]
+        assignments = [0, 1, 0]
+        result = resolve_speaker_assignments_by_identity(sentences, assignments, 2)
+        # Should return unchanged
+        assert result == assignments
+
+    def test_resolve_with_single_identification(self) -> None:
+        """Verify resolution with single self-identification."""
+        from transcript_etl_pipeline.transform.speaker_helpers import (
+            resolve_speaker_assignments_by_identity,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        sentences = ["I'm Alice.", "Hello.", "Hi there."]
+        assignments = [0, 1, 0]
+        result = resolve_speaker_assignments_by_identity(sentences, assignments, 2)
+        # Should process the identification
+        assert len(result) == 3

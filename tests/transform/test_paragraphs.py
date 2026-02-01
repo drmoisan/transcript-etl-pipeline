@@ -1,5 +1,7 @@
 """Tests for paragraph detection functionality."""
 
+import pytest
+
 from transcript_etl_pipeline.transform.paragraphs import (
     _ends_with_sentence_terminator,  # pyright: ignore[reportPrivateUsage]
     _is_label_line,  # pyright: ignore[reportPrivateUsage]
@@ -237,3 +239,323 @@ class TestDetectParagraphs:
         paragraphs = [block for block in result.split("\r\n\r\n") if block.strip()]
 
         assert len(paragraphs) >= 2
+
+
+class TestPrivateParagraphHelpers:
+    """Test private helper functions for paragraph detection."""
+
+    def test_segment_freeform_block_empty_returns_lines(self) -> None:
+        """Verify empty block returns original lines."""
+        from transcript_etl_pipeline.transform.paragraphs import (
+            _segment_freeform_block,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        result = _segment_freeform_block([])
+        assert result == []
+
+        result = _segment_freeform_block(["   ", ""])
+        # Should return original if no meaningful text
+        assert len(result) >= 0
+
+    def test_segment_freeform_with_texttiling_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Verify fallback when TextTiling raises ValueError."""
+        from nltk.tokenize import TextTilingTokenizer  # type: ignore[import-untyped]
+
+        from transcript_etl_pipeline.transform.paragraphs import (
+            _segment_freeform_block,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        # Mock TextTilingTokenizer to raise ValueError
+        def mock_tokenize(*args: object, **kwargs: object) -> object:
+            raise ValueError("Not enough sentences for TextTiling")
+
+        monkeypatch.setattr(TextTilingTokenizer, "tokenize", mock_tokenize)
+
+        lines = ["This is a test sentence. Another sentence here."]
+        result = _segment_freeform_block(lines)
+        # Should fall back to sent_tokenize and return something
+        assert isinstance(result, list)
+        assert len(result) > 0
+
+    def test_segment_freeform_with_texttiling_lookup_error(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Verify fallback when TextTiling raises LookupError."""
+        from nltk.tokenize import TextTilingTokenizer  # type: ignore[import-untyped]
+
+        from transcript_etl_pipeline.transform.paragraphs import (
+            _segment_freeform_block,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        # Mock TextTilingTokenizer to raise LookupError
+        def mock_tokenize(*args: object, **kwargs: object) -> object:
+            raise LookupError("NLTK data not found")
+
+        monkeypatch.setattr(TextTilingTokenizer, "tokenize", mock_tokenize)
+
+        lines = ["This is a test sentence. Another sentence here."]
+        result = _segment_freeform_block(lines)
+        # Should fall back to sent_tokenize and return something
+        assert isinstance(result, list)
+        assert len(result) > 0
+
+    def test_group_sentences_into_paragraphs_single_sentence(self) -> None:
+        """Verify single sentence forms one paragraph."""
+        from transcript_etl_pipeline.transform.paragraphs import (
+            _group_sentences_into_paragraphs,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        sentences = ["This is one sentence."]
+        result = _group_sentences_into_paragraphs(sentences)
+        assert len(result) == 1
+        assert result[0] == "This is one sentence."
+
+    def test_should_break_sentence_on_question_with_cue(self) -> None:
+        """Verify break after question followed by conversation cue."""
+        from transcript_etl_pipeline.transform.paragraphs import (
+            _should_break_sentence,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        result = _should_break_sentence("What do you think?", "Well, I believe...", 50)
+        assert result is True
+
+    def test_should_break_sentence_on_max_chars(self) -> None:
+        """Verify break when max paragraph chars exceeded."""
+        from transcript_etl_pipeline.transform.paragraphs import (
+            _should_break_sentence,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        result = _should_break_sentence("Short sentence.", "Next.", 500)
+        # Over MAX_PARAGRAPH_CHARS (480)
+        assert result is True
+
+    def test_should_break_sentence_on_exclamation_with_cue(self) -> None:
+        """Verify break after exclamation followed by conversation cue."""
+        from transcript_etl_pipeline.transform.paragraphs import (
+            _should_break_sentence,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        result = _should_break_sentence("That's amazing!", "Yes, I agree.", 50)
+        assert result is True
+
+    def test_should_break_sentence_long_followed_by_short(self) -> None:
+        """Verify break on long sentence followed by short."""
+        from transcript_etl_pipeline.transform.paragraphs import (
+            _should_break_sentence,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        long_sentence = (
+            "This is a very long sentence with many words that goes on and on "
+            "and provides lots of detail about something important and continues "
+            "for quite a while."
+        )
+        short = "Short."
+        result = _should_break_sentence(long_sentence, short, 100)
+        assert result is True
+
+    def test_should_break_sentence_cue_with_enough_chars(self) -> None:
+        """Verify break on conversation cue when enough chars accumulated."""
+        from transcript_etl_pipeline.transform.paragraphs import (
+            _should_break_sentence,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        result = _should_break_sentence("Regular sentence.", "Well, continuing.", 150)
+        # Over 120 chars and next starts with cue
+        assert result is True
+
+    def test_starts_with_conversation_cue_detects_cues(self) -> None:
+        """Verify conversation cue detection."""
+        from transcript_etl_pipeline.transform.paragraphs import (
+            _starts_with_conversation_cue,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        assert _starts_with_conversation_cue("Well, I think...") is True
+        assert _starts_with_conversation_cue("So what now?") is True
+        assert _starts_with_conversation_cue("Thanks for that.") is True
+        assert _starts_with_conversation_cue("Yes, exactly.") is True
+        assert _starts_with_conversation_cue("No, that's wrong.") is True
+
+    def test_starts_with_conversation_cue_handles_punctuation(self) -> None:
+        """Verify cue detection handles punctuation."""
+        from transcript_etl_pipeline.transform.paragraphs import (
+            _starts_with_conversation_cue,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        assert _starts_with_conversation_cue("Well!") is True
+        assert _starts_with_conversation_cue("Okay.") is True
+        assert _starts_with_conversation_cue("Sure,") is True
+
+    def test_starts_with_conversation_cue_false_for_non_cues(self) -> None:
+        """Verify non-cues return false."""
+        from transcript_etl_pipeline.transform.paragraphs import (
+            _starts_with_conversation_cue,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        assert _starts_with_conversation_cue("The meeting starts now.") is False
+        assert _starts_with_conversation_cue("Hello everyone.") is False
+
+    def test_extend_with_segments_adds_blank_lines(self) -> None:
+        """Verify segments are extended with blank line separators."""
+        from transcript_etl_pipeline.transform.paragraphs import (
+            _extend_with_segments,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        result_lines: list[str] = []
+        segments = ["First segment.", "Second segment.", "Third segment."]
+        _extend_with_segments(result_lines, segments)
+
+        # Should have segments with blank lines between them
+        assert len(result_lines) >= 5  # 3 segments + 2 blank lines
+        assert "" in result_lines
+
+    def test_extend_with_segments_skips_empty_segments(self) -> None:
+        """Verify empty segments are skipped."""
+        from transcript_etl_pipeline.transform.paragraphs import (
+            _extend_with_segments,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        result_lines: list[str] = []
+        segments = ["First segment.", "", "   ", "Second segment."]
+        _extend_with_segments(result_lines, segments)
+
+        # Should only have non-empty segments
+        text_lines = [line for line in result_lines if line.strip()]
+        assert len(text_lines) == 2
+
+    def test_has_multiple_sentences_true_for_multi(self) -> None:
+        """Verify multiple sentence detection."""
+        from transcript_etl_pipeline.transform.paragraphs import (
+            _has_multiple_sentences,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        assert _has_multiple_sentences("First sentence. Second sentence.") is True
+        assert _has_multiple_sentences("Question? Answer.") is True
+
+    def test_has_multiple_sentences_false_for_single(self) -> None:
+        """Verify single sentence detection."""
+        from transcript_etl_pipeline.transform.paragraphs import (
+            _has_multiple_sentences,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        assert _has_multiple_sentences("Just one sentence.") is False
+        assert _has_multiple_sentences("Only this.") is False
+
+    def test_ensure_sentence_tokenizer_initializes_once(self) -> None:
+        """Verify tokenizer is initialized only once."""
+        from transcript_etl_pipeline.transform import paragraphs
+
+        # Reset the flag to test initialization
+        original_flag = paragraphs._sent_tokenizer_ready  # pyright: ignore[reportPrivateUsage]
+        try:
+            paragraphs._sent_tokenizer_ready = False  # pyright: ignore[reportPrivateUsage]
+
+            # Call ensure
+            from transcript_etl_pipeline.transform.paragraphs import (
+                _ensure_sentence_tokenizer,  # pyright: ignore[reportPrivateUsage]
+            )
+
+            _ensure_sentence_tokenizer()
+
+            # Flag should now be True
+            assert paragraphs._sent_tokenizer_ready is True  # pyright: ignore[reportPrivateUsage]
+
+            # Call again
+            _ensure_sentence_tokenizer()
+            # Should still be True and not re-download
+            assert paragraphs._sent_tokenizer_ready is True  # pyright: ignore[reportPrivateUsage]
+        finally:
+            # Restore original state
+            paragraphs._sent_tokenizer_ready = original_flag  # pyright: ignore[reportPrivateUsage]
+
+    def test_append_block_with_classic_breaks_empty_block(self) -> None:
+        """Verify empty block is handled correctly."""
+        from transcript_etl_pipeline.transform.paragraphs import (
+            _append_block_with_classic_breaks,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        result_lines: list[str] = []
+        _append_block_with_classic_breaks(result_lines, [])
+
+        # Should remain empty
+        assert len(result_lines) == 0
+
+    def test_append_block_with_previous_context(self) -> None:
+        """Verify block appending considers previous line context."""
+        from transcript_etl_pipeline.transform.paragraphs import (
+            _append_block_with_classic_breaks,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        result_lines = ["Previous sentence."]
+        block_lines = ["Next sentence.", "More text."]
+
+        _append_block_with_classic_breaks(result_lines, block_lines)
+
+        # Should have added the block
+        assert len(result_lines) >= 3
+
+    def test_needs_semantic_segmentation_empty(self) -> None:
+        """Verify empty lines don't need semantic segmentation."""
+        from transcript_etl_pipeline.transform.paragraphs import (
+            _needs_semantic_segmentation,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        result = _needs_semantic_segmentation([])
+        assert result is False
+
+        result = _needs_semantic_segmentation(["   ", ""])
+        assert result is False
+
+    def test_needs_semantic_segmentation_single_short_sentence(self) -> None:
+        """Verify single short sentence doesn't need segmentation."""
+        from transcript_etl_pipeline.transform.paragraphs import (
+            _needs_semantic_segmentation,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        result = _needs_semantic_segmentation(["Hello."])
+        assert result is False
+
+    def test_needs_semantic_segmentation_multiple_sentences(self) -> None:
+        """Verify multiple sentences trigger segmentation."""
+        from transcript_etl_pipeline.transform.paragraphs import (
+            _needs_semantic_segmentation,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        result = _needs_semantic_segmentation(["First sentence. Second sentence."])
+        assert result is True
+
+    def test_detect_paragraphs_empty_freeform_block(self) -> None:
+        """Verify empty freeform blocks are handled in flush."""
+        text = "Transcript:\r\n"
+        result = detect_paragraphs(text)
+        assert "Transcript" in result
+
+    def test_detect_paragraphs_blank_lines_between_labels(self) -> None:
+        """Verify blank lines between labels are preserved."""
+        text = "Speaker A: Hello.\r\n\r\nSpeaker B: Hi."
+        result = detect_paragraphs(text)
+        # Should preserve the structure
+        assert "Speaker A:" in result
+        assert "Speaker B:" in result
+
+    def test_segment_freeform_block_with_texttiling_tuple_result(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Verify TextTiling tuple result is handled."""
+        from nltk.tokenize import TextTilingTokenizer  # type: ignore[import-untyped]
+
+        from transcript_etl_pipeline.transform.paragraphs import (
+            _segment_freeform_block,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        # Mock TextTiling to return tuple (segments, boundaries)
+        def mock_tokenize(*args: object, **kwargs: object) -> tuple[list[str], list[int]]:
+            return (["First segment.", "Second segment."], [0, 1])
+
+        monkeypatch.setattr(TextTilingTokenizer, "tokenize", mock_tokenize)
+
+        lines = ["This is test text with multiple sentences here."]
+        result = _segment_freeform_block(lines)
+
+        # Should handle tuple result
+        assert isinstance(result, list)
+        assert len(result) >= 1

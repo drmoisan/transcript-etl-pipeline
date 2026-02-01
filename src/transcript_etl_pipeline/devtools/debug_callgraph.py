@@ -231,11 +231,14 @@ def run_with_callgraph(func: Callable[..., T], *args: object, **kwargs: object) 
     # Reset state before tracing to avoid pollution from previous runs
     reset_callgraph()
 
+    # Save the current trace function (e.g., coverage.py's tracer) to restore it later
+    old_trace = sys.gettrace()
     sys.settrace(tracer)
     try:
         result = func(*args, **kwargs)
     finally:
-        sys.settrace(None)
+        # Restore the previous trace function instead of setting to None
+        sys.settrace(old_trace)
         write_dot("artifacts/callgraph.dot")  # optional, keep if you like
         write_mermaid("artifacts/callgraph.mmd")  # Mermaid output
         write_outline("artifacts/callgraph_outline.txt")

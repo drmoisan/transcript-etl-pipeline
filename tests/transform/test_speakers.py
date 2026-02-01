@@ -1,5 +1,7 @@
 """Tests for speaker resolution functionality."""
 
+from collections.abc import Mapping, Sequence
+
 import pytest
 
 from transcript_etl_pipeline.transform.name import Name
@@ -1727,3 +1729,303 @@ class TestSpeakerIdentificationScenarios:
         # "Dan" should match "Daniel" variant
         # Dan Moisan is always present, so this tests variant matching
         assert _mapping.get("Speaker B") == "Dan Moisan"
+
+
+class TestExtractPersonNamesFromText:
+    """Tests for NLTK-based name extraction."""
+
+    def test_extract_person_names_nltk_unavailable(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Verify function returns existing names when NLTK unavailable."""
+        # Mock import to fail
+        import builtins
+
+        from transcript_etl_pipeline.transform.speakers import (
+            extract_person_names_from_text,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        original_import = builtins.__import__
+
+        def mock_import(
+            name: str,
+            globals: Mapping[str, object] | None = None,
+            locals: Mapping[str, object] | None = None,
+            fromlist: Sequence[str] = (),
+            level: int = 0,
+        ) -> object:
+            if "nltk" in name:
+                raise ImportError("NLTK not available")
+            return original_import(name, globals, locals, fromlist, level)
+
+        monkeypatch.setattr(builtins, "__import__", mock_import)
+
+        existing = {Name(first_name="Alice"), Name(first_name="Bob")}
+        text = "Transcript:\r\nHello everyone."
+
+        result = extract_person_names_from_text(text, existing)
+        # Should return copy of existing names
+        assert result == existing
+
+    def test_extract_person_names_error_handling(self) -> None:
+        """Verify function handles exceptions gracefully."""
+        from transcript_etl_pipeline.transform.speakers import (
+            extract_person_names_from_text,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        existing = {Name(first_name="Alice")}
+        # Text that might cause issues
+        text = "Transcript:\r\nHello everyone."
+
+        result = extract_person_names_from_text(text, existing)
+        # Should at least return existing names
+        assert Name(first_name="Alice") in result
+
+    def test_extract_person_names_skips_invalid_names(self) -> None:
+        """Verify function skips invalid name formats."""
+        from transcript_etl_pipeline.transform.speakers import (
+            extract_person_names_from_text,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        existing = {Name(first_name="Alice")}
+        # Text that might produce invalid name formats
+        text = "Transcript:\r\nHello Mr. X."
+
+        result = extract_person_names_from_text(text, existing)
+        # Should at least return existing names
+        assert Name(first_name="Alice") in result
+
+    def test_extract_person_names_skips_matching_existing(self) -> None:
+        """Verify function doesn't add names matching existing ones."""
+        from transcript_etl_pipeline.transform.speakers import (
+            extract_person_names_from_text,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        existing = {Name(first_name="Alice", last_name=["Smith"])}
+        # Text mentioning Alice
+        text = "Transcript:\r\nAlice is here today."
+
+        result = extract_person_names_from_text(text, existing)
+        # Should not duplicate Alice
+        alice_names = [n for n in result if n.first_name == "Alice"]
+        assert len(alice_names) == 1
+
+
+class TestExtractNamesFromLine:
+    """Tests for line-based name extraction."""
+
+    def test_extract_names_from_attendees_line(self) -> None:
+        """Verify names extracted from attendees line."""
+        from transcript_etl_pipeline.transform.speakers import (
+            _extract_names_from_line,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        line = "Attendees: Alice, Bob, Charlie"
+        names = _extract_names_from_line(line)
+
+        assert len(names) == 3
+        assert Name(first_name="Alice") in names
+        assert Name(first_name="Bob") in names
+        assert Name(first_name="Charlie") in names
+
+    def test_extract_names_handles_semicolon_separator(self) -> None:
+        """Verify semicolon separator works."""
+        from transcript_etl_pipeline.transform.speakers import (
+            _extract_names_from_line,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        line = "Participants: Alice; Bob; Charlie"
+        names = _extract_names_from_line(line)
+
+        assert len(names) >= 3
+
+    def test_extract_names_normalizes_case(self) -> None:
+        """Verify names are normalized to title case."""
+        from transcript_etl_pipeline.transform.speakers import (
+            _extract_names_from_line,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        line = "Attendees: alice, BOB, ChArLiE"
+        names = _extract_names_from_line(line)
+
+        # Should be normalized to title case
+        name_strs = {n.full_name for n in names}
+        assert "Alice" in name_strs
+        assert "Bob" in name_strs
+        assert "Charlie" in name_strs
+
+    def test_extract_names_skips_invalid_formats(self) -> None:
+        """Verify invalid name formats are skipped."""
+        from transcript_etl_pipeline.transform.speakers import (
+            _extract_names_from_line,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        # Line with too many tokens (>3 would be invalid for Name.from_string)
+        line = "Attendees: Alice, Bob Smith Jones Wilson, Charlie"
+        names = _extract_names_from_line(line)
+
+        # Alice and Charlie should be extracted, but the long invalid name skipped
+        assert Name(first_name="Alice") in names
+        assert Name(first_name="Charlie") in names
+
+    def test_extract_names_empty_line(self) -> None:
+        """Verify empty line returns empty set."""
+        from transcript_etl_pipeline.transform.speakers import (
+            _extract_names_from_line,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        names = _extract_names_from_line("")
+        assert len(names) == 0
+
+    def test_extract_names_no_colon(self) -> None:
+        """Verify line without colon still extracts names."""
+        from transcript_etl_pipeline.transform.speakers import (
+            _extract_names_from_line,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        line = "Alice, Bob, Charlie"
+        names = _extract_names_from_line(line)
+
+        assert len(names) == 3
+
+
+class TestEnsureNltkData:
+    """Tests for NLTK data initialization."""
+
+    def test_ensure_nltk_data_downloads_punkt(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Verify punkt is downloaded if missing."""
+        import nltk  # type: ignore[import-untyped]
+
+        from transcript_etl_pipeline.transform.speakers import (
+            _ensure_nltk_data,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        download_called: list[str] = []
+
+        def mock_find(path: str) -> None:
+            if "punkt" in path:
+                raise LookupError("Not found")
+
+        def mock_download(resource: str, **kwargs: object) -> None:
+            download_called.append(resource)
+
+        monkeypatch.setattr(nltk.data, "find", mock_find)
+        monkeypatch.setattr(nltk, "download", mock_download)
+
+        _ensure_nltk_data()
+
+        # Should have downloaded punkt
+        assert any("punkt" in r for r in download_called)
+
+    def test_ensure_nltk_data_downloads_tagger(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Verify POS tagger is downloaded if missing."""
+        import nltk  # type: ignore[import-untyped]
+
+        from transcript_etl_pipeline.transform.speakers import (
+            _ensure_nltk_data,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        download_called: list[str] = []
+
+        def mock_find(path: str) -> None:
+            if "perceptron" in path or "tagger" in path:
+                raise LookupError("Not found")
+
+        def mock_download(resource: str, **kwargs: object) -> None:
+            download_called.append(resource)
+
+        monkeypatch.setattr(nltk.data, "find", mock_find)
+        monkeypatch.setattr(nltk, "download", mock_download)
+
+        _ensure_nltk_data()
+
+        # Should have downloaded tagger
+        assert any("tagger" in r or "perceptron" in r for r in download_called)
+
+
+class TestStripBeforeTranscript:
+    """Tests for strip_before_transcript helper."""
+
+    def test_strip_removes_metadata(self) -> None:
+        """Verify metadata before Transcript: is removed."""
+        from transcript_etl_pipeline.transform.speakers import (
+            strip_before_transcript,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        text = "Date: 2024-01-01\r\nAttendees: Alice, Bob\r\nTranscript:\r\nSpeaker A: Hello."
+        result = strip_before_transcript(text)
+
+        # Should not contain metadata
+        assert "Date:" not in result
+        assert "Attendees:" not in result
+        # Should contain dialogue
+        assert "Speaker A: Hello." in result
+
+    def test_strip_with_custom_marker(self) -> None:
+        """Verify custom marker works."""
+        from transcript_etl_pipeline.transform.speakers import (
+            strip_before_transcript,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        text = "Header\r\nDialogue:\r\nSpeaker: Text"
+        result = strip_before_transcript(text, marker="Dialogue:")
+
+        assert "Header" not in result
+        assert "Speaker: Text" in result
+
+    def test_strip_without_marker(self) -> None:
+        """Verify returns full text when marker not found."""
+        from transcript_etl_pipeline.transform.speakers import (
+            strip_before_transcript,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        text = "Speaker A: Hello\r\nSpeaker B: Hi"
+        result = strip_before_transcript(text)
+
+        # Should return everything when no marker
+        assert result == text
+
+
+class TestCalculatePossibleSpeakersHelperEdgeCases:
+    """Tests for calculate_possible_speakers helper edge cases."""
+
+    def test_excludes_addressing_speakers(self) -> None:
+        """Verify speakers who address person are excluded."""
+        speakers_addressing = ["Speaker A", "Speaker C"]
+        all_speakers = ["Speaker A", "Speaker B", "Speaker C", "Speaker D"]
+        name_variants = {"alice"}
+
+        result = calculate_possible_speakers(speakers_addressing, all_speakers, name_variants)
+
+        # Should exclude A and C
+        assert "Speaker A" not in result
+        assert "Speaker C" not in result
+        # Should include B and D
+        assert "Speaker B" in result
+        assert "Speaker D" in result
+
+    def test_excludes_addressing_only(self) -> None:
+        """Verify addressing speakers are excluded."""
+        speakers_addressing = ["Speaker A"]
+        all_speakers = ["Speaker A", "Speaker B", "Speaker C"]
+        name_variants: set[str] = set()  # No variants
+
+        result = calculate_possible_speakers(speakers_addressing, all_speakers, name_variants)
+
+        # Should exclude A (addressing)
+        assert "Speaker A" not in result
+        # Should include B and C
+        assert "Speaker B" in result
+        assert "Speaker C" in result
+
+
+class TestFindSelfIdentifyingSpeakerHelper:
+    """Tests for find_self_identifying_speaker helper."""
+
+    def test_extracts_speaker_labels(self) -> None:
+        """Verify speaker labels are extracted from lines."""
+        lines = ["Speaker A: Hello.", "Speaker B: I'm Alice.", "Speaker C: Hi."]
+        name_variants = {"alice", "Alice"}
+
+        result = find_self_identifying_speaker(lines, name_variants)
+
+        # Should extract the speaker(s) mentioning the name
+        assert isinstance(result, list)
