@@ -1,9 +1,12 @@
 # <bug-name> (Plan)
 
-- Issue: <#id or TBD>
-- Owner: <name>
-- Date: YYYY-MM-DD
-- Status: Draft
+- **Issue:** <issue>
+- **Parent (optional):** <parent-id>
+- **Owner:** <name>
+- **Last Updated:** <yyyy-MM-ddTHH-mm>
+- **Status:** <template>
+- **Version:** <version_number>
+
 
 **Phase 0 — Context & Inputs**
 - [ ] [P0-T1] Link approved spec: <spec link>
@@ -15,8 +18,8 @@
 - [ ] [P1-T2] Sync workspace to target branch and ensure tooling is available
 
 **Phase 2 — Regression Test (must fail first)**
-- [ ] [P2-T1] Add a small, deterministic regression test in the standard module file (use `tests/bugs/<YYYY>/<issue>-<desc>.py` only if no clear home exists)
-- [ ] [P2-T2] Run the regression to confirm it fails and captures the repro
+- [ ] [P2-T1] [expect-fail] Add a small, deterministic regression test in the standard module file (use `tests/bugs/<YYYY>/<issue>-<desc>.py` only if no clear home exists)
+- [ ] [P2-T2] [expect-fail] Run the regression to confirm it fails and captures the repro
 
 **Phase 3 — Minimal Fix**
 - [ ] [P3-T1] Apply the smallest change needed to make the regression test pass; avoid opportunistic refactors

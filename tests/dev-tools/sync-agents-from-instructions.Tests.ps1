@@ -1,0 +1,89 @@
+Set-StrictMode -Version Latest
+
+Describe "sync-agents-from-instructions.ps1" {
+    BeforeAll {
+        $env:POSHQC_SKIP_SCRIPT_EXECUTION = '1'
+        $script:scriptPath = Join-Path -Path $PSScriptRoot -ChildPath "..\..\..\scripts\dev-tools\sync-agents-from-instructions.ps1"
+        . $script:scriptPath
+    }
+
+    Context "Get-InstructionsBody" {
+        It "throws when file is missing" {
+            Mock -CommandName Test-Path -MockWith { $false }
+
+            { Get-InstructionsBody -Path "missing.md" } | Should -Throw -ExpectedMessage "Instructions file not found: missing.md"
+        }
+
+        It "returns trimmed content without frontmatter" {
+            $content = @"
+---
+applyTo: "**"
+---
+
+line1
+line2
+"@
+            Mock -CommandName Test-Path -MockWith { $true }
+            Mock -CommandName Get-Content -MockWith { $content }
+
+            $result = Get-InstructionsBody -Path "dummy.md"
+            $normalized = $result -replace "`r`n", "`n"
+            $normalized | Should -Be "line1`nline2"
+        }
+    }
+
+    Context "Get-AgentContent" {
+        BeforeEach {
+            $script:copilotPath = Join-Path -Path "/repo" -ChildPath ".github/copilot-instructions.md"
+            $script:instructionsDir = Join-Path -Path "/repo" -ChildPath ".github/instructions"
+            Mock -CommandName Get-InstructionsBody -MockWith {
+                param($Path)
+                # Return mock content based on which file is requested
+                if ($Path -like "*python-suppressions.instructions.md") {
+                    return "python suppressions policy content"
+                }
+                switch ($Path) {
+                    { $_ -eq $script:copilotPath } { return "copilot body" }
+                    { $_ -eq (Join-Path -Path $script:instructionsDir -ChildPath "general-code-change.instructions.md") } { return "general code" }
+                    { $_ -eq (Join-Path -Path $script:instructionsDir -ChildPath "general-unit-test.instructions.md") } { return "general unit" }
+                    { $_ -eq (Join-Path -Path $script:instructionsDir -ChildPath "github-actions.instructions.md") } { return "gh actions" }
+                    { $_ -eq (Join-Path -Path $script:instructionsDir -ChildPath "python-code-change.instructions.md") } { return "python code" }
+                    { $_ -eq (Join-Path -Path $script:instructionsDir -ChildPath "python-unit-test.instructions.md") } { return "python unit" }
+                    { $_ -eq (Join-Path -Path $script:instructionsDir -ChildPath "powershell-code-change.instructions.md") } { return "ps code" }
+                    { $_ -eq (Join-Path -Path $script:instructionsDir -ChildPath "powershell-unit-test.instructions.md") } { return "ps unit" }
+                    { $_ -eq (Join-Path -Path $script:instructionsDir -ChildPath "codexer.instructions.md") } { return "codexer unit" }
+                    { $_ -eq (Join-Path -Path $script:instructionsDir -ChildPath "self-explanatory-code-commenting.instructions.md") } { return "self-explanatory-code-commenting unit" }
+                    default { throw "Unexpected path $Path" }
+                }
+            }
+        }
+
+        It "builds AGENTS content with all sections" {
+            $result = Get-AgentContent -RepoRootParam "/repo"
+
+            $expectedPath = Join-Path -Path "/repo" -ChildPath "AGENTS.md"
+            $result.Path | Should -Be $expectedPath
+            $result.Content | Should -Match "# AGENTS.md"
+            $result.Content | Should -Match "copilot body"
+            $result.Content | Should -Match "general code"
+            $result.Content | Should -Match "ps unit"
+            $result.Content | Should -Match "codexer unit"
+            $result.Content | Should -Match "self-explanatory-code-commenting unit"
+        }
+    }
+
+    Context "Invoke-SyncAgentInstruction" {
+        It "writes generated content to AGENTS.md" {
+            $expected = [pscustomobject]@{ Path = "/work/AGENTS.md"; Content = "content" }
+            Mock -CommandName Get-AgentContent -MockWith { param($RepoRootParam) [void]$RepoRootParam; $expected }
+            Mock -CommandName Set-Content -MockWith { }
+            Mock -CommandName Write-Output -MockWith { }
+
+            Invoke-SyncAgentInstruction -RepoRootParam "/work"
+
+            Should -Invoke -CommandName Get-AgentContent -Times 1 -ParameterFilter { $RepoRootParam -eq "/work" }
+            Should -Invoke -CommandName Set-Content -Times 1 -ParameterFilter { $LiteralPath -eq "/work/AGENTS.md" -and $Value -eq "content" -and $NoNewline }
+            Should -Invoke -CommandName Write-Output -Times 1
+        }
+    }
+}
