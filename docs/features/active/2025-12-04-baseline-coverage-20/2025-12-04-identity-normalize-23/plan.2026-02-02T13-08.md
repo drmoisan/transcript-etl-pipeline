@@ -102,27 +102,27 @@ Atomic, deterministic execution plan to raise combined coverage for `src/transcr
   - Acceptance: File includes a `normalize.py` section with bullet points quoting each branch condition from the module
 
 ### Phase 2 — Identity Constraints Tests
-- [ ] [P2-T1] Add Pytest case `test_thanks_followed_by_name_extracts_name` in `tests/transform/test_identity_constraints.py` covering `detect_addresses_to_person("Thanks Frank")` returning `["Frank"]` (REQ-002)
+- [x] [P2-T1] Add Pytest case `test_thanks_followed_by_name_extracts_name` in `tests/transform/test_identity_constraints.py` covering `detect_addresses_to_person("Thanks Frank")` returning `["Frank"]` (REQ-002)
   - Acceptance: `poetry run pytest tests/transform/test_identity_constraints.py -k test_thanks_followed_by_name_extracts_name` exits with code 0
-- [ ] [P2-T2] Add Pytest case `test_hello_followed_by_name_extracts_name` in `tests/transform/test_identity_constraints.py` covering `detect_addresses_to_person("Hello Dana")` returning `["Dana"]` (REQ-002)
+- [x] [P2-T2] Add Pytest case `test_hello_followed_by_name_extracts_name` in `tests/transform/test_identity_constraints.py` covering `detect_addresses_to_person("Hello Dana")` returning `["Dana"]` (REQ-002)
   - Acceptance: `poetry run pytest tests/transform/test_identity_constraints.py -k test_hello_followed_by_name_extracts_name` exits with code 0
-- [ ] [P2-T3] Add Pytest case `test_short_single_char_name_excluded` in `tests/transform/test_identity_constraints.py` covering exclusion of single-character tokens such as `"A"` from `detect_addresses_to_person` results (REQ-002)
+- [x] [P2-T3] Add Pytest case `test_short_single_char_name_excluded` in `tests/transform/test_identity_constraints.py` covering exclusion of single-character tokens such as `"A"` from `detect_addresses_to_person` results (REQ-002)
   - Acceptance: `poetry run pytest tests/transform/test_identity_constraints.py -k test_short_single_char_name_excluded` exits with code 0
-- [ ] [P2-T4] Add Pytest case `test_standalone_name_question_excluded` in `tests/transform/test_identity_constraints.py` covering `detect_addresses_to_person("Fred?")` returning an empty list (REQ-002)
+- [x] [P2-T4] Add Pytest case `test_standalone_name_question_excluded` in `tests/transform/test_identity_constraints.py` covering `detect_addresses_to_person("Fred?")` returning an empty list (REQ-002)
   - Acceptance: `poetry run pytest tests/transform/test_identity_constraints.py -k test_standalone_name_question_excluded` exits with code 0
-- [ ] [P2-T5] Add Pytest case `test_standalone_name_question_with_context_excluded` in `tests/transform/test_identity_constraints.py` covering `detect_addresses_to_person("Wait, Fred?")` returning an empty list (REQ-002)
+- [x] [P2-T5] Add Pytest case `test_standalone_name_question_with_context_excluded` in `tests/transform/test_identity_constraints.py` covering `detect_addresses_to_person("Wait, Fred?")` returning an empty list (REQ-002)
   - Acceptance: `poetry run pytest tests/transform/test_identity_constraints.py -k test_standalone_name_question_with_context_excluded` exits with code 0
-- [ ] [P2-T6] Add Pytest case `test_is_name_article_noun_excluded` in `tests/transform/test_identity_constraints.py` covering `detect_addresses_to_person("Is Dan a leader?")` returning an empty list (REQ-002)
+- [x] [P2-T6] Add Pytest case `test_is_name_article_noun_excluded` in `tests/transform/test_identity_constraints.py` covering `detect_addresses_to_person("Is Dan a leader?")` returning an empty list (REQ-002)
   - Acceptance: `poetry run pytest tests/transform/test_identity_constraints.py -k test_is_name_article_noun_excluded` exits with code 0
-- [ ] [P2-T7] Add Pytest case `test_is_name_an_expert_excluded` in `tests/transform/test_identity_constraints.py` covering `detect_addresses_to_person("Is Alice an expert?")` returning an empty list (REQ-002)
+- [x] [P2-T7] Add Pytest case `test_is_name_an_expert_excluded` in `tests/transform/test_identity_constraints.py` covering `detect_addresses_to_person("Is Alice an expert?")` returning an empty list (REQ-002)
   - Acceptance: `poetry run pytest tests/transform/test_identity_constraints.py -k test_is_name_an_expert_excluded` exits with code 0
-- [ ] [P2-T8] Add Pytest case `test_is_name_the_person_excluded` in `tests/transform/test_identity_constraints.py` covering `detect_addresses_to_person("Is Bob the speaker?")` returning an empty list (REQ-002)
+- [x] [P2-T8] Add Pytest case `test_is_name_the_person_excluded` in `tests/transform/test_identity_constraints.py` covering `detect_addresses_to_person("Is Bob the speaker?")` returning an empty list (REQ-002)
   - Acceptance: `poetry run pytest tests/transform/test_identity_constraints.py -k test_is_name_the_person_excluded` exits with code 0
-- [ ] [P2-T9] Add Pytest case `test_mid_sentence_is_name_article_excluded` in `tests/transform/test_identity_constraints.py` covering `detect_addresses_to_person("I wonder if Dan is a leader")` returning an empty list (REQ-002)
+- [x] [P2-T9] Add Pytest case `test_mid_sentence_is_name_article_excluded` in `tests/transform/test_identity_constraints.py` covering `detect_addresses_to_person("I wonder if Dan is a leader")` returning an empty list (REQ-002)
   - Acceptance: `poetry run pytest tests/transform/test_identity_constraints.py -k test_mid_sentence_is_name_article_excluded` exits with code 0
-- [ ] [P2-T10] Add Pytest case `test_mid_sentence_is_name_an_excluded` in `tests/transform/test_identity_constraints.py` covering `detect_addresses_to_person("We asked whether Charlie is an expert")` returning an empty list (REQ-002)
+- [x] [P2-T10] Add Pytest case `test_mid_sentence_is_name_an_excluded` in `tests/transform/test_identity_constraints.py` covering `detect_addresses_to_person("We asked whether Charlie is an expert")` returning an empty list (REQ-002)
   - Acceptance: `poetry run pytest tests/transform/test_identity_constraints.py -k test_mid_sentence_is_name_an_excluded` exits with code 0
-- [ ] [P2-T11] Add Pytest case `test_mid_sentence_is_name_the_excluded` in `tests/transform/test_identity_constraints.py` covering `detect_addresses_to_person("It depends on whether Sarah is the lead")` returning an empty list (REQ-002)
+- [x] [P2-T11] Add Pytest case `test_mid_sentence_is_name_the_excluded` in `tests/transform/test_identity_constraints.py` covering `detect_addresses_to_person("It depends on whether Sarah is the lead")` returning an empty list (REQ-002)
   - Acceptance: `poetry run pytest tests/transform/test_identity_constraints.py -k test_mid_sentence_is_name_the_excluded` exits with code 0
 
 ### Phase 3 — Normalize Tests

@@ -76,17 +76,17 @@ version: "0.2"
   - Acceptance: Command exits with code 0.
 
 ### Phase 1 — Coverage Configuration (pyproject.toml)
-- [ ] [P1-T1] Add `[tool.coverage.run]` and `[tool.coverage.report]` sections in `pyproject.toml` (insert after `[tool.pyright]` around lines 53–78) with `source = ["src"]`, `omit = ["tests/*", "*/tests/*", "*/__pycache__/*", "*/site-packages/*"]`, `fail_under = 15`, and the ratchet plan comments exactly as listed in `28-ci-coverage-gate.md` (REQ-1).
+- [x] [P1-T1] Add `[tool.coverage.run]` and `[tool.coverage.report]` sections in `pyproject.toml` (insert after `[tool.pyright]` around lines 53–78) with `source = ["src"]`, `omit = ["tests/*", "*/tests/*", "*/__pycache__/*", "*/site-packages/*"]`, `fail_under = 15`, and the ratchet plan comments exactly as listed in `28-ci-coverage-gate.md` (REQ-1).
   - Acceptance: `powershell -Command "Select-String -Path pyproject.toml -Pattern '\[tool.coverage.report\]'"` returns a match and `powershell -Command "Select-String -Path pyproject.toml -Pattern 'fail_under = 15'"` returns a match.
 
 ### Phase 2 — CI Coverage Reporting and Gating (.github/workflows/ci.yml)
-- [ ] [P2-T1] Add a `Run tests with coverage` step in `.github/workflows/ci.yml` (quality-checks job, after `Type check with Pyright`, around lines 70–73) that runs `poetry run pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-report=html` (REQ-2).
+- [x] [P2-T1] Add a `Run tests with coverage` step in `.github/workflows/ci.yml` (quality-checks job, after `Type check with Pyright`, around lines 70–73) that runs `poetry run pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-report=html` (REQ-2).
   - Acceptance: `powershell -Command "Select-String -Path .github/workflows/ci.yml -Pattern 'Run tests with coverage'"` returns a match and the following line contains the exact pytest command.
-- [ ] [P2-T2] Add a `Check coverage threshold` step in `.github/workflows/ci.yml` (after the coverage test step, around lines 74–76) that runs `poetry run coverage report` to enforce `fail_under` from `pyproject.toml` (REQ-3).
+- [x] [P2-T2] Add a `Check coverage threshold` step in `.github/workflows/ci.yml` (after the coverage test step, around lines 74–76) that runs `poetry run coverage report` to enforce `fail_under` from `pyproject.toml` (REQ-3).
   - Acceptance: `powershell -Command "Select-String -Path .github/workflows/ci.yml -Pattern 'Check coverage threshold'"` returns a match and the following line contains `poetry run coverage report`.
-- [ ] [P2-T3] Add `Upload coverage HTML report` and `Upload coverage XML report` steps in `.github/workflows/ci.yml` (after the threshold step, around lines 78–90) using `actions/upload-artifact@v4` with `name: coverage-html-report`, `path: htmlcov/`, `name: coverage-xml-report`, and `path: coverage.xml`, `retention-days: 14` (REQ-2).
+- [x] [P2-T3] Add `Upload coverage HTML report` and `Upload coverage XML report` steps in `.github/workflows/ci.yml` (after the threshold step, around lines 78–90) using `actions/upload-artifact@v4` with `name: coverage-html-report`, `path: htmlcov/`, `name: coverage-xml-report`, and `path: coverage.xml`, `retention-days: 14` (REQ-2).
   - Acceptance: `powershell -Command "Select-String -Path .github/workflows/ci.yml -Pattern 'coverage-html-report'"` returns a match and `powershell -Command "Select-String -Path .github/workflows/ci.yml -Pattern 'coverage-xml-report'"` returns a match.
-- [ ] [P2-T4] Add a `Generate coverage summary` step in `.github/workflows/ci.yml` (after artifact uploads, around lines 92–96) that appends a Markdown report to `$GITHUB_STEP_SUMMARY` using `poetry run coverage report --format=markdown` (REQ-2).
+- [x] [P2-T4] Add a `Generate coverage summary` step in `.github/workflows/ci.yml` (after artifact uploads, around lines 92–96) that appends a Markdown report to `$GITHUB_STEP_SUMMARY` using `poetry run coverage report --format=markdown` (REQ-2).
   - Acceptance: `powershell -Command "Select-String -Path .github/workflows/ci.yml -Pattern 'Generate coverage summary'"` returns a match and the step includes `coverage report --format=markdown`.
 
 ### Phase 3 — Documentation and Issue Updates

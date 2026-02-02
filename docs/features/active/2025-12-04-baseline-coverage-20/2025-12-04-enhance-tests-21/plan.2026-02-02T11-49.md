@@ -48,19 +48,19 @@ Requirements (REQ-):
   - Acceptance: `Open Questions / Notes` contains a fenced code block labeled `Baseline Coverage Output` with the exact command output
 
 ### Phase 1 — Identity Constraints Characterization Tests
-- [ ] [P1-T1] TASK-ENH-010 Add identity-constraint characterization tests to `tests/transform/test_enhance.py` with the exact names: `test_self_identification_with_two_speakers_uses_alternation`, `test_addresses_other_constraint_with_three_speakers`, `test_multiple_self_identifications_needs_more_changes`, `test_self_identifications_with_strong_change_signals`
+- [x] [P1-T1] TASK-ENH-010 Add identity-constraint characterization tests to `tests/transform/test_enhance.py` with the exact names: `test_self_identification_with_two_speakers_uses_alternation`, `test_addresses_other_constraint_with_three_speakers`, `test_multiple_self_identifications_needs_more_changes`, `test_self_identifications_with_strong_change_signals`
   - Acceptance: `tests/transform/test_enhance.py` contains four new test functions with the exact names and assertions that lock current behavior via `enhance_text`
 - [ ] [P1-T2] TASK-ENH-011 Run targeted tests with `poetry run pytest tests/transform/test_enhance.py -k "self_identification_with_two_speakers_uses_alternation or addresses_other_constraint_with_three_speakers or multiple_self_identifications_needs_more_changes or self_identifications_with_strong_change_signals"`
   - Acceptance: Command exits with code 0
 
 ### Phase 2 — Normalization Interaction Characterization Tests
-- [ ] [P2-T1] TASK-ENH-020 Add normalization interaction tests to `tests/transform/test_enhance.py` with the exact names: `test_unix_line_endings_handled`, `test_mixed_line_endings_handled`, `test_whitespace_only_text_handled`, `test_single_line_no_labels`, `test_trailing_whitespace_preserved`, `test_empty_lines_between_speakers`, `test_very_long_speakerless_text`
+- [x] [P2-T1] TASK-ENH-020 Add normalization interaction tests to `tests/transform/test_enhance.py` with the exact names: `test_unix_line_endings_handled`, `test_mixed_line_endings_handled`, `test_whitespace_only_text_handled`, `test_single_line_no_labels`, `test_trailing_whitespace_preserved`, `test_empty_lines_between_speakers`, `test_very_long_speakerless_text`
   - Acceptance: `tests/transform/test_enhance.py` contains seven new test functions with the exact names and assertions that lock current behavior via `enhance_text`
 - [ ] [P2-T2] TASK-ENH-021 Run targeted tests with `poetry run pytest tests/transform/test_enhance.py -k "line_endings_handled or whitespace_only_text_handled or single_line_no_labels or trailing_whitespace_preserved or empty_lines_between_speakers or very_long_speakerless_text"`
   - Acceptance: Command exits with code 0
 
 ### Phase 3 — Speakerless Edge Case Characterization Tests
-- [ ] [P3-T1] TASK-ENH-030 Add speakerless edge-case tests to `tests/transform/test_enhance.py` with the exact names: `test_single_sentence_speakerless`, `test_question_answer_pattern_speakerless`, `test_pronoun_shift_detection`, `test_greeting_triggers_speaker_change`, `test_thank_you_pattern_speaker_change`, `test_acknowledgment_triggers_speaker_change`, `test_num_speakers_one`, `test_num_speakers_four`, `test_labeled_with_speakerless_content`, `test_metadata_then_speakerless_dialogue`
+- [x] [P3-T1] TASK-ENH-030 Add speakerless edge-case tests to `tests/transform/test_enhance.py` with the exact names: `test_single_sentence_speakerless`, `test_question_answer_pattern_speakerless`, `test_pronoun_shift_detection`, `test_greeting_triggers_speaker_change`, `test_thank_you_pattern_speaker_change`, `test_acknowledgment_triggers_speaker_change`, `test_num_speakers_one`, `test_num_speakers_four`, `test_labeled_with_speakerless_content`, `test_metadata_then_speakerless_dialogue`
   - Acceptance: `tests/transform/test_enhance.py` contains ten new test functions with the exact names and assertions that lock current behavior via `enhance_text`
 - [ ] [P3-T2] TASK-ENH-031 Run targeted tests with `poetry run pytest tests/transform/test_enhance.py -k "speakerless or question_answer_pattern or pronoun_shift_detection or greeting_triggers_speaker_change or thank_you_pattern_speaker_change or acknowledgment_triggers_speaker_change or num_speakers_one or num_speakers_four or labeled_with_speakerless_content or metadata_then_speakerless_dialogue"`
   - Acceptance: Command exits with code 0

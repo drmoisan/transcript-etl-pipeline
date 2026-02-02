@@ -38,21 +38,21 @@ REQ-005 | Document fixture location and usage in `docs/features/active/2025-12-0
   - Acceptance: Development log contains policy review timestamp prior to Phase 1 commits
 
 ### Phase 1: Fixture Module Creation
-- [ ] [TASK-P1-T1] Create `tests/fixtures/multi_speaker.py` (new file, line numbers N/A) with `@dataclass(frozen=True)` definitions for `ExpectedSpeakerLine` and `MultiSpeakerFixture` and a `get_fixture_by_name(name: str) -> MultiSpeakerFixture` lookup function
+- [x] [TASK-P1-T1] Create `tests/fixtures/multi_speaker.py` (new file, line numbers N/A) with `@dataclass(frozen=True)` definitions for `ExpectedSpeakerLine` and `MultiSpeakerFixture` and a `get_fixture_by_name(name: str) -> MultiSpeakerFixture` lookup function
   - Acceptance: `from tests.fixtures.multi_speaker import ExpectedSpeakerLine, MultiSpeakerFixture, get_fixture_by_name` imports succeed
-- [ ] [TASK-P1-T2] Define fixture constants in `tests/fixtures/multi_speaker.py` for `SPACEX_DISCUSSION`, `GENERIC_MEETING_3SPEAKER`, `TEAM_STANDUP_3SPEAKER`, and `PANEL_DISCUSSION_4SPEAKER` with `input_text`, `expected_lines`, and `num_speakers` values
+- [x] [TASK-P1-T2] Define fixture constants in `tests/fixtures/multi_speaker.py` for `SPACEX_DISCUSSION`, `GENERIC_MEETING_3SPEAKER`, `TEAM_STANDUP_3SPEAKER`, and `PANEL_DISCUSSION_4SPEAKER` with `input_text`, `expected_lines`, and `num_speakers` values
   - Acceptance: Each fixture has `num_speakers >= 3` and non-empty `input_text` and `expected_lines`
-- [ ] [TASK-P1-T3] Add collection tuples `ALL_3SPEAKER_FIXTURES`, `ALL_4SPEAKER_FIXTURES`, and `ALL_MULTI_SPEAKER_FIXTURES` in `tests/fixtures/multi_speaker.py`
+- [x] [TASK-P1-T3] Add collection tuples `ALL_3SPEAKER_FIXTURES`, `ALL_4SPEAKER_FIXTURES`, and `ALL_MULTI_SPEAKER_FIXTURES` in `tests/fixtures/multi_speaker.py`
   - Acceptance: `len(ALL_MULTI_SPEAKER_FIXTURES) == len(ALL_3SPEAKER_FIXTURES) + len(ALL_4SPEAKER_FIXTURES)`
 
 ### Phase 2: Regression Test Suite
-- [ ] [TASK-P2-T1] Create `tests/transform/test_multi_speaker_regression.py` (new file, line numbers N/A) with fixture validation tests that assert structure, counts, and content constraints for each fixture
+- [x] [TASK-P2-T1] Create `tests/transform/test_multi_speaker_regression.py` (new file, line numbers N/A) with fixture validation tests that assert structure, counts, and content constraints for each fixture
   - Acceptance: `pytest -q tests/transform/test_multi_speaker_regression.py -k fixture` passes
-- [ ] [TASK-P2-T2] Add parametrized tests in `tests/transform/test_multi_speaker_regression.py` that call existing speaker assignment/grouping functions using each fixture’s `input_text` and validate expected speaker counts and content preservation
+- [x] [TASK-P2-T2] Add parametrized tests in `tests/transform/test_multi_speaker_regression.py` that call existing speaker assignment/grouping functions using each fixture’s `input_text` and validate expected speaker counts and content preservation
   - Acceptance: Tests assert speaker count equals `fixture.num_speakers` and all expected lines appear in output
-- [ ] [TASK-P2-T3] Add scenario-specific regression tests for SpaceX, standup, and panel fixtures to verify grouping boundaries and identity constraints
+- [x] [TASK-P2-T3] Add scenario-specific regression tests for SpaceX, standup, and panel fixtures to verify grouping boundaries and identity constraints
   - Acceptance: Each scenario has at least one targeted assertion on grouping behavior
-- [ ] [TASK-P2-T4] Mark known algorithmic limitations as `pytest.mark.xfail` with explicit reason strings in `tests/transform/test_multi_speaker_regression.py`
+- [x] [TASK-P2-T4] Mark known algorithmic limitations as `pytest.mark.xfail` with explicit reason strings in `tests/transform/test_multi_speaker_regression.py`
   - Acceptance: `pytest -q` reports xfailed tests with those reasons and no xpasses
 
 ### Phase 3: Documentation Updates
