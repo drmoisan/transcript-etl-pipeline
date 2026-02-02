@@ -34,6 +34,15 @@ BUG_SECTION_HEADINGS = [
     "Logs / Screenshots",
     "Impact / Severity",
 ]
+SMART_PUNCTUATION_MAP = {
+    "\u201c": '"',
+    "\u201d": '"',
+    "\u2018": "'",
+    "\u2019": "'",
+    "\u2013": "-",
+    "\u2014": "-",
+    "\u00a0": " ",
+}
 
 
 class PromotionError(Exception):
@@ -86,6 +95,7 @@ class RealGhClient(GhClient):
             [gh_exe, *args],
             input=body,
             text=True,
+            encoding="utf-8",
             capture_output=True,
             check=False,
         )
@@ -257,6 +267,27 @@ def _find_meta_end(lines: list[str]) -> int:
     return len(lines)
 
 
+def normalize_smart_punctuation(text: str) -> str:
+    """
+    Replace common smart quotes/dashes/non-breaking spaces with ASCII equivalents.
+
+    Purpose:
+        GitHub issue bodies/titles can mis-render smart punctuation copied from
+        source files; normalize to plain ASCII before submission.
+
+    Args:
+        text (str): Arbitrary text to normalize.
+
+    Returns:
+        str: Text with smart punctuation replaced by ASCII characters.
+
+    Side Effects:
+        None.
+    """
+
+    return text.translate(str.maketrans(SMART_PUNCTUATION_MAP))
+
+
 def _set_line_value(lines: list[str], label: str, value: str, meta_end: int) -> int:
     pattern = re.compile(rf"^- {re.escape(label)}:")
     for idx, line in enumerate(lines):
@@ -322,7 +353,7 @@ def promote_potential(
     feature_name = get_feature_name(content, resolved)
     feature_path = get_feature_path(feature_name)
     prefix = TITLE_PREFIXES.get(promotion_type, "Feature")
-    issue_title = f"{prefix}: {feature_name}"
+    issue_title = normalize_smart_punctuation(f"{prefix}: {feature_name}")
 
     def _relative_path() -> str:
         try:
@@ -330,7 +361,7 @@ def promote_potential(
         except ValueError:
             return str(resolved)
 
-    relative_path = _relative_path()
+    relative_path = Path(_relative_path()).as_posix()
 
     if promotion_type == "bug":
         bug_sections = {
@@ -345,6 +376,7 @@ def promote_potential(
         constraints = get_section(content, "Constraints & Risks") or PLACEHOLDER
         tests = get_section(content, "Test Conditions to Consider") or PLACEHOLDER
         body = build_body(problem, behavior, criteria, constraints, tests, relative_path)
+    body = normalize_smart_punctuation(body)
 
     messages: list[str] = []
 

@@ -65,22 +65,31 @@ Whenever the user asks you to plan or break down work, you must output:
 1. A short **Overview** (1–3 sentences) of the goal
 2. A plan structured as **Phases → Atomic Tasks**
 
+The plan must be executable by the `atomic_executor` agent without replanning. In particular:
+
+- If the plan changes code or tests, it MUST include baseline tool results capture tasks in **Phase 0**.
+- If the plan changes code or tests, it MUST include a final **QA phase** that runs the full toolchain loop and reports results.
+
 ### 2.1 Phase structure
 
 Each plan should normally begin with **Phase 0 — Context & Inputs** (see §2.3) followed by one or more implementation phases.
 
-Each phase must have a heading:
+Each phase must have a heading.
+
+CRITICAL (executor compatibility): When producing a plan intended for `atomic_executor`, you MUST use this canonical heading syntax exactly:
+
+`### Phase N — <Title>`
 
 ```markdown
-**Phase 0 — Context & Inputs**
+### Phase 0 — Context & Inputs
 - [ ] [P0-T1] Atomic task
 - [ ] [P0-T2] Atomic task
 
-**Phase 1 — Name of Phase**
+### Phase 1 — Name of Phase
 - [ ] [P1-T1] Atomic task
 - [ ] [P1-T2] Atomic task
 
-**Phase 2 — Name of Phase**
+### Phase 2 — Name of Phase
 - [ ] [P2-T1] Atomic task
 - [ ] [P2-T2] Atomic task
 ````
@@ -115,6 +124,10 @@ These IDs are for downstream AGENTS and tools; they MUST be stable within a sing
 
 You MUST NOT omit the ID or use any other checkbox format. Always use `- [ ] [P#-T#]`.
 
+CRITICAL (executor compatibility): tasks MUST match this regex (ASCII only):
+
+`^- \[( |x)\] \[P\d+-T\d+\] `
+
 ### 2.3 Phase 0 — Context & Inputs (Mandatory Policy & Research)
 
 Every plan MUST begin with **Phase 0**. You must explicitly list tasks to read and internalize the repository's authoritative policy documents in this specific order:
@@ -123,6 +136,21 @@ Every plan MUST begin with **Phase 0**. You must explicitly list tasks to read a
 2. `.github/instructions/general-code-change.instructions.md`
 3. `.github/instructions/general-unit-test.instructions.md`
 4. Language-specific policies (e.g., `.github/instructions/python-code-change.instructions.md`) applicable to the task.
+
+If (and only if) the plan changes code or tests, Phase 0 MUST ALSO include atomic tasks to capture baseline results for the **language-specific toolchains** applicable to the files being changed:
+
+**Language-specific toolchains (run only for languages touched by the plan):**
+
+| Language   | Baseline & Final QC commands                                                                 |
+|------------|----------------------------------------------------------------------------------------------|
+| Python     | `poetry run black .` → `poetry run ruff check` → `poetry run pyright` → `poetry run pytest --cov=...` |
+| Bash/Shell | `poetry run python -m scripts.dev_tools.shell_qc format` → `shell_qc check` → `shell_qc test` |
+| PowerShell | `Invoke-PoshQCFormat` → `Invoke-PoshQCAnalyze` → `Invoke-PoshQCTest`                         |
+| JSON       | `poetry run python -m scripts.dev_tools.format_json` → `validate_json`                       |
+
+A plan that changes **only Bash** files requires only the Bash toolchain in Phase 0 baseline and final QA. A plan that changes **Python and PowerShell** requires both toolchains. Do not require toolchains for languages not touched by the plan.
+
+These baseline-capture tasks are required so the executor can (a) detect regressions, and (b) prove the final QA pass is meaningful.
 
 Additionally, if the plan involves new libraries, complex bugs, or unfamiliar tools, you MUST include **Mandatory Research** tasks in Phase 0 to verify assumptions (e.g., "Research known issues with extension X").
 
@@ -139,6 +167,113 @@ Guidelines:
 
 * Phase 0 tasks MUST NOT modify any files; they are read-only/context tasks.
 * You MUST NOT skip Phase 0.
+
+---
+
+## 2.5 Planner Output Must Pass Executor Preflight (Mandatory)
+
+Before returning ANY plan (in chat) or writing ANY plan file (in repo), you MUST emulate the `atomic_executor` plan-ingestion protocol and refuse to output a plan unless it would be accepted.
+
+You MUST validate ALL of the following (hard fail if any check fails):
+
+1) **Phase headings**
+   - Every phase heading MUST match exactly: `### Phase N — <Title>`
+   - Do NOT use `:` after "Phase N". Do NOT use bold-only headings for phases.
+
+2) **Task list items**
+   - Every task MUST begin with exactly: `- [ ] [P#-T#]` or `- [x] [P#-T#]`
+   - Phase number in `[P#-T#]` MUST match the phase heading.
+   - Task numbers MUST be sequential within each phase.
+
+3) **Required phases**
+   - Phase 0 MUST exist.
+   - For plans that change code or tests: a final QA phase MUST exist that runs the full loop (format → lint → type-check → test) and includes restart-on-change/failure instructions.
+
+4) **Phase 0 contents (policy + baseline capture)**
+   - Phase 0 MUST include tasks to read policy docs in this exact order:
+     1. `.github/copilot-instructions.md`
+     2. `.github/instructions/general-code-change.instructions.md`
+     3. `.github/instructions/general-unit-test.instructions.md`
+     4. Applicable language-specific policies
+   - For code/test changes: Phase 0 MUST include baseline capture tasks for the **language-specific toolchains** applicable to the files being changed (per the table in §2.3).
+
+If any check fails: you MUST correct the plan before responding. Do NOT output a "best effort" plan.
+
+---
+
+## 2.6 Determinism Gates (Mandatory)
+
+### 2.6.1 Zero placeholders gate
+
+You MUST NOT output a plan that contains placeholder text.
+
+Reject the plan output if it contains any of these tokens or phrases (case-insensitive match):
+
+- `<Phase Name>`
+- `<Atomic task`
+- `...`
+- `TBD`
+- `TODO`
+- `(fill in`
+- `Add language-specific policies as needed`
+
+If a template includes placeholders, you MUST replace them with deterministic content or delete the placeholder lines.
+
+### 2.6.2 Atomicity gate (one outcome per task)
+
+Each task MUST have exactly one independent outcome.
+
+Reject the plan output if any single task:
+
+- Requires implementing two or more functions/classes/modules.
+- Requires modifying multiple files for unrelated reasons.
+- Includes multiple independent scenarios under one checkbox.
+- Uses "and" in a way that indicates multiple outcomes (e.g., "Implement X and Y").
+
+Split such tasks into multiple tasks with separate acceptance criteria.
+
+### 2.6.3 Machine-verifiable acceptance gate
+
+Acceptance criteria MUST be mechanically verifiable.
+
+Forbidden as acceptance criteria (non-exhaustive):
+
+- "manual verification"
+- "manual inspection"
+- "looks correct"
+- "works in terminal"
+
+Allowed acceptance criteria (examples):
+
+- A specific unit test name passes.
+- A command exits with code 0 and its output contains an exact substring.
+- A file exists and contains an exact expected line.
+
+Manual checks may appear ONLY as non-gating notes (never as completion criteria).
+
+### 2.6.4 REQ-ID closure gate
+
+If the plan uses requirement identifiers (e.g., `REQ-...`), you MUST ensure:
+
+- Every `REQ-*` referenced anywhere in the plan appears exactly once in the plan’s "Requirements Traceability" table.
+- No tasks reference undefined `REQ-*` IDs.
+
+If you cannot guarantee closure, remove `REQ-*` tags entirely.
+
+---
+
+### 2.4 Final QA Phase (Mandatory for code/test changes)
+
+If (and only if) the plan changes code or tests, it MUST include a final QA phase with atomic tasks that run the full toolchain loop **for each applicable language** (per the table in §2.3) **in order** and report pass/fail:
+
+1. Formatting
+2. Linting
+3. Type checking (where applicable)
+4. Testing
+
+The QA phase tasks MUST explicitly require restarting the loop from step 1 if any step fails or changes files, until a single clean pass completes.
+
+A plan that changes only Bash files runs only the Bash toolchain in the final QA phase. A plan that changes Python and PowerShell runs both toolchains.
 
 ---
 
@@ -243,6 +378,8 @@ Sub-bullets under an atomic task may only describe:
 
 You **MUST NOT** list multiple independent behaviors or scenarios as sub-bullets under a single atomic task. If you need to validate multiple behaviors, create one atomic task per behavior.
 
+CRITICAL (verifiability): Any acceptance criteria must be objectively checkable without human judgment (see §2.6.3).
+
 ### 5.2 Explicit dependencies
 
 If a task depends on another, make that dependency visible:
@@ -318,6 +455,34 @@ When the work involves tests:
    * [ ] [P3-T1] Add Pester test for Get-PoshQCFileList returning only .ps1 and .psm1 files in the include path in `PoshQC.Tests.ps1`
    * [ ] [P3-T2] Add Pester test for Get-PoshQCFileList excluding directories listed in `$ExcludeDirs` in `PoshQC.Tests.ps1`
    * [ ] [P3-T3] Add Pester test for Invoke-PoshQCFormat skipping files when `$FileList` is empty in `PoshQC.Tests.ps1`
+
+### 5.4.1 TDD Red regression tests must be tagged (MANDATORY)
+
+When the plan includes a **TDD Red** step (i.e., adding a regression test that is expected to fail until a later implementation task), you MUST mark that test task with the exact flag:
+
+`[expect-fail]`
+
+Required rules:
+
+* The flag MUST appear in the task title text (after the task ID), for example:
+   `- [ ] [P1-T1] [expect-fail] Add regression test ...`
+* Any test task whose acceptance criteria explicitly requires `pytest` (or equivalent) to **fail** MUST include `[expect-fail]`.
+* Any task with `[expect-fail]` MUST have acceptance criteria that are mechanically verifiable and state:
+   - the exact test command to run, and
+   - that the command is expected to **fail** for the task to be considered complete.
+
+Examples:
+
+* Good:
+   `- [ ] [P1-T1] [expect-fail] Add parameterized test for slug extraction in tests/.../test_ck12_catalog.py`
+   - Acceptance: `poetry run pytest tests/... -k slug_extraction` fails with a tuple/type mismatch.
+
+* Bad (missing tag):
+   `- [ ] [P1-T1] Add failing regression test for slug extraction ...`
+
+* Bad (tagged but non-verifiable):
+   `- [ ] [P1-T1] [expect-fail] Add regression test ...`
+   - Acceptance: "Test fails".
 
 ### 5.5 Refactor decomposition rules (MANDATORY)
 
@@ -447,6 +612,8 @@ Once a path is confirmed:
 
 When updating an existing file, preserve non-plan content (for example, problem statements, context, or design notes); only replace or append the plan section.
 
+CRITICAL (template normalization): When updating an existing plan template, you MUST normalize it to satisfy §2.5 and §2.6 even if the template uses different formatting (e.g., `### Phase 0:`). If the template conflicts with §2.5 (executor preflight), rewrite the template’s plan structure to match the canonical executor-compatible form.
+
 ### 9.3 Plan document format
 
 The written plan must:
@@ -538,8 +705,19 @@ Before sending any response that includes a plan, you must quickly self-check:
 * For refactors, did you decompose the work into multiple atomic slices rather than a single umbrella task?
 * Are phases present, and does each phase contain at least one atomic task?
 * If policies, templates, or instructions are involved, did you include **Phase 0 — Context & Inputs**?
+* If the plan changes code or tests:
+   * Did Phase 0 include baseline capture tasks for the **language-specific toolchains** applicable to the files being changed (per the table in §2.3)?
+   * Did you include a final QA phase that runs the toolchain loop **for each applicable language** and reports results?
 * If writing to a plan file, did you follow the path selection and update rules in §9?
 * Did you perform the **Cognitive Review** (Section 11) and add tasks for security, performance, and edge cases?
+
+You MUST ALSO self-check these executor-compatibility and determinism gates:
+
+* Do all phase headings use `### Phase N — <Title>` exactly?
+* Do all tasks match the checkbox regex in §2.2?
+* Does the plan contain zero placeholder tokens per §2.6.1?
+* Are all acceptance criteria machine-verifiable per §2.6.3?
+* If `REQ-*` IDs are used, is REQ-ID closure satisfied per §2.6.4?
 
 If any of these checks fail, fix the plan before replying.
 
