@@ -3,7 +3,7 @@ title: "2025-12-04-e2e-speakerless-notes - Plan"
 issue: "25"
 parent: "none"
 owner: "drmoisan"
-last_updated: "2026-02-02T23:44:20Z"
+last_updated: "2026-02-03T13:47:57Z"
 status: "Planned"
 status_color: "blue"
 version: "0.2"
@@ -16,7 +16,7 @@ version: "0.2"
 - **Issue:** [#25](https://github.com/drmoisan/transcript-etl-pipeline/issues/25)
 - **Parent (optional):** none
 - **Owner:** drmoisan
-- **Last Updated:** 2026-02-02T23:44:20Z
+- **Last Updated:** 2026-02-03T13:47:57Z
 - **Status:** Planned
 - **Version:** 0.2
 
@@ -138,7 +138,7 @@ version: "0.2"
 ### Phase 3 — Coverage Evidence and Issue Updates
 - [ ] [P3-T1] TASK-19 Run `poetry run pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-report=html` and record coverage for `src/transcript_etl_pipeline/cli.py`, `src/transcript_etl_pipeline/document/reader.py`, `src/transcript_etl_pipeline/extract/from_file.py`, and `src/transcript_etl_pipeline/transform/notes.py` (REQ-2).
   - Acceptance: `coverage.xml` exists and `Select-String -Path coverage.xml -Pattern 'cli.py|reader.py|from_file.py|notes.py'` returns matches.
-- [ ] [P3-T2] TASK-20 Update Issue #25 with PR/test links and scenario notes (REQ-4).
+- [x] [P3-T2] TASK-20 Update Issue #25 with PR/test links and scenario notes (REQ-4).
   - Acceptance: `gh issue view 25 --json body -q ".body"` output contains a PR URL matching `https://github.com/drmoisan/transcript-etl-pipeline/pull/` and mentions "speakerless" and "notes".
 - [ ] [P3-T3] TASK-21 Update `docs/features/active/2025-12-04-e2e-speakerless-notes-25/25-e2e-speakerless-notes.prompt.md` with any edge cases or runtime/env notes (REQ-3).
   - Acceptance: `Select-String -Path docs/features/active/2025-12-04-e2e-speakerless-notes-25/25-e2e-speakerless-notes.prompt.md -Pattern 'Runtime|Environment|Edge cases'` returns a match.
