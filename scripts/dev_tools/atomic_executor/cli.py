@@ -581,14 +581,14 @@ def run_copilot(
             str: Normalized Copilot CLI model identifier.
 
         Raises:
-            ValueError: If the model cannot be normalized.
+            ValueError: If the model is empty.
         """
         raw = model.strip()
         if not raw:
             raise ValueError("Model name cannot be empty")
 
-        # Known Copilot CLI v0.0.375 model choice identifiers.
-        # Keep this small, explicit, and aligned to `copilot help` output.
+        # Known Copilot CLI model choice identifiers.
+        # Keep this small, explicit, and aligned to `copilot --help` output.
         known_choices = {
             "claude-sonnet-4.5",
             "claude-haiku-4.5",
@@ -596,6 +596,7 @@ def run_copilot(
             "claude-sonnet-4",
             "gpt-5.1-codex-max",
             "gpt-5.1-codex",
+            "gpt-5.2-codex",
             "gpt-5.2",
             "gpt-5.1",
             "gpt-5",
@@ -622,7 +623,9 @@ def run_copilot(
         if cleaned in known_choices:
             return cleaned
 
-        raise ValueError(f"Unsupported Copilot CLI model: {model}")
+        # Forward compatibility: Copilot CLI model choices may evolve.
+        # If the input doesn't match our known set, let Copilot CLI validate.
+        return cleaned
 
     def is_vscode_copilot_shim(exe_path: str) -> bool:
         """
@@ -659,7 +662,10 @@ def run_copilot(
     copilot_exe = None
     path_env = os.environ.get("PATH", "")
     for path_dir in path_env.split(os.pathsep):
-        for candidate_name in ["copilot.exe", "copilot.bat", "copilot"]:
+        # Prefer Windows-native wrappers before a bare `copilot` file.
+        # npm installs `copilot.cmd` on Windows, while the bare `copilot` file
+        # may be a POSIX shim that cannot be executed via CreateProcess.
+        for candidate_name in ["copilot.exe", "copilot.cmd", "copilot.bat", "copilot"]:
             candidate = Path(path_dir) / candidate_name
             if candidate.exists() and not is_vscode_copilot_shim(str(candidate)):
                 copilot_exe = str(candidate)

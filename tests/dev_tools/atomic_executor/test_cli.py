@@ -1473,6 +1473,58 @@ class TestRunCopilot:
         assert log_dir.exists()
         assert log_file.exists()
 
+    def test_run_copilot_prefers_cmd_wrapper_over_bare_executable_name(
+        self, tmp_path: Path, monkeypatch: "MonkeyPatch"
+    ) -> None:
+        """run_copilot() prefers copilot.cmd over a bare 'copilot' file on Windows."""
+
+        from scripts.dev_tools.atomic_executor.cli import run_copilot
+
+        monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config-root"))
+
+        # Arrange a PATH entry with both:
+        # - copilot (often a POSIX shim from npm, not executable by CreateProcess)
+        # - copilot.cmd (Windows-friendly wrapper)
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        (fake_bin / "copilot").write_text("#!/usr/bin/env node\n", encoding="utf-8")
+        (fake_bin / "copilot.cmd").write_text("@echo fake copilot\n", encoding="utf-8")
+        monkeypatch.setenv("PATH", str(fake_bin))
+
+        captured_argv: list[str] = []
+
+        class MockStdout:
+            def read(self, size: int = -1) -> bytes:
+                return b""
+
+        class MockPopen:
+            def __init__(self, argv: list[str], *args: object, **kwargs: object) -> None:
+                captured_argv.extend(argv)
+                self.stdout = MockStdout()
+                self.returncode = 0
+
+            def poll(self) -> int:
+                return 0
+
+            def wait(self) -> int:
+                return 0
+
+        monkeypatch.setattr("subprocess.Popen", MockPopen)
+
+        log_file = tmp_path / "test.log"
+
+        run_copilot(
+            workspace=tmp_path,
+            prompt_text="test prompt",
+            log_file=log_file,
+            task_id="P1-T1",
+            preferred_model=None,
+            run_id="2026-01-07_000000",
+        )
+
+        assert captured_argv
+        assert Path(captured_argv[0]).name == "copilot.cmd"
+
     def test_run_copilot_invokes_with_correct_arguments(
         self, tmp_path: Path, monkeypatch: "MonkeyPatch"
     ) -> None:
@@ -1565,6 +1617,58 @@ class TestRunCopilot:
         # Tool approvals required for headless QC must remain present.
         assert "shell(poetry)" in captured_argv
         assert "shell(git)" in captured_argv
+
+    def test_run_copilot_normalizes_gpt_5_2_codex_display_name(
+        self, tmp_path: Path, monkeypatch: "MonkeyPatch"
+    ) -> None:
+        """run_copilot() normalizes GPT-5.2 Codex display names for Copilot CLI."""
+
+        from scripts.dev_tools.atomic_executor.cli import run_copilot
+
+        monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config-root"))
+        # Create a fake copilot executable on PATH.
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        fake_copilot = fake_bin / "copilot.exe"
+        fake_copilot.write_text("@echo fake copilot")
+        monkeypatch.setenv("PATH", str(fake_bin))
+
+        captured_argv: list[str] = []
+
+        class MockStdout:
+            def read(self, size: int = -1) -> bytes:
+                return b""
+
+        class MockPopen:
+            def __init__(self, argv: list[str], *args: object, **kwargs: object) -> None:
+                captured_argv.extend(argv)
+                self.stdout = MockStdout()
+                self.returncode = 0
+
+            def poll(self) -> int:
+                return 0
+
+            def wait(self) -> int:
+                return 0
+
+        monkeypatch.setattr("subprocess.Popen", MockPopen)
+
+        log_file = tmp_path / "test.log"
+
+        # VS Code tasks sometimes pass this exact display-style model string.
+        # The executor should normalize it to the Copilot CLI model key.
+        run_copilot(
+            workspace=tmp_path,
+            prompt_text="test prompt",
+            log_file=log_file,
+            task_id="P1-T1",
+            preferred_model="GPT-5.2-Codex",
+            run_id="2026-01-07_000000",
+        )
+
+        assert "--model" in captured_argv
+        model_idx = captured_argv.index("--model")
+        assert captured_argv[model_idx + 1] == "gpt-5.2-codex"
 
     def test_run_copilot_permission_denied_fails_fast_with_actionable_error(
         self, tmp_path: Path, monkeypatch: "MonkeyPatch"
