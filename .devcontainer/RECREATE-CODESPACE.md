@@ -53,7 +53,7 @@ gh codespace delete --codespace <name-of-wrong-codespace>
 
 # Create new with explicit config path
 gh codespace create \
-  --repo drmoisan/lexile-corpus-tuner \
+   --repo drmoisan/transcript-etl-pipeline \
   --branch feature/populate-open-stax-ck-12-manifest-#73 \
   --devcontainer-path .devcontainer/codespaces/devcontainer.json
 ```

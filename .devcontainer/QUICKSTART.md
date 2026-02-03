@@ -79,8 +79,8 @@ Ctrl+` or Terminal → New Terminal
 ## File Persistence
 
 ### What Persists
-- Your workspace files live on a named volume (`${localWorkspaceFolderBasename}-workspace` at `/workspaces/lexile-corpus-tuner`)
-- A read-only host bind (`/workspaces/lexile-corpus-host`) is used only to seed the volume on first create; `.venv`, `artifacts`, and `data` are excluded from the seed to avoid long copies. Rebuild the container if you need to refresh from host.
+- Your workspace files live on a named volume (`${localWorkspaceFolderBasename}-workspace` at `/workspaces/transcript-etl-pipeline`)
+- A read-only host bind (`/workspaces/transcript-etl-pipeline-host`) is used only to seed the volume on first create; `.venv`, `artifacts`, and `data` are excluded from the seed to avoid long copies. Rebuild the container if you need to refresh from host.
 - Dedicated artifacts folder bound to host sibling path `${localWorkspaceFolder}/../lexile-artifacts` at `/workspaces/lexile-artifacts`
 - `.venv` folder (mounted from host)
 - Git configuration

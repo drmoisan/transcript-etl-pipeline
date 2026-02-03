@@ -1,6 +1,6 @@
 {
   "$schema": "../devcontainer.schema.json",
-  "name": "Lexile Corpus Tuner Dev Container",
+  "name": "Transcript ETL Pipeline Dev Container",
   "build": {
     "context": "../..",
     "dockerfile": "Dockerfile"

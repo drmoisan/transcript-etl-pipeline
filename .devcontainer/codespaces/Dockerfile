@@ -57,7 +57,7 @@ RUN pip install --no-cache-dir poetry==2.2.1
 RUN poetry config virtualenvs.in-project true
 
 # Set working directory
-WORKDIR /workspaces/lexile-corpus-tuner
+WORKDIR /workspaces/transcript-etl-pipeline
 
 # Copy pyproject.toml and poetry.lock for dependency installation
 # COPY pyproject.toml poetry.lock* ./

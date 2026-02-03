@@ -114,20 +114,20 @@ echo ""
 
 # Configuration File Check
 echo "📄 Configuration Files:"
-if [ -f "/workspaces/lexile-corpus-tuner/.devcontainer/devcontainer.json" ]; then
+if [ -f "/workspaces/transcript-etl-pipeline/.devcontainer/devcontainer.json" ]; then
     echo "   ✅ .devcontainer/devcontainer.json (Codespaces config)"
 fi
-if [ -f "/workspaces/lexile-corpus-tuner/.devcontainer/local/devcontainer.json" ]; then
+if [ -f "/workspaces/transcript-etl-pipeline/.devcontainer/local/devcontainer.json" ]; then
     echo "   ✅ .devcontainer/local/devcontainer.json (Local config)"
 fi
 echo ""
 
 # Virtual Environment Check
 echo "🏗️  Python Virtual Environment:"
-if [ -d "/workspaces/lexile-corpus-tuner/.venv" ]; then
+if [ -d "/workspaces/transcript-etl-pipeline/.venv" ]; then
     echo "   ✅ .venv directory exists"
-    if [ -f "/workspaces/lexile-corpus-tuner/.venv/bin/python" ]; then
-        VENV_PYTHON=$(/workspaces/lexile-corpus-tuner/.venv/bin/python --version)
+    if [ -f "/workspaces/transcript-etl-pipeline/.venv/bin/python" ]; then
+        VENV_PYTHON=$(/workspaces/transcript-etl-pipeline/.venv/bin/python --version)
         echo "   ✅ Python in venv: $VENV_PYTHON"
         VENV_OK=true
     else

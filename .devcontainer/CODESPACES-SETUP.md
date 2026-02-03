@@ -69,7 +69,7 @@ This avoids conflicts where one environment's config interferes with the other.
 ```bash
 # Create Codespace with specific config
 gh codespace create \
-  --repo drmoisan/lexile-corpus-tuner \
+   --repo drmoisan/transcript-etl-pipeline \
   --branch your-branch-name \
   --devcontainer-path .devcontainer/codespaces/devcontainer.json
 
@@ -85,7 +85,7 @@ gh codespace code --codespace <codespace-name>
 1. Open VS Code
 2. Press `F1` or `Ctrl+Shift+P`
 3. Type: **Codespaces: Create New Codespace**
-4. Select repository: `drmoisan/lexile-corpus-tuner`
+4. Select repository: `drmoisan/transcript-etl-pipeline`
 5. Select branch
 6. **Important:** When prompted for dev container config:
    - Select `.devcontainer/codespaces/devcontainer.json`
@@ -188,7 +188,7 @@ Both environments provide identical tooling and configurations.
 
 ### Create Codespace (correct config)
 ```bash
-gh codespace create --repo drmoisan/lexile-corpus-tuner \
+gh codespace create --repo drmoisan/transcript-etl-pipeline \
   --devcontainer-path .devcontainer/codespaces/devcontainer.json
 ```
 

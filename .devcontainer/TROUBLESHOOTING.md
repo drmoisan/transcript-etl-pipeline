@@ -364,13 +364,13 @@ docker exec -it <container-id> pwsh
 
 ### Inspect Container
 ```bash
-docker inspect lexile-corpus-tuner-dev
+docker inspect transcript-etl-pipeline-dev
 ```
 
 ### Start Container Manually
 ```bash
-docker start lexile-corpus-tuner-dev
-docker attach lexile-corpus-tuner-dev
+docker start transcript-etl-pipeline-dev
+docker attach transcript-etl-pipeline-dev
 ```
 
 ---
@@ -386,12 +386,12 @@ docker ps -a
 
 **Container Resources**
 ```bash
-docker stats lexile-corpus-tuner-dev
+docker stats transcript-etl-pipeline-dev
 ```
 
 **Docker Logs**
 ```bash
-docker logs lexile-corpus-tuner-dev
+docker logs transcript-etl-pipeline-dev
 ```
 
 ### Documentation Links
@@ -415,12 +415,12 @@ If you encounter a bug specific to this dev container setup:
 
 **Remove Container**
 ```bash
-docker rm -f lexile-corpus-tuner-dev
+docker rm -f transcript-etl-pipeline-dev
 ```
 
 **Remove Image**
 ```bash
-docker images | grep lexile-corpus-tuner
+docker images | grep transcript-etl-pipeline
 docker rmi <image-id>
 ```
 

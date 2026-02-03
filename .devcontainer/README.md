@@ -1,6 +1,6 @@
 # Docker Dev Container Setup
 
-This directory contains the Docker Dev Container configuration for the Lexile Corpus Tuner project.
+This directory contains the Docker Dev Container configuration for the Transcript ETL Pipeline project.
 
 > **Important**: This repo uses **separate configurations** for GitHub Codespaces and local Docker. Both require **manual selection** to avoid conflicts.
 
@@ -71,9 +71,9 @@ This directory contains the Docker Dev Container configuration for the Lexile Co
 - ChatGPT, GitHub Actions
 
 ### Mounts and Storage Layout
-- Workspace stored on a named volume: `${localWorkspaceFolderBasename}-workspace -> /workspaces/lexile-corpus-tuner`
-- Dedicated background worktree volume: `${localWorkspaceFolderBasename}-workspace-bg -> /workspaces/lexile-corpus-tuner-bg` (used by background tasks)
-- Host workspace mounted read-only at `/workspaces/lexile-corpus-host` for initial bootstrap copy into the volume on first create (excludes `.venv`, `artifacts`, `data` to avoid slow transfers)
+- Workspace stored on a named volume: `${localWorkspaceFolderBasename}-workspace -> /workspaces/transcript-etl-pipeline`
+- Dedicated background worktree volume: `${localWorkspaceFolderBasename}-workspace-bg -> /workspaces/transcript-etl-pipeline-bg` (used by background tasks)
+- Host workspace mounted read-only at `/workspaces/transcript-etl-pipeline-host` for initial bootstrap copy into the volume on first create (excludes `.venv`, `artifacts`, `data` to avoid slow transfers)
 - Dedicated artifact bind mount: `${localWorkspaceFolder}/../lexile-artifacts -> /workspaces/lexile-artifacts` (keeps large data outside the scanned code workspace)
 - Docker socket bind: `/var/run/docker.sock -> /var/run/docker.sock`
 
