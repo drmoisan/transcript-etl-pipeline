@@ -54,6 +54,33 @@ Dependencies: Core logic tests (#21–#23) unblock higher-level regression and E
 - Coverage must not decrease; enforce locally, add/keep CI gate once baseline improves.
 - Use the repo toolchain (Black → Ruff → Pyright → Pytest) for validation.
 
+## Resource Lockup (Estimate)
+
+- Primary: 1 engineer at ~0.5–1.0 FTE for 2–3 weeks to close evidence gaps and complete #24–#27.
+- Review/approval: lightweight reviewer availability (~1–2 hours per milestone) for evidence and doc updates.
+- Note: timeline assumes no new scope additions and stable CI/tooling.
+
+## Stakeholders & Users
+
+- Primary user: maintainer/developer responsible for pipeline quality gates.
+- Secondary users: contributors who add new transforms/formatters and need clear coverage expectations.
+- Stakeholders: repo owner, CI maintainers, and reviewers who validate evidence and coverage thresholds.
+
+## Proposed Approach & Tradeoffs
+
+- Approach: prioritize deterministic unit tests for core transforms, then expand to regression/E2E coverage and CI gating.
+- Tradeoff: defer full CLI/UI parity to avoid blocking core coverage improvements.
+- Tradeoff: allow incremental coverage increases per module rather than a single repo-wide target.
+
+## Risks & Mitigations
+
+- Risk: CI gate blocks progress due to existing low coverage.
+	- Mitigation: ratchet `fail_under` upward only after baseline evidence is captured.
+- Risk: E2E tests become flaky due to fixture or environment variance.
+	- Mitigation: keep fixtures deterministic and isolate external dependencies.
+- Risk: Evidence files overwrite pre-development baselines.
+	- Mitigation: capture remediation evidence in `remediation-baseline/` folders.
+
 ## Milestones & Status
 
 - M1 Core coverage to 80% (transform + speakerless) - Planned
