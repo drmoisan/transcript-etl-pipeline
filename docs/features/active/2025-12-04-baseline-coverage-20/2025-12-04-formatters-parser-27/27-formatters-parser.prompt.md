@@ -39,3 +39,10 @@ Do not guess. Do not omit steps. Do not introduce inconsistencies. Follow the po
 - Coverage for these modules reaches roughly 70%+ (cite report).
 - Tests are deterministic and comply with unit-test policy.
 - Issue #27 updated with PR/test links and coverage evidence.
+
+## Outcomes & Edge Cases Captured
+- DOCX spacing rules set single line spacing with expected before/after points; heading level 3 maps to `Heading 3`.
+- Notes bullets at level 2 map to `List Bullet 2` in DOCX formatting.
+- RTF paragraph rendering wraps speaker labels in bold and escapes body text; newlines are converted to `\\par`.
+- Markdown notes headers insert a blank line and `#` prefix when not first; transcript labels insert a blank line before `**Transcript:**`.
+- Parser preserves inline text after `Transcript:` and treats unlabeled transcript lines as regular paragraphs.

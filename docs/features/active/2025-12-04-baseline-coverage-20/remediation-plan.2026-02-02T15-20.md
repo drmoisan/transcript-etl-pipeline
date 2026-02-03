@@ -249,6 +249,17 @@ src/transcript_etl_pipeline/formatters/rtf_formatter.py       57     12    79%
 TOTAL                                                        219     38    83%
 ```
 
+```CLI Coverage
+Name                                               Stmts   Miss  Cover
+----------------------------------------------------------------------
+src/transcript_etl_pipeline/cli.py                   274     82    70%
+src/transcript_etl_pipeline/document/reader.py       206     17    92%
+src/transcript_etl_pipeline/extract/from_file.py      28      0   100%
+src/transcript_etl_pipeline/transform/notes.py        78      1    99%
+----------------------------------------------------------------------
+TOTAL                                                586    100    83%
+```
+
 ## QA Evidence
 
 (Record doc checks, lint, link checks, and final toolchain output here in Phase 9.)
@@ -301,7 +312,7 @@ Link check not available
   - Acceptance: Coverage output shows `enhance.py` coverage ≥ 70% and the output is recorded in “Coverage Evidence” as `Enhance Coverage`.
 - [x] [P1-T5] Update `2025-12-04-enhance-tests-21/plan.2026-02-02T11-49.md` to check off P4-T1 and P5-T1..P5-T4 with the recorded coverage evidence.
   - Acceptance: The plan file shows those tasks checked and references the recorded coverage snippet.
-- [ ] [P1-T6] Update Issue #21 with the coverage snippet and the two new test names.
+- [ ] [P1-T6] Update Issue #21 with the coverage snippet and the two new test names. Blocked: `gh` CLI unavailable in the execution environment.
   - Acceptance: `gh issue view 21 --json body -q ".body"` output includes both test names and the coverage snippet.
 
 ### Phase 2 — #22 Speakerless Heuristics + NLTK Download Compliance
@@ -327,7 +338,7 @@ Link check not available
   - Acceptance: The file contains a fixture named `stub_nltk_tagging` and `test_first_person_detection` uses it without network access.
 - [x] [P2-T11] Run `poetry run coverage report --include=src/transcript_etl_pipeline/transform/speakerless.py,src/transcript_etl_pipeline/transform/speaker_helpers.py --fail-under=70` and record output under “Coverage Evidence”.
   - Acceptance: The command exits with code 0 and “Coverage Evidence” includes a `Speakerless Coverage` block.
-- [ ] [P2-T12] Update Issue #22 with coverage evidence and the added test names.
+- [ ] [P2-T12] Update Issue #22 with coverage evidence and the added test names. Blocked: `gh` CLI unavailable in the execution environment.
   - Acceptance: `gh issue view 22 --json body -q ".body"` output includes the coverage evidence and test names.
 - [x] [P2-T13] Update `2025-12-04-speakerless-heuristics-22/22-speakerless-heuristics.md` with any new edge-case notes from the added tests.
   - Acceptance: The document contains a new “Edge cases” or “Surprises” note referencing tag/rhetorical questions.
@@ -355,9 +366,9 @@ Link check not available
 ### Phase 4 — #23 Coverage Evidence (identity_constraints.py + normalize.py)
 - [x] [P4-T1] Run `poetry run pytest --cov=src/transcript_etl_pipeline --cov-report=term-missing` and record module coverage for `identity_constraints.py` and `normalize.py` in `2025-12-04-identity-normalize-23/coverage-results.md`.
   - Acceptance: `coverage-results.md` exists with a table listing both modules and coverage values ≥ 75% combined.
-- [ ] [P4-T2] Update Issue #23 with the coverage table and command used.
+- [ ] [P4-T2] Update Issue #23 with the coverage table and command used. Blocked: `gh` CLI unavailable in the execution environment.
   - Acceptance: `gh issue view 23 --json body -q ".body"` output includes the coverage table and command.
-- [ ] [P4-T3] Update `2025-12-04-identity-normalize-23/plan.2026-02-02T13-08.md` to check off P3-T1..P3-T9 and P4-T1..P4-T3.
+- [x] [P4-T3] Update `2025-12-04-identity-normalize-23/plan.2026-02-02T13-08.md` to check off P3-T1..P3-T9 and P4-T1..P4-T3.
   - Acceptance: The plan file shows those tasks checked.
 
 ### Phase 5 — #26 Notes Regressions
@@ -377,9 +388,9 @@ Link check not available
   - Acceptance: “Coverage Evidence” includes the command output and the command exits with code 0.
 - [x] [P5-T8] Run `poetry run coverage report --include=src/transcript_etl_pipeline/transform/notes.py --fail-under=70` and record output.
   - Acceptance: The command exits with code 0 and “Coverage Evidence” includes a `Notes Coverage` block.
-- [ ] [P5-T9] Update Issue #26 with the five regression cases and coverage evidence.
+- [ ] [P5-T9] Update Issue #26 with the five regression cases and coverage evidence. Blocked: `gh` CLI unavailable in the execution environment.
   - Acceptance: `gh issue view 26 --json body -q ".body"` output includes the five case titles and coverage snippet.
-- [ ] [P5-T10] Update `2025-12-04-notes-regressions-26/plan.2026-02-02T13-09.md` to check off P1-T1..P1-T5 and P2-T1..P2-T3.
+- [x] [P5-T10] Update `2025-12-04-notes-regressions-26/plan.2026-02-02T13-09.md` to check off P1-T1..P1-T5 and P2-T1..P2-T3.
   - Acceptance: The plan file shows those tasks checked.
 
 ### Phase 6 — #27 Formatters + Parser (No Temp Files)
@@ -413,9 +424,9 @@ Link check not available
   - Acceptance: Running `poetry run pytest tests/document/test_parser_unit.py -k test_is_metadata_label_accepts_meeting_title_variants` exits with code 0.
 - [x] [P6-T15] Run `poetry run coverage report --include=src/transcript_etl_pipeline/formatters/docx_formatter.py,src/transcript_etl_pipeline/formatters/rtf_formatter.py,src/transcript_etl_pipeline/formatters/md_formatter.py,src/transcript_etl_pipeline/document/parser.py --fail-under=70` and record output.
   - Acceptance: Command exits with code 0 and “Coverage Evidence” includes `Formatters+Parser Coverage`.
-- [ ] [P6-T16] Update Issue #27 with coverage evidence and scenario list.
+- [ ] [P6-T16] Update Issue #27 with coverage evidence and scenario list. Blocked: `gh` CLI unavailable in the execution environment.
   - Acceptance: `gh issue view 27 --json body -q ".body"` output includes the coverage snippet and the scenario list.
-- [ ] [P6-T17] Update `2025-12-04-formatters-parser-27/plan.2026-02-02T13-08.md` to check off P1-T1..P5-T3.
+- [x] [P6-T17] Update `2025-12-04-formatters-parser-27/plan.2026-02-02T13-08.md` to check off P1-T1..P5-T3.
   - Acceptance: The plan file shows those tasks checked.
 
 ### Phase 7 — #25 CLI E2E Tests (No Temp Files)
@@ -431,23 +442,23 @@ Link check not available
   - Acceptance: The test uses `run_cli` and asserts speaker labels in captured text.
 - [x] [P7-T6] Refactor `TestCLIErrorHandling` to avoid filesystem by mocking `Path.exists` and asserting non-zero exit codes.
   - Acceptance: The tests use monkeypatched `Path.exists` and assert `exit_code != 0`.
-- [ ] [P7-T7] Add a `run_cli` helper and shared monkeypatch fixture in `tests/integration/test_cli_e2e_notes.py` to stub `setup_logging`, `config.save_last_output_folder`, `_save_document`, `_extract_text`, and `read_document`, removing all `tmp_path` usage.
+- [x] [P7-T7] Add a `run_cli` helper and shared monkeypatch fixture in `tests/integration/test_cli_e2e_notes.py` to stub `setup_logging`, `config.save_last_output_folder`, `_save_document`, `_extract_text`, and `read_document`, removing all `tmp_path` usage.
   - Acceptance: `tests/integration/test_cli_e2e_notes.py` contains `def run_cli(` and no `tmp_path` references.
-- [ ] [P7-T8] Refactor `TestCLINotesOnly` to use the helper and in-memory fixtures, asserting `_save_document` is called with the expected format per test.
+- [x] [P7-T8] Refactor `TestCLINotesOnly` to use the helper and in-memory fixtures, asserting `_save_document` is called with the expected format per test.
   - Acceptance: The class uses `run_cli` and asserts the captured format for each test.
-- [ ] [P7-T9] Refactor `TestCLINotesAndTranscript` to use the helper and in-memory fixtures, asserting both notes and transcript sections exist.
+- [x] [P7-T9] Refactor `TestCLINotesAndTranscript` to use the helper and in-memory fixtures, asserting both notes and transcript sections exist.
   - Acceptance: The class uses `run_cli` and asserts notes and transcript sections are present.
-- [ ] [P7-T10] Refactor `TestCLIUpdateModeNotes` to use the helper and mocked `read_document`, asserting note sections are added/replaced.
+- [x] [P7-T10] Refactor `TestCLIUpdateModeNotes` to use the helper and mocked `read_document`, asserting note sections are added/replaced.
   - Acceptance: The class uses `run_cli` and asserts the notes section count changes as expected.
-- [ ] [P7-T11] Refactor `TestCLIUpdateModeTranscript` to use the helper and mocked `read_document`, asserting transcript sections are added/replaced.
+- [x] [P7-T11] Refactor `TestCLIUpdateModeTranscript` to use the helper and mocked `read_document`, asserting transcript sections are added/replaced.
   - Acceptance: The class uses `run_cli` and asserts transcript section counts match the action.
-- [ ] [P7-T12] Refactor `TestCLIUpdateModeDOCX` to avoid filesystem by mocking `read_document` and `Path.exists`, asserting `_save_document` is called.
+- [x] [P7-T12] Refactor `TestCLIUpdateModeDOCX` to avoid filesystem by mocking `read_document` and `Path.exists`, asserting `_save_document` is called.
   - Acceptance: The test uses monkeypatching and asserts `_save_document` invocation.
-- [ ] [P7-T13] Refactor `TestCLINotesErrorHandling` to avoid filesystem by mocking `Path.exists` and asserting non-zero exit codes.
+- [x] [P7-T13] Refactor `TestCLINotesErrorHandling` to avoid filesystem by mocking `Path.exists` and asserting non-zero exit codes.
   - Acceptance: The tests use monkeypatched `Path.exists` and assert `exit_code != 0`.
-- [ ] [P7-T14] Run `poetry run coverage report --include=src/transcript_etl_pipeline/cli.py,src/transcript_etl_pipeline/document/reader.py,src/transcript_etl_pipeline/extract/from_file.py,src/transcript_etl_pipeline/transform/notes.py --fail-under=70` and record output.
+- [x] [P7-T14] Run `poetry run coverage report --include=src/transcript_etl_pipeline/cli.py,src/transcript_etl_pipeline/document/reader.py,src/transcript_etl_pipeline/extract/from_file.py,src/transcript_etl_pipeline/transform/notes.py --fail-under=70` and record output.
   - Acceptance: Command exits with code 0 and “Coverage Evidence” includes `CLI Coverage`.
-- [ ] [P7-T15] Update Issue #25 with coverage evidence and the test scenario summary.
+- [ ] [P7-T15] Update Issue #25 with coverage evidence and the test scenario summary. Blocked: `gh` CLI unavailable in the execution environment.
   - Acceptance: `gh issue view 25 --json body -q ".body"` output includes the coverage snippet and scenario summary.
 
 ### Phase 8 — Documentation Gaps + Plan Checklist Reconciliation

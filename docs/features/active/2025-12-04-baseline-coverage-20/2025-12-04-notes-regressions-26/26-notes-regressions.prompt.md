@@ -39,3 +39,10 @@ Do not guess. Do not omit steps. Do not introduce inconsistencies. Follow the po
 - Coverage for notes-related paths measurably improves (cite report).
 - Tests adhere to unit-test policy and are deterministic.
 - Issue #26 updated with PR/test links and brief outcomes.
+
+## Outcomes & Edge Cases Captured
+- Escaped dollars and emphasis markers are stripped cleanly (`"$100 bold strong"`), confirming `_clean_markdown_text` handles common finance/formatting noise.
+- Bullet indentation preserves nesting: `"- Item"` yields level 1 while `"  - Nested"` yields level 2.
+- Leading whitespace on headings is tolerated (`"  ## Heading"` resolves to heading level 2).
+- Notes label after H1 respects provided label (H2 uses custom label instead of generic “Notes”).
+- Mixed header/bullet ordering is preserved when parsing (`# Title`, bullet, `## Section`, bullet).

@@ -126,9 +126,9 @@ version: "0.2"
 ### Phase 5 — Coverage Evidence and Issue Updates
 - [x] [P5-T1] TASK-15 Run `poetry run pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-report=html` followed by `poetry run coverage report --include=src/transcript_etl_pipeline/formatters/docx_formatter.py,src/transcript_etl_pipeline/formatters/rtf_formatter.py,src/transcript_etl_pipeline/formatters/md_formatter.py,src/transcript_etl_pipeline/document/parser.py --fail-under=70` and capture the output (REQ-3).
   - Acceptance: The `coverage report --fail-under=70` command exits with code 0.
-- [ ] [P5-T2] TASK-16 Update Issue #27 with PR/test links and coverage evidence (REQ-4).
+- [ ] [P5-T2] TASK-16 Update Issue #27 with PR/test links and coverage evidence (REQ-4). Blocked: `gh` CLI unavailable in the execution environment.
   - Acceptance: `gh issue view 27 --json body -q ".body"` output contains a PR URL matching `https://github.com/drmoisan/transcript-etl-pipeline/pull/` and mentions `coverage report --fail-under=70`.
-- [ ] [P5-T3] TASK-17 Update `docs/features/active/2025-12-04-formatters-parser-27/27-formatters-parser.prompt.md` with edge cases or outcomes discovered during test authoring.
+- [x] [P5-T3] TASK-17 Update `docs/features/active/2025-12-04-formatters-parser-27/27-formatters-parser.prompt.md` with edge cases or outcomes discovered during test authoring.
   - Acceptance: `Select-String -Path docs/features/active/2025-12-04-formatters-parser-27/27-formatters-parser.prompt.md -Pattern 'Edge cases|Outcomes'` returns a match.
 
 ### Phase 6 — QA (Python Toolchain)
