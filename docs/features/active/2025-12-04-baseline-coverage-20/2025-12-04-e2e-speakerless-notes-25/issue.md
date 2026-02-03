@@ -38,3 +38,9 @@ Add pytest integration tests that run CLI-driven speakerless and notes pipelines
 - [x] Promote to GitHub issue (Issue #25)
 - [ ] Create `docs/features/active/e2e-speakerless-notes/` folder from the template
 
+## Sync Summary (as of 2026-02-03T17-30)
+
+- **Status:** Partially delivered; acceptance criteria not fully evidenced.
+- **Evidence highlights:** Integration tests in `tests/integration/test_cli_e2e_speakerless.py` and `tests/integration/test_cli_e2e_notes.py` cover DOCX/MD/RTF, notes-only/notes+transcript, update mode, and error cases.
+- **Open gaps:** Several plan scenarios remain unchecked (panel DOCX, additional MD/RTF cases, update-file reader case); coverage evidence not captured; prompt update pending.
+

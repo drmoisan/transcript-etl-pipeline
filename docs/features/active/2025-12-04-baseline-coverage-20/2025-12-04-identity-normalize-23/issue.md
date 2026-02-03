@@ -40,3 +40,9 @@ Add focused Pytest unit coverage for identity constraint extraction/application 
 - [ ] Promote to GitHub issue (feature request template)
 - [ ] Create `docs/features/active/identity-normalize/` folder from the template
 
+## Sync Summary (as of 2026-02-03T17-30)
+
+- **Status:** Partially delivered; acceptance criteria not fully evidenced.
+- **Evidence highlights:** Tests exist in `tests/transform/test_identity_constraints.py` and `tests/transform/test_normalize.py`; coverage summary in `coverage-results.md`.
+- **Open gaps:** Issue #23 update with coverage evidence not recorded; QA toolchain steps not verified.
+

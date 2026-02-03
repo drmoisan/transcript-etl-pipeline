@@ -39,3 +39,9 @@ Add reusable multi-speaker fixtures and regression tests that validate expected 
 - [x] Promote to GitHub issue (Issue #24)
 - [ ] Create `docs/features/active/multi-speaker-fixtures/` folder from the template
 
+## Sync Summary (as of 2026-02-03T17-30)
+
+- **Status:** Partially delivered; acceptance criteria not fully evidenced.
+- **Evidence highlights:** Shared fixtures in `tests/fixtures/multi_speaker.py`; regression suite in `tests/transform/test_multi_speaker_regression.py`.
+- **Open gaps:** Issue update and QA toolchain evidence not recorded.
+

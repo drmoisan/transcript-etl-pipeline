@@ -37,3 +37,9 @@ Add unit tests for formatter modules (DOCX/RTF/MD) and document/parser.py that v
 - [x] Promote to GitHub issue (Issue #27)
 - [ ] Create `docs/features/active/formatters-parser/` folder from the template
 
+## Sync Summary (as of 2026-02-03T17-30)
+
+- **Status:** Partially delivered; acceptance criteria not fully evidenced.
+- **Evidence highlights:** Formatter/parser tests in `tests/formatters/` and `tests/document/test_parser_unit.py`; coverage evidence recorded in plan Phase 5.
+- **Open gaps:** Issue #27 update not recorded; QA toolchain steps not verified.
+

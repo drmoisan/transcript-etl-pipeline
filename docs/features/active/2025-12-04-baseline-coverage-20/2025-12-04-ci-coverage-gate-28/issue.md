@@ -41,3 +41,9 @@ Add coverage reporting in CI and enforce a configurable minimum coverage thresho
 - [x] Promote to GitHub issue (Issue #28)
 - [ ] Create `docs/features/active/ci-coverage-gate/` folder from the template
 
+## Sync Summary (as of 2026-02-03T17-30)
+
+- **Status:** Partially delivered; acceptance criteria not fully evidenced.
+- **Evidence highlights:** CI workflow updates in `.github/workflows/ci.yml` and coverage config in `pyproject.toml` (per plan Phase 1–2).
+- **Open gaps:** Documentation update for `fail_under` ratchet and CI run evidence not recorded; QA toolchain steps not verified.
+

@@ -39,3 +39,9 @@ Add targeted Pytest unit coverage for speakerless heuristics and helper function
 - [ ] Promote to GitHub issue (feature request template)
 - [ ] Create `docs/features/active/speakerless-heuristics/` folder from the template
 
+## Sync Summary (as of 2026-02-03T17-30)
+
+- **Status:** Partially delivered; acceptance criteria not fully evidenced.
+- **Evidence highlights:** Tests exist in `tests/transform/test_speakerless.py` and `tests/transform/test_speaker_helpers.py` matching plan items.
+- **Open gaps:** Coverage report for `speakerless.py`/`speaker_helpers.py` not recorded; Issue #22 update not evidenced; QA toolchain steps not verified.
+

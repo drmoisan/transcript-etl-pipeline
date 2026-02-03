@@ -1,7 +1,7 @@
 # 2025-12-04-baseline-coverage - Initiative Overview
 
 - Issue: #20 (Tracking Issue: Establish baseline automated tests & coverage)
-- Owner: TBD
+- Owner: Dan Moisan
 - Last Updated: 2026-02-02T11-30
 
 ## Goal & Outcomes

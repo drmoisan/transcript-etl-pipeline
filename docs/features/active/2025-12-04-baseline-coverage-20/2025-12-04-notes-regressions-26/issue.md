@@ -38,3 +38,9 @@ Capture known notes conversion issues and add regression tests that document the
 - [x] Promote to GitHub issue (Issue #26)
 - [ ] Create `docs/features/active/notes-regressions/` folder from the template
 
+## Sync Summary (as of 2026-02-03T17-30)
+
+- **Status:** Partially delivered; acceptance criteria not fully evidenced.
+- **Evidence highlights:** Regression tests in `tests/transform/test_notes.py`; coverage evidence referenced in plan (coverage.xml mention).
+- **Open gaps:** Issue #26 update not recorded; QA toolchain steps not verified; pre/post failure evidence not documented.
+

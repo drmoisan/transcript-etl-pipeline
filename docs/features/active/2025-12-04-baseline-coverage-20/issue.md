@@ -44,3 +44,9 @@ Establish a baseline automated test/coverage initiative that prioritizes core lo
 
 - [x] Promote to GitHub issue (Issue #20)
 - [ ] Create `docs/features/active/baseline-coverage/` folder from the template
+
+## Sync Summary (as of 2026-02-03T17-30)
+
+- **Status:** In progress; acceptance criteria not fully evidenced.
+- **Evidence highlights:** Core feature docs and plans exist under `docs/features/active/2025-12-04-baseline-coverage-20/` for #21–#28.
+- **Open gaps:** Coverage >= 80% not evidenced; CI coverage gate documentation and run evidence pending; multiple feature issue updates remain outstanding.

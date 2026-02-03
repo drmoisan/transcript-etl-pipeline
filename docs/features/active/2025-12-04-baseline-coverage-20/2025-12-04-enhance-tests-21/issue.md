@@ -41,3 +41,9 @@ Characterize current enhance behavior and add unit tests around key helpers and 
 - [x] Promote to GitHub issue (Issue #21)
 - [ ] Create `docs/features/active/enhance-tests/` folder from the template
 
+## Sync Summary (as of 2026-02-03T17-30)
+
+- **Status:** Partially delivered; acceptance criteria not fully evidenced.
+- **Evidence highlights:** Tests present in `tests/transform/test_enhance.py`; coverage evidence captured in `plan.2026-02-02T11-49.md` (Open Questions / Notes).
+- **Open gaps:** Issue update with coverage evidence not recorded; targeted test-run commands and toolchain proof not verified in this sync.
+
