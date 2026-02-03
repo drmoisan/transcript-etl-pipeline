@@ -121,7 +121,7 @@ if ($urlMatch.Matches.Count -gt 0) {
 
 $issueData = $null
 if ($issueNumber) {
-    $json = & gh issue view $issueNumber --json number,title,url,author,updatedAt
+    $json = & gh issue view $issueNumber --json number, title, url, author, updatedAt
     if ($LASTEXITCODE -eq 0 -and $json) {
         $issueData = $json | ConvertFrom-Json
     }
@@ -183,3 +183,4 @@ Write-Host "Moved potential file to promoted folder: $destPath"
 
 Remove-Item $tmp -ErrorAction SilentlyContinue
 exit $exit
+

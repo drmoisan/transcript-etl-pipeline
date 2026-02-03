@@ -122,16 +122,16 @@ if (Test-Path $potentialDir) {
             $_.Name -like "*$normalizedName*.md" -and
             $_.Name -notin @('template.md', 'README.md')
         } |
-        Sort-Object Name -Descending |
-        Select-Object -First 1
+            Sort-Object Name -Descending |
+                Select-Object -First 1
 }
 if (-not $potentialFile -and (Test-Path $promotedDir)) {
     $potentialFile = Get-ChildItem $promotedDir -File |
         Where-Object {
             $_.Name -like "*$normalizedName*.md"
         } |
-        Sort-Object Name -Descending |
-        Select-Object -First 1
+            Sort-Object Name -Descending |
+                Select-Object -First 1
 }
 
 if ($potentialFile) {
@@ -156,7 +156,7 @@ if ($potentialFile) {
 # Always attempt to fetch issue metadata (if issue number is known) for headers.
 $issueMeta = $null
 if ($IssueNumber -and (Get-Command gh -ErrorAction SilentlyContinue)) {
-    $json = & gh issue view $IssueNumber --json number,title,url,author,updatedAt
+    $json = & gh issue view $IssueNumber --json number, title, url, author, updatedAt
     if ($LASTEXITCODE -eq 0 -and $json) {
         $issueMeta = $json | ConvertFrom-Json
     }
@@ -240,3 +240,4 @@ if ($codeCmd) {
     Write-Host "VS Code 'code' command not found. Files to edit:"
     $filesToOpen | ForEach-Object { Write-Host "  $_" }
 }
+
