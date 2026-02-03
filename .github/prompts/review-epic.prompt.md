@@ -33,6 +33,27 @@ From the epic root folder contents:
    - Verify each acceptance criterion against code/tests and capture evidence
    - Reconcile unchecked plan items against delivered code/tests (auto-check if delivered)
 
+## Evidence provenance and freshness rules (blocking metrics)
+
+Apply these requirements to any **numeric/metric claim** (coverage, pass rates, counts, etc.) used in audits or blocking decisions:
+
+1. **Evidence provenance requirement (blocking claim):**
+   - Every numeric claim MUST cite **source file + timestamp + command** (if applicable).
+   - Example: “Coverage $= 45\%$ (source: `implementation-summary.md`, 2026-02-02, command not recorded).”
+
+2. **Evidence classification (mandatory tag):**
+   - **Verified**: toolchain output, `coverage.xml`, or a CI run URL.
+   - **Reported**: doc-only claim without toolchain output.
+   - **Stale**: doc-only claim **older than the review date** or not backed by toolchain output.
+
+3. **Freshness rule:**
+   - If the source is not a toolchain output OR is older than the review date, mark the claim **Stale**.
+   - **Stale claims cannot be used as blocking evidence** without re-validation.
+
+4. **Blocking claims must be Verified:**
+   - Any blocking item based on metrics requires **Verified** status.
+   - Otherwise, phrase it as **“needs verification”** rather than **“fails.”**
+
 ## Output format
 
 Write all outputs to the epic root folder `${input:EpicRootFolder}`.

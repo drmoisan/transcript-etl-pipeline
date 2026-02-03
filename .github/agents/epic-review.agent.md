@@ -102,6 +102,26 @@ Every FAIL/PARTIAL must include:
 - Why it matters (delivery risk, rework risk, or blocked execution)
 - The smallest fix direction (what to add/change), without rewriting the docs yourself
 
+## 6) Evidence provenance and freshness gates (metrics)
+Apply these requirements to any **numeric/metric claim** (coverage, pass rates, counts, etc.) used in audits or blocking decisions:
+
+1. **Evidence provenance requirement (blocking claim):**
+  - Every numeric claim MUST cite **source file + timestamp + command** (if applicable).
+  - Example: “Coverage $= 45\%$ (source: `implementation-summary.md`, 2026-02-02, command not recorded).”
+
+2. **Evidence classification (mandatory tag):**
+  - **Verified**: toolchain output, `coverage.xml`, or a CI run URL.
+  - **Reported**: doc-only claim without toolchain output.
+  - **Stale**: doc-only claim **older than the review date** or not backed by toolchain output.
+
+3. **Freshness rule:**
+  - If the source is not a toolchain output OR is older than the review date, mark the claim **Stale**.
+  - **Stale claims cannot be used as blocking evidence** without re-validation.
+
+4. **Blocking claims must be Verified:**
+  - Any blocking item based on metrics requires **Verified** status.
+  - Otherwise, phrase it as **“needs verification”** rather than **“fails.”**
+
 # Execution plan (phased, deterministic)
 
 ## Phase A — Locate and read epic-root documents
