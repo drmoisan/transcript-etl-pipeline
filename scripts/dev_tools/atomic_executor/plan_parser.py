@@ -11,6 +11,12 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from scripts.dev_tools.atomic_executor.qc_toolchain import (
+    TOOLCHAIN_PATTERNS,
+    TOOLCHAIN_STEPS,
+    QCToolchain,
+)
+
 TASK_LINE_RE = re.compile(
     r"""
     ^(?P<indent>\s*)-\s*\[(?P<state>[ xX])\]\s*
@@ -24,14 +30,10 @@ PHASE_HEADING_RE = re.compile(r"^\s*#+\s*Phase\s+(?P<phase>\d+)\b", re.IGNORECAS
 EXPECT_FAIL_TAG = "[expect-fail]"
 EXPECT_SUCCESS_TAG = "[expect-pass]"
 PYTEST_REF_PREFIX = "pytest "
+JEST_REF_PREFIX = "jest "
 PROSE_PYTEST_REF_RE = re.compile(r"^Add pytest `(?P<test_name>[^`]+)` in `(?P<path>[^`]+)`$")
+PROSE_JEST_REF_RE = re.compile(r"^Add Jest test in `(?P<path>[^`]+)` for `(?P<test_name>[^`]+)`")
 
-QC_STEP_PATTERNS: dict[str, re.Pattern[str]] = {
-    "black": re.compile(r"poetry\s+run\s+black\b", re.IGNORECASE),
-    "ruff": re.compile(r"poetry\s+run\s+ruff\s+check\b", re.IGNORECASE),
-    "pyright": re.compile(r"poetry\s+run\s+pyright\b", re.IGNORECASE),
-    "pytest": re.compile(r"poetry\s+run\s+pytest\b", re.IGNORECASE),
-}
 QC_LOOP_PATTERN = re.compile(r"toolchain\s+loop|restart\s+the\s+toolchain", re.IGNORECASE)
 
 
@@ -51,9 +53,9 @@ class PlanTask:
         checked (bool): True if checkbox is marked [x], False if [ ].
         line_index (int): Zero-based line number in plan.md (for editing).
         expect_fail (bool): True if task title was annotated with [expect-fail]
-            tag (inverts pytest success criteria for TDD Red workflow).
+            tag (inverts pytest/Jest success criteria for TDD Red workflow).
         expect_pass (bool): True if task title was annotated with [expect-pass]
-            tag (declares pytest failures unacceptable for the referenced test).
+            tag (declares test failures unacceptable for the referenced test).
         test_ref (str | None): Optional pytest nodeid or nodeid prefix extracted
             from the task title when expectation tags are present.
     """
@@ -71,7 +73,7 @@ class PlanTask:
 
 def _extract_test_ref(title: str) -> str | None:
     """
-    Extract a test reference from a plan task title (pytest).
+    Extract a test reference from a plan task title (pytest or Jest).
 
     Purpose:
         Convert expectation-tagged task titles into deterministic test refs.
@@ -88,10 +90,19 @@ def _extract_test_ref(title: str) -> str | None:
     if normalized_title.lower().startswith(PYTEST_REF_PREFIX):
         return normalized_title[len(PYTEST_REF_PREFIX) :].strip()
 
+    # Support explicit Jest references (npm run test:unit -- path).
+    if normalized_title.lower().startswith(JEST_REF_PREFIX):
+        return normalized_title[len(JEST_REF_PREFIX) :].strip()
+
     # Fall back to the prose form used in plan templates (pytest).
     prose_match = PROSE_PYTEST_REF_RE.match(normalized_title)
     if prose_match:
         return f"{prose_match.group('path')}::{prose_match.group('test_name')}"
+
+    # Fall back to the prose form for Jest tests.
+    jest_match = PROSE_JEST_REF_RE.match(normalized_title)
+    if jest_match:
+        return f"{jest_match.group('path')}::{jest_match.group('test_name')}"
 
     return None
 
@@ -127,12 +138,14 @@ class AutoQCPhase:
         task_ids (list[str]): Task identifiers that should be auto-completed.
         step_task_ids (dict[str, str]): Map from QC step name to task id.
         artifact_paths (dict[str, Path]): Output artifact path for each step.
+        toolchain (QCToolchain): Toolchain used for this QC phase.
     """
 
     phase: int
     task_ids: list[str]
     step_task_ids: dict[str, str]
     artifact_paths: dict[str, Path]
+    toolchain: QCToolchain
 
 
 class PlanParser:
@@ -350,6 +363,17 @@ class PlanParser:
         """
         return self._ensure_auto_qc_phases().get(phase)
 
+    def detected_qc_toolchains(self) -> set[QCToolchain]:
+        """
+        Return the set of toolchains detected in auto-QC phases.
+
+        Purpose:
+            Allow the executor to select the appropriate toolchain(s) for
+            preflight and phase gating.
+        """
+        phases = self._ensure_auto_qc_phases()
+        return {phase.toolchain for phase in phases.values()}
+
     def flip_checkbox(self, task_to_check: PlanTask) -> None:
         """
         Mark a task as complete by flipping its checkbox from [ ] to [x].
@@ -466,6 +490,7 @@ class PlanParser:
         plan = self.parse()
         lines = self._read_text().splitlines()
         phases: dict[int, AutoQCPhase] = {}
+        loop_phases: set[int] = set()
 
         # Index tasks by phase and scan their blocks for QC-related cues.
         # Skip Phase 0 entirely: by convention it captures baselines, not QC loops.
@@ -476,28 +501,50 @@ class PlanParser:
             block_lines = self._task_block_lines(lines, task.line_index)
             block_text = "\n".join(block_lines)
 
-            # Determine which QC steps are referenced in this task block.
-            matched_steps: list[str] = []
-            # Map explicit toolchain commands to step identifiers for the phase.
-            for step, pattern in QC_STEP_PATTERNS.items():
-                if pattern.search(block_text):
-                    matched_steps.append(step)
+            matched_steps_by_toolchain: dict[QCToolchain, list[str]] = {}
+            # Map explicit toolchain commands to step identifiers per toolchain.
+            for toolchain, patterns in TOOLCHAIN_PATTERNS.items():
+                for step, pattern in patterns.items():
+                    if pattern.search(block_text):
+                        matched_steps_by_toolchain.setdefault(toolchain, []).append(step)
 
             # Identify explicit loop tasks without a concrete command.
             is_loop_task = QC_LOOP_PATTERN.search(block_text) is not None
+            if is_loop_task:
+                loop_phases.add(task.phase)
 
             # Skip tasks that do not reference QC commands or the loop control.
-            if not matched_steps and not is_loop_task:
+            if not matched_steps_by_toolchain and not is_loop_task:
                 continue
 
+            if len(matched_steps_by_toolchain) > 1:
+                raise RuntimeError(
+                    "Auto-QC detection found mixed toolchains in " f"phase {task.phase}."
+                )
+
+            toolchain: QCToolchain | None = None
+            matched_steps: list[str] = []
+            if matched_steps_by_toolchain:
+                toolchain = next(iter(matched_steps_by_toolchain.keys()))
+                matched_steps = matched_steps_by_toolchain[toolchain]
+
             phase_meta = phases.get(task.phase)
+            if phase_meta and toolchain and phase_meta.toolchain != toolchain:
+                raise RuntimeError(
+                    "Auto-QC detection found mixed toolchains in " f"phase {task.phase}."
+                )
+
             # Initialize the phase metadata on first QC-related task.
             if not phase_meta:
+                if toolchain is None:
+                    # Defer loop-only tasks until a toolchain is identified.
+                    continue
                 phase_meta = AutoQCPhase(
                     phase=task.phase,
                     task_ids=[],
                     step_task_ids={},
                     artifact_paths={},
+                    toolchain=toolchain,
                 )
 
             task_ids = [*phase_meta.task_ids, task.task_id]
@@ -516,33 +563,38 @@ class PlanParser:
                 task_ids=task_ids,
                 step_task_ids=step_task_ids,
                 artifact_paths={},  # Auto-generated at runtime, not from plan
+                toolchain=phase_meta.toolchain,
             )
 
         # Validate required steps for any detected QC phase.
+        filtered_phases: dict[int, AutoQCPhase] = {}
         for phase_num, phase_meta in phases.items():
-            # Ensure all four core toolchain steps are present.
-            required_steps = {"black", "ruff", "pyright", "pytest"}
+            required_steps = set(TOOLCHAIN_STEPS[phase_meta.toolchain])
             missing_steps = sorted(required_steps - set(phase_meta.step_task_ids))
             if missing_steps:
-                raise RuntimeError(
-                    "Auto-QC detection missing required steps "
-                    f"{missing_steps} for phase {phase_num}."
-                )
+                if phase_num in loop_phases:
+                    raise RuntimeError(
+                        "Auto-QC detection missing required steps "
+                        f"{missing_steps} for phase {phase_num}."
+                    )
+                continue
+            filtered_phases[phase_num] = phase_meta
 
         # Auto-generate artifact paths for each detected QC phase.
         # Uses standard naming: artifacts/qc-{step}.txt
-        for phase_num, phase_meta in phases.items():
+        for phase_num, phase_meta in filtered_phases.items():
             auto_paths = {
                 step: Path(f"artifacts/qc-{step}.txt") for step in phase_meta.step_task_ids
             }
-            phases[phase_num] = AutoQCPhase(
+            filtered_phases[phase_num] = AutoQCPhase(
                 phase=phase_meta.phase,
                 task_ids=phase_meta.task_ids,
                 step_task_ids=phase_meta.step_task_ids,
                 artifact_paths=auto_paths,
+                toolchain=phase_meta.toolchain,
             )
 
-        return phases
+        return filtered_phases
 
     def _task_block_lines(self, lines: list[str], start_index: int) -> list[str]:
         """

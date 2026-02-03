@@ -270,6 +270,12 @@ def classify_copilot_failure(*, exit_code: int, output_tail: str) -> FailureKind
     if exit_code == 0:
         return FailureKind.NON_THROTTLE
 
+    # Treat known Copilot CLI crash codes as transient (retryable).
+    # These are not rate limits but are often recoverable on a subsequent run.
+    transient_exit_codes = {3221226505}
+    if exit_code in transient_exit_codes:
+        return FailureKind.THROTTLE
+
     tail = output_tail.lower()
 
     # Match common provider/service signals. Keep this simple and explicit so it
@@ -288,6 +294,8 @@ def classify_copilot_failure(*, exit_code: int, output_tail: str) -> FailureKind
         "503 ",
         "(503)",
         "service unavailable",
+        "uv_handle_closing",
+        "assertion failed: !(handle->flags & uv_handle_closing)",
     )
 
     # The decision is purely signature-based: if any marker appears in the tail,

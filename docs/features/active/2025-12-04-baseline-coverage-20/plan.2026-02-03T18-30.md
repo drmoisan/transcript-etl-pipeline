@@ -31,44 +31,44 @@ This plan remediates evidence, coverage, and documentation gaps across features 
   - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/remediation-inputs.2026-02-03T18-30.md"` exits with code 0.
 - [ ] [P0-T13] Read `docs/features/active/2025-12-04-baseline-coverage-20/plan.2026-02-03T18-30.md` to confirm the remediation plan scope.
   - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/plan.2026-02-03T18-30.md"` exits with code 0.
-- [ ] [P0-T14] Ensure epic remediation-baseline folder exists at `docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/`.
-  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline"` exits with code 0.
-- [ ] [P0-T15] Capture epic remediation baseline Black output to `docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/epic-black.baseline.2026-02-03T18-30.txt`.
-  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/epic-black.baseline.2026-02-03T18-30.txt"` exits with code 0.
-  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/epic-black.baseline.2026-02-03T18-30.txt -Pattern 'All done|reformatted'"` returns a match.
-- [ ] [P0-T16] Capture epic remediation baseline Ruff output to `docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/epic-ruff.baseline.2026-02-03T18-30.txt`.
-  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/epic-ruff.baseline.2026-02-03T18-30.txt"` exits with code 0.
-  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/epic-ruff.baseline.2026-02-03T18-30.txt -Pattern 'All checks passed|Found'"` returns a match.
-- [ ] [P0-T17] Capture epic remediation baseline Pyright output to `docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/epic-pyright.baseline.2026-02-03T18-30.txt`.
-  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/epic-pyright.baseline.2026-02-03T18-30.txt"` exits with code 0.
-  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/epic-pyright.baseline.2026-02-03T18-30.txt -Pattern '0 errors|Completed'"` returns a match.
-- [ ] [P0-T18] Capture epic remediation baseline Pytest output to `docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/epic-pytest.baseline.2026-02-03T18-30.txt` using the repo-approved command.
-  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/epic-pytest.baseline.2026-02-03T18-30.txt"` exits with code 0.
-  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/epic-pytest.baseline.2026-02-03T18-30.txt -Pattern 'collected|TOTAL'"` returns a match.
-- [ ] [P0-T19] Capture feature remediation baseline inventory for #21 to `docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-enhance-tests-21/remediation-baseline/inventory.baseline.2026-02-03T18-30.txt`.
-  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-enhance-tests-21/remediation-baseline/inventory.baseline.2026-02-03T18-30.txt"` exits with code 0.
-  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-enhance-tests-21/remediation-baseline/inventory.baseline.2026-02-03T18-30.txt -Pattern 'Timestamp:|Command:'"` returns a match.
-- [ ] [P0-T20] Capture feature remediation baseline inventory for #22 to `docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-speakerless-heuristics-22/remediation-baseline/inventory.baseline.2026-02-03T18-30.txt`.
-  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-speakerless-heuristics-22/remediation-baseline/inventory.baseline.2026-02-03T18-30.txt"` exits with code 0.
-  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-speakerless-heuristics-22/remediation-baseline/inventory.baseline.2026-02-03T18-30.txt -Pattern 'Timestamp:|Command:'"` returns a match.
-- [ ] [P0-T21] Capture feature remediation baseline inventory for #23 to `docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-identity-normalize-23/remediation-baseline/inventory.baseline.2026-02-03T18-30.txt`.
-  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-identity-normalize-23/remediation-baseline/inventory.baseline.2026-02-03T18-30.txt"` exits with code 0.
-  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-identity-normalize-23/remediation-baseline/inventory.baseline.2026-02-03T18-30.txt -Pattern 'Timestamp:|Command:'"` returns a match.
-- [ ] [P0-T22] Capture feature remediation baseline inventory for #24 to `docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-multi-speaker-fixtures-24/remediation-baseline/inventory.baseline.2026-02-03T18-30.txt`.
-  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-multi-speaker-fixtures-24/remediation-baseline/inventory.baseline.2026-02-03T18-30.txt"` exits with code 0.
-  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-multi-speaker-fixtures-24/remediation-baseline/inventory.baseline.2026-02-03T18-30.txt -Pattern 'Timestamp:|Command:'"` returns a match.
-- [ ] [P0-T23] Capture feature remediation baseline inventory for #25 to `docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-e2e-speakerless-notes-25/remediation-baseline/inventory.baseline.2026-02-03T18-30.txt`.
-  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-e2e-speakerless-notes-25/remediation-baseline/inventory.baseline.2026-02-03T18-30.txt"` exits with code 0.
-  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-e2e-speakerless-notes-25/remediation-baseline/inventory.baseline.2026-02-03T18-30.txt -Pattern 'Timestamp:|Command:'"` returns a match.
-- [ ] [P0-T24] Capture feature remediation baseline inventory for #26 to `docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-notes-regressions-26/remediation-baseline/inventory.baseline.2026-02-03T18-30.txt`.
-  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-notes-regressions-26/remediation-baseline/inventory.baseline.2026-02-03T18-30.txt"` exits with code 0.
-  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-notes-regressions-26/remediation-baseline/inventory.baseline.2026-02-03T18-30.txt -Pattern 'Timestamp:|Command:'"` returns a match.
-- [ ] [P0-T25] Capture feature remediation baseline inventory for #27 to `docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-formatters-parser-27/remediation-baseline/inventory.baseline.2026-02-03T18-30.txt`.
-  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-formatters-parser-27/remediation-baseline/inventory.baseline.2026-02-03T18-30.txt"` exits with code 0.
-  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-formatters-parser-27/remediation-baseline/inventory.baseline.2026-02-03T18-30.txt -Pattern 'Timestamp:|Command:'"` returns a match.
-- [ ] [P0-T26] Capture feature remediation baseline inventory for #28 to `docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-ci-coverage-gate-28/remediation-baseline/inventory.baseline.2026-02-03T18-30.txt`.
-  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-ci-coverage-gate-28/remediation-baseline/inventory.baseline.2026-02-03T18-30.txt"` exits with code 0.
-  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-ci-coverage-gate-28/remediation-baseline/inventory.baseline.2026-02-03T18-30.txt -Pattern 'Timestamp:|Command:'"` returns a match.
+- [ ] [P0-T14] Ensure the epic baseline folder exists at `docs/features/active/2025-12-04-baseline-coverage-20/baseline/`.
+  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/baseline"` exits with code 0.
+- [ ] [P0-T15] Capture epic baseline Black output to `docs/features/active/2025-12-04-baseline-coverage-20/baseline/epic-black.baseline.2026-02-03T18-30.txt`.
+  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/epic-black.baseline.2026-02-03T18-30.txt"` exits with code 0.
+  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/epic-black.baseline.2026-02-03T18-30.txt -Pattern 'All done|reformatted'"` returns a match.
+- [ ] [P0-T16] Capture epic baseline Ruff output to `docs/features/active/2025-12-04-baseline-coverage-20/baseline/epic-ruff.baseline.2026-02-03T18-30.txt`.
+  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/epic-ruff.baseline.2026-02-03T18-30.txt"` exits with code 0.
+  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/epic-ruff.baseline.2026-02-03T18-30.txt -Pattern 'All checks passed|Found'"` returns a match.
+- [ ] [P0-T17] Capture epic baseline Pyright output to `docs/features/active/2025-12-04-baseline-coverage-20/baseline/epic-pyright.baseline.2026-02-03T18-30.txt`.
+  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/epic-pyright.baseline.2026-02-03T18-30.txt"` exits with code 0.
+  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/epic-pyright.baseline.2026-02-03T18-30.txt -Pattern '0 errors|Completed'"` returns a match.
+- [ ] [P0-T18] Capture epic baseline Pytest output to `docs/features/active/2025-12-04-baseline-coverage-20/baseline/epic-pytest.baseline.2026-02-03T18-30.txt` using the repo-approved command.
+  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/epic-pytest.baseline.2026-02-03T18-30.txt"` exits with code 0.
+  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/epic-pytest.baseline.2026-02-03T18-30.txt -Pattern 'collected|TOTAL'"` returns a match.
+- [ ] [P0-T19] Capture feature baseline inventory for #21 to `docs/features/active/2025-12-04-baseline-coverage-20/baseline/feature-21.inventory.baseline.2026-02-03T18-30.txt`.
+  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/feature-21.inventory.baseline.2026-02-03T18-30.txt"` exits with code 0.
+  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/feature-21.inventory.baseline.2026-02-03T18-30.txt -Pattern 'Timestamp:|Command:'"` returns a match.
+- [ ] [P0-T20] Capture feature baseline inventory for #22 to `docs/features/active/2025-12-04-baseline-coverage-20/baseline/feature-22.inventory.baseline.2026-02-03T18-30.txt`.
+  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/feature-22.inventory.baseline.2026-02-03T18-30.txt"` exits with code 0.
+  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/feature-22.inventory.baseline.2026-02-03T18-30.txt -Pattern 'Timestamp:|Command:'"` returns a match.
+- [ ] [P0-T21] Capture feature baseline inventory for #23 to `docs/features/active/2025-12-04-baseline-coverage-20/baseline/feature-23.inventory.baseline.2026-02-03T18-30.txt`.
+  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/feature-23.inventory.baseline.2026-02-03T18-30.txt"` exits with code 0.
+  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/feature-23.inventory.baseline.2026-02-03T18-30.txt -Pattern 'Timestamp:|Command:'"` returns a match.
+- [ ] [P0-T22] Capture feature baseline inventory for #24 to `docs/features/active/2025-12-04-baseline-coverage-20/baseline/feature-24.inventory.baseline.2026-02-03T18-30.txt`.
+  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/feature-24.inventory.baseline.2026-02-03T18-30.txt"` exits with code 0.
+  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/feature-24.inventory.baseline.2026-02-03T18-30.txt -Pattern 'Timestamp:|Command:'"` returns a match.
+- [ ] [P0-T23] Capture feature baseline inventory for #25 to `docs/features/active/2025-12-04-baseline-coverage-20/baseline/feature-25.inventory.baseline.2026-02-03T18-30.txt`.
+  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/feature-25.inventory.baseline.2026-02-03T18-30.txt"` exits with code 0.
+  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/feature-25.inventory.baseline.2026-02-03T18-30.txt -Pattern 'Timestamp:|Command:'"` returns a match.
+- [ ] [P0-T24] Capture feature baseline inventory for #26 to `docs/features/active/2025-12-04-baseline-coverage-20/baseline/feature-26.inventory.baseline.2026-02-03T18-30.txt`.
+  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/feature-26.inventory.baseline.2026-02-03T18-30.txt"` exits with code 0.
+  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/feature-26.inventory.baseline.2026-02-03T18-30.txt -Pattern 'Timestamp:|Command:'"` returns a match.
+- [ ] [P0-T25] Capture feature baseline inventory for #27 to `docs/features/active/2025-12-04-baseline-coverage-20/baseline/feature-27.inventory.baseline.2026-02-03T18-30.txt`.
+  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/feature-27.inventory.baseline.2026-02-03T18-30.txt"` exits with code 0.
+  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/feature-27.inventory.baseline.2026-02-03T18-30.txt -Pattern 'Timestamp:|Command:'"` returns a match.
+- [ ] [P0-T26] Capture feature baseline inventory for #28 to `docs/features/active/2025-12-04-baseline-coverage-20/baseline/feature-28.inventory.baseline.2026-02-03T18-30.txt`.
+  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/feature-28.inventory.baseline.2026-02-03T18-30.txt"` exits with code 0.
+  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/feature-28.inventory.baseline.2026-02-03T18-30.txt -Pattern 'Timestamp:|Command:'"` returns a match.
 
 ### Phase 1 — Discovery & Mapping
 - [ ] [P1-T1] Create `docs/features/active/2025-12-04-baseline-coverage-20/remediation-tracker.2026-02-03T18-30.md` with the title line only.
@@ -291,30 +291,30 @@ This plan remediates evidence, coverage, and documentation gaps across features 
   - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/epic-audit.2026-02-03T18-30.md -Pattern '#28'"` returns a match.
 
 ### Phase 11 — Final QA (Documentation Checks)
-- [ ] [P11-T1] Run the doc-structure check command (if available) and save output to `docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/doc-structure.qa.2026-02-03T18-30.txt`.
-  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/doc-structure.qa.2026-02-03T18-30.txt"` exits with code 0.
-  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/doc-structure.qa.2026-02-03T18-30.txt -Pattern 'ExitCode: 0|Not available'"` returns a match.
-- [ ] [P11-T2] Run the doc-lint command (if available) and save output to `docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/doc-lint.qa.2026-02-03T18-30.txt`.
-  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/doc-lint.qa.2026-02-03T18-30.txt"` exits with code 0.
-  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/doc-lint.qa.2026-02-03T18-30.txt -Pattern 'ExitCode: 0|Not available'"` returns a match.
-- [ ] [P11-T3] Run the link-check command (if available) and save output to `docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/link-check.qa.2026-02-03T18-30.txt`.
-  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/link-check.qa.2026-02-03T18-30.txt"` exits with code 0.
-  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/link-check.qa.2026-02-03T18-30.txt -Pattern 'ExitCode: 0|Not available'"` returns a match.
+- [ ] [P11-T1] Run the doc-structure check command (if available) and save output to `docs/features/active/2025-12-04-baseline-coverage-20/baseline/doc-structure.qa.2026-02-03T18-30.txt`.
+  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/doc-structure.qa.2026-02-03T18-30.txt"` exits with code 0.
+  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/doc-structure.qa.2026-02-03T18-30.txt -Pattern 'ExitCode: 0|Not available'"` returns a match.
+- [ ] [P11-T2] Run the doc-lint command (if available) and save output to `docs/features/active/2025-12-04-baseline-coverage-20/baseline/doc-lint.qa.2026-02-03T18-30.txt`.
+  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/doc-lint.qa.2026-02-03T18-30.txt"` exits with code 0.
+  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/doc-lint.qa.2026-02-03T18-30.txt -Pattern 'ExitCode: 0|Not available'"` returns a match.
+- [ ] [P11-T3] Run the link-check command (if available) and save output to `docs/features/active/2025-12-04-baseline-coverage-20/baseline/link-check.qa.2026-02-03T18-30.txt`.
+  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/link-check.qa.2026-02-03T18-30.txt"` exits with code 0.
+  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/link-check.qa.2026-02-03T18-30.txt -Pattern 'ExitCode: 0|Not available'"` returns a match.
 
 ### Phase 12 — Final QA (Python Toolchain Loop)
-- [ ] [P12-T1] Ensure the final QA output folder exists at `docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/final-qa.2026-02-03T18-30/`.
-  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/final-qa.2026-02-03T18-30"` exits with code 0.
-- [ ] [P12-T2] Run `poetry run black .` until it reports no reformatting, and save the final output to `docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/final-qa.2026-02-03T18-30/black.final.2026-02-03T18-30.txt`.
-  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/final-qa.2026-02-03T18-30/black.final.2026-02-03T18-30.txt"` exits with code 0.
-  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/final-qa.2026-02-03T18-30/black.final.2026-02-03T18-30.txt -Pattern 'All done!'"` returns a match.
-  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/final-qa.2026-02-03T18-30/black.final.2026-02-03T18-30.txt -Pattern 'reformatted'"` returns no matches.
-- [ ] [P12-T3] Run `poetry run ruff check` (no fixes) and save output to `docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/final-qa.2026-02-03T18-30/ruff.final.2026-02-03T18-30.txt`.
-  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/final-qa.2026-02-03T18-30/ruff.final.2026-02-03T18-30.txt"` exits with code 0.
-  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/final-qa.2026-02-03T18-30/ruff.final.2026-02-03T18-30.txt -Pattern 'All checks passed'"` returns a match.
-- [ ] [P12-T4] Run `poetry run pyright` and save output to `docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/final-qa.2026-02-03T18-30/pyright.final.2026-02-03T18-30.txt`.
-  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/final-qa.2026-02-03T18-30/pyright.final.2026-02-03T18-30.txt"` exits with code 0.
-  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/final-qa.2026-02-03T18-30/pyright.final.2026-02-03T18-30.txt -Pattern '0 errors'"` returns a match.
-- [ ] [P12-T5] Run the repo-approved Pytest command and save output to `docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/final-qa.2026-02-03T18-30/pytest.final.2026-02-03T18-30.txt`.
-  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/final-qa.2026-02-03T18-30/pytest.final.2026-02-03T18-30.txt"` exits with code 0.
-  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/final-qa.2026-02-03T18-30/pytest.final.2026-02-03T18-30.txt -Pattern 'passed'"` returns a match.
-  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/remediation-baseline/final-qa.2026-02-03T18-30/pytest.final.2026-02-03T18-30.txt -Pattern '0 failed'"` returns a match.
+- [ ] [P12-T1] Ensure the final QA output folder exists at `docs/features/active/2025-12-04-baseline-coverage-20/baseline/final-qa.2026-02-03T18-30/`.
+  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/final-qa.2026-02-03T18-30"` exits with code 0.
+- [ ] [P12-T2] Run `poetry run black .` until it reports no reformatting, and save the final output to `docs/features/active/2025-12-04-baseline-coverage-20/baseline/final-qa.2026-02-03T18-30/black.final.2026-02-03T18-30.txt`.
+  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/final-qa.2026-02-03T18-30/black.final.2026-02-03T18-30.txt"` exits with code 0.
+  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/final-qa.2026-02-03T18-30/black.final.2026-02-03T18-30.txt -Pattern 'All done!'"` returns a match.
+  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/final-qa.2026-02-03T18-30/black.final.2026-02-03T18-30.txt -Pattern 'reformatted'"` returns no matches.
+- [ ] [P12-T3] Run `poetry run ruff check` (no fixes) and save output to `docs/features/active/2025-12-04-baseline-coverage-20/baseline/final-qa.2026-02-03T18-30/ruff.final.2026-02-03T18-30.txt`.
+  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/final-qa.2026-02-03T18-30/ruff.final.2026-02-03T18-30.txt"` exits with code 0.
+  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/final-qa.2026-02-03T18-30/ruff.final.2026-02-03T18-30.txt -Pattern 'All checks passed'"` returns a match.
+- [ ] [P12-T4] Run `poetry run pyright` and save output to `docs/features/active/2025-12-04-baseline-coverage-20/baseline/final-qa.2026-02-03T18-30/pyright.final.2026-02-03T18-30.txt`.
+  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/final-qa.2026-02-03T18-30/pyright.final.2026-02-03T18-30.txt"` exits with code 0.
+  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/final-qa.2026-02-03T18-30/pyright.final.2026-02-03T18-30.txt -Pattern '0 errors'"` returns a match.
+- [ ] [P12-T5] Run the repo-approved Pytest command and save output to `docs/features/active/2025-12-04-baseline-coverage-20/baseline/final-qa.2026-02-03T18-30/pytest.final.2026-02-03T18-30.txt`.
+  - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/final-qa.2026-02-03T18-30/pytest.final.2026-02-03T18-30.txt"` exits with code 0.
+  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/final-qa.2026-02-03T18-30/pytest.final.2026-02-03T18-30.txt -Pattern 'passed'"` returns a match.
+  - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/baseline/final-qa.2026-02-03T18-30/pytest.final.2026-02-03T18-30.txt -Pattern '0 failed'"` returns a match.

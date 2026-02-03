@@ -73,3 +73,23 @@ def test_classify_success_exit_code_is_non_throttle() -> None:
     assert classify_copilot_failure(exit_code=0, output_tail="rate limit") is (
         FailureKind.NON_THROTTLE
     )
+
+
+def test_classify_copilot_cli_crash_is_retryable() -> None:
+    """
+    Copilot CLI crash exit codes should classify as THROTTLE.
+
+    Purpose:
+        Handle transient Windows crash exit codes (e.g., UV handle assertion)
+        by retrying instead of failing the executor immediately.
+    """
+
+    from scripts.dev_tools.atomic_executor.copilot_throttling import (
+        FailureKind,
+        classify_copilot_failure,
+    )
+
+    crash_tail = "Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)"
+    assert classify_copilot_failure(exit_code=3221226505, output_tail=crash_tail) is (
+        FailureKind.THROTTLE
+    )

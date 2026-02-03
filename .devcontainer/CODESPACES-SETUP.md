@@ -15,7 +15,7 @@ This avoids conflicts where one environment's config interferes with the other.
 ### Method 1: GitHub Web UI (Recommended)
 
 1. **Go to the repository on GitHub.com**
-   - Navigate to: `https://github.com/drmoisan/lexile-corpus-tuner`
+   - Navigate to: `https://github.com/drmoisan/transcript-etl-pipeline`
 
 2. **Click the "Code" button** (green button, top right)
 

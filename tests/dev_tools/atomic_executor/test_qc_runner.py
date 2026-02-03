@@ -20,6 +20,11 @@ if TYPE_CHECKING:
     from _pytest.monkeypatch import MonkeyPatch
 
 
+def _mock_which_passthrough(cmd: str) -> str:
+    """Mock shutil.which that returns the command unchanged for test assertions."""
+    return cmd
+
+
 class TestQCRunnerInit:
     """Tests for QCRunner initialization."""
 
@@ -266,6 +271,11 @@ class TestQCRunnerRunScoped:
             result.stdout = " M src/module.py\n M tests/test_module.py\n"
             return result  # type: ignore[return-value]
 
+        # Mock shutil.which to return the command unchanged for test assertions
+        monkeypatch.setattr(
+            "scripts.dev_tools.atomic_executor.qc_runner.shutil.which",
+            _mock_which_passthrough,
+        )
         monkeypatch.setattr("subprocess.run", mock_run)
 
         runner = QCRunner(tmp_path)
@@ -314,6 +324,11 @@ class TestQCRunnerRunScoped:
             result.stdout = " M README.md\n M config.yaml\n"
             return result  # type: ignore[return-value]
 
+        # Mock shutil.which to return the command unchanged for test assertions
+        monkeypatch.setattr(
+            "scripts.dev_tools.atomic_executor.qc_runner.shutil.which",
+            _mock_which_passthrough,
+        )
         monkeypatch.setattr("subprocess.run", mock_run)
 
         runner = QCRunner(tmp_path)
@@ -390,6 +405,11 @@ class TestQCRunnerRunFull:
             result.returncode = 0
             return result  # type: ignore[return-value]
 
+        # Mock shutil.which to return the command unchanged for test assertions
+        monkeypatch.setattr(
+            "scripts.dev_tools.atomic_executor.qc_runner.shutil.which",
+            _mock_which_passthrough,
+        )
         monkeypatch.setattr("subprocess.run", mock_run)
 
         runner = QCRunner(tmp_path)
@@ -405,9 +425,40 @@ class TestQCRunnerRunFull:
             "run",
             "pytest",
             "--color=no",
-            "--cov=src/transcript_etl_pipeline",
+            "--cov=src/lexile_corpus_tuner",
             "--cov-report=xml",
             "--cov-report=term-missing",
+        ]
+
+    def test_run_full_typescript_runs_npm_toolchain(self, monkeypatch: "MonkeyPatch") -> None:
+        """run_full() runs npm toolchain steps for TypeScript."""
+        from scripts.dev_tools.atomic_executor.qc_toolchain import QCToolchain
+
+        calls: list[list[str]] = []
+
+        def mock_run(
+            argv: list[str], *args: object, **kwargs: object
+        ) -> subprocess.CompletedProcess[str]:
+            calls.append(argv)
+            result = Mock()
+            result.returncode = 0
+            return result  # type: ignore[return-value]
+
+        # Mock shutil.which to return the command unchanged for test assertions
+        monkeypatch.setattr(
+            "scripts.dev_tools.atomic_executor.qc_runner.shutil.which",
+            _mock_which_passthrough,
+        )
+        monkeypatch.setattr("subprocess.run", mock_run)
+
+        runner = QCRunner(Path.cwd())
+        runner.run_full(toolchain=QCToolchain.TYPESCRIPT)
+
+        assert calls == [
+            ["npm", "run", "format"],
+            ["npm", "run", "lint"],
+            ["npm", "run", "typecheck"],
+            ["npm", "run", "test:unit"],
         ]
 
     def test_run_full_raises_on_tool_failure(
@@ -449,6 +500,8 @@ class TestQCRunnerRunFull:
         expectations = ResolvedTestExpectations(
             expected_fail_refs={"tests/bugs/2026/test_issue_98.py::test_expected_fail"},
             expected_pass_refs=set(),
+            expected_fail_jest_refs=set(),
+            expected_pass_jest_refs=set(),
             missing_test_refs=[],
         )
 
@@ -488,6 +541,8 @@ class TestQCRunnerRunFull:
         expectations = ResolvedTestExpectations(
             expected_fail_refs=set(),
             expected_pass_refs=set(),
+            expected_fail_jest_refs=set(),
+            expected_pass_jest_refs=set(),
             missing_test_refs=[],
         )
 
@@ -530,6 +585,11 @@ class TestQCRunnerEdgeCases:
             result.returncode = 0
             return result  # type: ignore[return-value]
 
+        # Mock shutil.which to return the command unchanged for test assertions
+        monkeypatch.setattr(
+            "scripts.dev_tools.atomic_executor.qc_runner.shutil.which",
+            _mock_which_passthrough,
+        )
         monkeypatch.setattr("subprocess.run", mock_run)
 
         runner = QCRunner(tmp_path)
@@ -553,6 +613,11 @@ class TestQCRunnerEdgeCases:
             result.stdout = "output"
             return result  # type: ignore[return-value]
 
+        # Mock shutil.which to return the command unchanged for test assertions
+        monkeypatch.setattr(
+            "scripts.dev_tools.atomic_executor.qc_runner.shutil.which",
+            _mock_which_passthrough,
+        )
         monkeypatch.setattr("subprocess.run", mock_run)
 
         runner = QCRunner(tmp_path)

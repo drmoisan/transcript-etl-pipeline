@@ -6,7 +6,6 @@ including parsing, task lookup, checkbox manipulation, and validation.
 """
 
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -118,100 +117,116 @@ class TestPlanParserParse:
         assert task.checked is False
         assert task.line_index == 1
 
-    def test_parse_sets_expect_fail_true_and_strips_tag(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """PlanParser.parse should detect and strip the [expect-fail] tag."""
-        content = "- [ ] [P1-T1] [expect-fail] Add failing regression test"
+    def test_parse_sets_expect_fail_true_and_strips_tag(self) -> None:
+        """
+        PlanParser.parse should detect and strip the [expect-fail] tag.
 
-        def mock_is_file(_: Any) -> bool:
-            return True
+        Purpose:
+            Regression test for the atomic executor TDD "Red" workflow. Plan tasks
+            can be annotated with [expect-fail] to invert pytest success criteria.
 
-        def mock_read_text(_: Any) -> str:
-            return content
-
-        monkeypatch.setattr(Path, "is_file", mock_is_file)
-        monkeypatch.setattr(
-            "scripts.dev_tools.atomic_executor.plan_parser.PlanParser._read_text",
-            mock_read_text,
-        )
-
-        parser = PlanParser(Path("dummy.md"))
+        Side Effects:
+            Reads a committed fixture file from tests/fixtures (no temp files).
+        """
+        parser = PlanParser(Path("tests/fixtures/atomic_executor/plan_expect_fail.md"))
         model = parser.parse()
 
         assert model.tasks[0].expect_fail is True
         assert model.tasks[0].title == "Add failing regression test"
 
-    def test_parse_sets_expect_pass_true_and_strips_tag(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """PlanParser.parse should detect and strip the [expect-pass] tag."""
-        content = "- [ ] [P1-T1] [expect-pass] pytest tests/bugs/2026/test_issue_98.py::test_expected_pass"  # noqa: E501
+    def test_parse_sets_expect_pass_true_and_strips_tag(self) -> None:
+        """
+        PlanParser.parse should detect and strip the [expect-pass] tag.
 
-        def mock_is_file(_: Any) -> bool:
-            return True
+        Purpose:
+            Ensure expect-pass tasks are recognized and stored as plan metadata.
 
-        def mock_read_text(_: Any) -> str:
-            return content
-
-        monkeypatch.setattr(Path, "is_file", mock_is_file)
-        monkeypatch.setattr(
-            "scripts.dev_tools.atomic_executor.plan_parser.PlanParser._read_text",
-            mock_read_text,
-        )
-
-        parser = PlanParser(Path("dummy.md"))
+        Side Effects:
+            Reads a committed fixture file from tests/fixtures (no temp files).
+        """
+        parser = PlanParser(Path("tests/fixtures/atomic_executor/plan_expect_pass.md"))
         model = parser.parse()
 
         assert model.tasks[0].expect_pass is True
         assert model.tasks[0].expect_fail is False
         assert model.tasks[0].title == "pytest tests/bugs/2026/test_issue_98.py::test_expected_pass"
 
-    def test_parse_extracts_test_ref_from_pytest_form(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """PlanParser.parse should extract a test_ref from the pytest form."""
-        content = "- [ ] [P1-T1] [expect-fail] pytest tests/bugs/2026/test_issue_98.py::test_expected_fail"  # noqa: E501
+    def test_parse_extracts_test_ref_from_pytest_form(self) -> None:
+        """
+        PlanParser.parse should extract a test_ref from the pytest form.
 
-        def mock_is_file(_: Any) -> bool:
-            return True
+        Purpose:
+            Validate that "pytest <nodeid>" forms are parsed into test_ref.
 
-        def mock_read_text(_: Any) -> str:
-            return content
-
-        monkeypatch.setattr(Path, "is_file", mock_is_file)
-        monkeypatch.setattr(
-            "scripts.dev_tools.atomic_executor.plan_parser.PlanParser._read_text",
-            mock_read_text,
+        Side Effects:
+            Reads a committed fixture file from tests/fixtures (no temp files).
+        """
+        parser = PlanParser(
+            Path("tests/fixtures/atomic_executor/plan_expect_fail_with_pytest_ref.md")
         )
-
-        parser = PlanParser(Path("dummy.md"))
         model = parser.parse()
 
         assert model.tasks[0].test_ref == "tests/bugs/2026/test_issue_98.py::test_expected_fail"
 
-    def test_parse_extracts_test_ref_from_prose_ref_form(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """PlanParser.parse should extract a test_ref from the prose form."""
-        content = "- [ ] [P1-T1] [expect-fail] Add pytest `test_expected_fail` in `tests/bugs/2026/test_issue_98.py`"  # noqa: E501
+    def test_parse_extracts_test_ref_from_prose_ref_form(self) -> None:
+        """
+        PlanParser.parse should extract a test_ref from the prose form.
 
-        def mock_is_file(_: Any) -> bool:
-            return True
+        Purpose:
+            Ensure "Add pytest `name` in `path`" yields a stable nodeid prefix.
 
-        def mock_read_text(_: Any) -> str:
-            return content
-
-        monkeypatch.setattr(Path, "is_file", mock_is_file)
-        monkeypatch.setattr(
-            "scripts.dev_tools.atomic_executor.plan_parser.PlanParser._read_text",
-            mock_read_text,
+        Side Effects:
+            Reads a committed fixture file from tests/fixtures (no temp files).
+        """
+        parser = PlanParser(
+            Path("tests/fixtures/atomic_executor/plan_expect_fail_with_prose_ref.md")
         )
-
-        parser = PlanParser(Path("dummy.md"))
         model = parser.parse()
 
         assert model.tasks[0].test_ref == "tests/bugs/2026/test_issue_98.py::test_expected_fail"
+
+    def test_parse_extracts_test_ref_from_jest_ref_form(self) -> None:
+        """
+        PlanParser.parse should extract a test_ref from the Jest form.
+
+        Purpose:
+            Validate "jest <path> --testNamePattern" forms are parsed into
+            test_ref.
+
+        Side Effects:
+            Reads a committed fixture file from tests/fixtures (no temp files).
+        """
+        parser = PlanParser(
+            Path("tests/fixtures/atomic_executor/plan_expect_fail_with_jest_ref.md")
+        )
+        model = parser.parse()
+
+        expected_ref = (
+            "tests/unit/task-execution-spec.test.ts "
+            '--testNamePattern="getTaskExecutionSpec returns QC black"'
+        )
+        assert model.tasks[0].test_ref == expected_ref
+
+    def test_parse_extracts_test_ref_from_jest_prose_form(self) -> None:
+        """
+        PlanParser.parse should extract a test_ref from the Jest prose form.
+
+        Purpose:
+            Ensure "Add Jest test in `path` for `name`" yields a stable test
+            reference.
+
+        Side Effects:
+            Reads a committed fixture file from tests/fixtures (no temp files).
+        """
+        parser = PlanParser(
+            Path("tests/fixtures/atomic_executor/" "plan_expect_fail_with_jest_prose.md")
+        )
+        model = parser.parse()
+
+        assert (
+            model.tasks[0].test_ref == "tests/unit/task-execution-spec.test.ts::"
+            "getTaskExecutionSpec returns QC black"
+        )
 
     def test_parse_defaults_expect_fail_false_when_tag_missing(self, tmp_path: Path) -> None:
         """
@@ -507,6 +522,20 @@ class TestPlanParserPreflightValidate:
         parser = PlanParser(plan_file)
         # Should not raise
         parser.preflight_validate()
+
+    def test_preflight_validate_ignores_partial_ts_toolchain_phase(self) -> None:
+        """
+        Partial TypeScript toolchain phases should not block preflight.
+
+        Purpose:
+            Ensure a phase with only npm test does not trigger auto-QC validation.
+        """
+        parser = PlanParser(Path("tests/fixtures/atomic_executor/plan_ts_partial_toolchain.md"))
+
+        parser.preflight_validate()
+
+        assert parser.auto_qc_phase_by_number(3) is None
+        assert parser.auto_qc_phase_by_number(5) is not None
 
     def test_preflight_validate_raises_when_phase_0_missing(self, tmp_path: Path) -> None:
         """preflight_validate raises ValueError when Phase 0 is missing."""
