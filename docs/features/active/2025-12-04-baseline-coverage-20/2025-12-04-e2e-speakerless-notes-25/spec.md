@@ -62,6 +62,10 @@ Data flow, storage, or state changes introduced by this feature.
 - Avoid fragile DOCX binary comparisons; prefer text marker assertions.
 - Implementation summary notes filesystem use via test-generated documents; this conflicts with the unit-test policy prohibiting temporary files and should be resolved via an explicit exception or a non-filesystem test strategy.
 
+## Policy Compliance Decision
+
+Tests will be redesigned to avoid temporary files entirely; no exceptions to the unit-test policy are requested.
+
 
 ## Implementation Strategy
 

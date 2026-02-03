@@ -40,6 +40,12 @@ Fixture data is defined in-code and consumed by tests; no persistence or runtime
 - Caching or persistence details: None.
 - Migration or backfill requirements (if any): None.
 
+## Fixture Ownership & Reuse Governance
+
+- **Owner:** The fixtures in `tests/fixtures/multi_speaker.py` are owned by the baseline coverage initiative owner (currently the #24 feature owner).
+- **Update process:** Changes to existing fixtures require updating dependent tests and documenting the reason in the fixture docstring or issue note. Prefer additive changes; avoid breaking existing fixture contracts without a migration note.
+- **Reuse rules:** Other tests should import fixtures via `get_fixture_by_name` or shared constants rather than duplicating text. When a new fixture is needed, add it to the shared module and reuse across suites.
+
 ## Constraints & Risks
 
 - Limits (latency/throughput/memory) and acceptable trade-offs: Tests must stay fast; fixtures should remain compact.

@@ -138,6 +138,18 @@ class TestDetectSpeakerChanges:
 class TestDetectSpeakerChangesHeuristics:
     """Tests for specific speaker change heuristics."""
 
+    def test_detect_speaker_changes_tag_question_includes_change(self) -> None:
+        """Verify tag questions trigger a speaker change."""
+        text = "We should proceed, right?\r\nYes, let's do it."
+        changes = detect_speaker_changes(text)
+        assert 1 in changes
+
+    def test_detect_speaker_changes_continuation_no_shift(self) -> None:
+        """Verify continuation statements do not trigger speaker shift."""
+        text = "I think we should proceed.\r\nYou know I agree."
+        changes = detect_speaker_changes(text)
+        assert changes == [0]
+
     def test_thank_you_pattern_triggers_change(self) -> None:
         """Test that 'thank you' patterns trigger speaker change."""
         text = "I've finished my presentation.\r\nThank you for that overview."
@@ -255,6 +267,29 @@ class TestAssignSpeakerLabels:
 
 class TestAssignSpeakerLabelsEdgeCases:
     """Additional edge case tests for speaker label assignment."""
+
+    def test_assign_speaker_labels_addressee_not_self(self) -> None:
+        """Verify addressee lines are not assigned to the addressed speaker."""
+        text = "I'm Frank Oz.\r\nThanks Frank."
+        result = assign_speaker_labels(text, num_speakers=3)
+        lines = [line for line in result.split("\r\n") if line.strip()]
+        frank_speaker = lines[0].split(":")[0]
+        thanks_speaker = lines[1].split(":")[0]
+        assert thanks_speaker != frank_speaker
+
+    def test_assign_speaker_labels_closing_statement_to_organizer(self) -> None:
+        """Verify closing statements are assigned to the organizer."""
+        text = (
+            "I'm Peter Parker.\r\n"
+            "I'm Frank Oz.\r\n"
+            "I'm Fred Flintstone.\r\n"
+            "Great. Thank you both."
+        )
+        result = assign_speaker_labels(text, num_speakers=3)
+        lines = [line for line in result.split("\r\n") if line.strip()]
+        organizer_speaker = lines[0].split(":")[0]
+        closing_speaker = lines[-1].split(":")[0]
+        assert closing_speaker == organizer_speaker
 
     def test_single_sentence_text(self) -> None:
         """Test handling of single sentence text."""

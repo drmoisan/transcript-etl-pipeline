@@ -3,7 +3,7 @@
 - **Issue:** #23
 - **Parent (optional):** none
 - **Owner:** drmoisan
-- **Last Updated:** 2026-02-02T13-08
+- **Last Updated:** 2026-02-02T23:44:20Z
 - **Status:** Planned
 - **Version:** 0.2
 
@@ -126,27 +126,27 @@ Atomic, deterministic execution plan to raise combined coverage for `src/transcr
   - Acceptance: `poetry run pytest tests/transform/test_identity_constraints.py -k test_mid_sentence_is_name_the_excluded` exits with code 0
 
 ### Phase 3 — Normalize Tests
-- [ ] [P3-T1] Add Pytest case `test_normalize_line_endings_mixed_inputs` in `tests/transform/test_normalize.py` covering `_normalize_line_endings("a\r\nb\nc\rd") == "a\r\nb\r\nc\r\nd"` (REQ-003)
+- [x] [P3-T1] Add Pytest case `test_normalize_line_endings_mixed_inputs` in `tests/transform/test_normalize.py` covering `_normalize_line_endings("a\r\nb\nc\rd") == "a\r\nb\r\nc\r\nd"` (REQ-003)
   - Acceptance: `poetry run pytest tests/transform/test_normalize.py -k test_normalize_line_endings_mixed_inputs` exits with code 0
-- [ ] [P3-T2] Add Pytest case `test_clean_whitespace_collapses_duplicate_spaces` in `tests/transform/test_normalize.py` covering `_clean_whitespace("A  B\r\nC   D") == "A B\r\nC D"` (REQ-003)
+- [x] [P3-T2] Add Pytest case `test_clean_whitespace_collapses_duplicate_spaces` in `tests/transform/test_normalize.py` covering `_clean_whitespace("A  B\r\nC   D") == "A B\r\nC D"` (REQ-003)
   - Acceptance: `poetry run pytest tests/transform/test_normalize.py -k test_clean_whitespace_collapses_duplicate_spaces` exits with code 0
-- [ ] [P3-T3] Add Pytest case `test_clean_whitespace_collapses_blank_lines_and_trailing` in `tests/transform/test_normalize.py` covering `_clean_whitespace("A\r\n\r\n\r\nB\r\n\r\n") == "A\r\n\r\nB"` (REQ-003)
+- [x] [P3-T3] Add Pytest case `test_clean_whitespace_collapses_blank_lines_and_trailing` in `tests/transform/test_normalize.py` covering `_clean_whitespace("A\r\n\r\n\r\nB\r\n\r\n") == "A\r\n\r\nB"` (REQ-003)
   - Acceptance: `poetry run pytest tests/transform/test_normalize.py -k test_clean_whitespace_collapses_blank_lines_and_trailing` exits with code 0
-- [ ] [P3-T4] Add Pytest case `test_is_label_accepts_capitalized_token` in `tests/transform/test_normalize.py` covering `_is_label("Speaker:") is True` (REQ-003)
+- [x] [P3-T4] Add Pytest case `test_is_label_accepts_capitalized_token` in `tests/transform/test_normalize.py` covering `_is_label("Speaker:") is True` (REQ-003)
   - Acceptance: `poetry run pytest tests/transform/test_normalize.py -k test_is_label_accepts_capitalized_token` exits with code 0
-- [ ] [P3-T5] Add Pytest case `test_is_label_rejects_lowercase_token` in `tests/transform/test_normalize.py` covering `_is_label("speaker:") is False` (REQ-003)
+- [x] [P3-T5] Add Pytest case `test_is_label_rejects_lowercase_token` in `tests/transform/test_normalize.py` covering `_is_label("speaker:") is False` (REQ-003)
   - Acceptance: `poetry run pytest tests/transform/test_normalize.py -k test_is_label_rejects_lowercase_token` exits with code 0
-- [ ] [P3-T6] Add Pytest case `test_is_label_rejects_token_with_spaces` in `tests/transform/test_normalize.py` covering `_is_label("Speaker Name:") is False` (REQ-003)
+- [x] [P3-T6] Add Pytest case `test_is_label_rejects_token_with_spaces` in `tests/transform/test_normalize.py` covering `_is_label("Speaker Name:") is False` (REQ-003)
   - Acceptance: `poetry run pytest tests/transform/test_normalize.py -k test_is_label_rejects_token_with_spaces` exits with code 0
-- [ ] [P3-T7] Add Pytest case `test_normalize_labels_inserts_space_after_label` in `tests/transform/test_normalize.py` covering `_normalize_labels("Bob:Hello") == "Bob: Hello"` (REQ-003)
+- [x] [P3-T7] Add Pytest case `test_normalize_labels_inserts_space_after_label` in `tests/transform/test_normalize.py` covering `_normalize_labels("Bob:Hello") == "Bob: Hello"` (REQ-003)
   - Acceptance: `poetry run pytest tests/transform/test_normalize.py -k test_normalize_labels_inserts_space_after_label` exits with code 0
-- [ ] [P3-T8] Add Pytest case `test_normalize_labels_splits_mid_line_label` in `tests/transform/test_normalize.py` covering `_normalize_labels("Hi. Bob: Hello") == "Hi.\r\nBob: Hello"` (REQ-003)
+- [x] [P3-T8] Add Pytest case `test_normalize_labels_splits_mid_line_label` in `tests/transform/test_normalize.py` covering `_normalize_labels("Hi. Bob: Hello") == "Hi.\r\nBob: Hello"` (REQ-003)
   - Acceptance: `poetry run pytest tests/transform/test_normalize.py -k test_normalize_labels_splits_mid_line_label` exits with code 0
-- [ ] [P3-T9] Add Pytest case `test_normalize_text_applies_all_steps` in `tests/transform/test_normalize.py` covering `normalize_text("Bob:Hello\n\nA  B") == "Bob: Hello\r\n\r\nA B"` (REQ-003)
+- [x] [P3-T9] Add Pytest case `test_normalize_text_applies_all_steps` in `tests/transform/test_normalize.py` covering `normalize_text("Bob:Hello\n\nA  B") == "Bob: Hello\r\n\r\nA B"` (REQ-003)
   - Acceptance: `poetry run pytest tests/transform/test_normalize.py -k test_normalize_text_applies_all_steps` exits with code 0
 
 ### Phase 4 — Coverage Evidence & Reporting
-- [ ] [P4-T1] Run `poetry run pytest --cov=src/transcript_etl_pipeline --cov-report=term-missing` and record module-level coverage for `identity_constraints.py` and `normalize.py` in `docs/features/active/2025-12-04-identity-normalize-23/coverage-results.md` (REQ-001, REQ-004)
+- [x] [P4-T1] Run `poetry run pytest --cov=src/transcript_etl_pipeline --cov-report=term-missing` and record module-level coverage for `identity_constraints.py` and `normalize.py` in `docs/features/active/2025-12-04-identity-normalize-23/coverage-results.md` (REQ-001, REQ-004)
   - Acceptance: `coverage-results.md` exists and contains a table with per-module statement/missing/coverage values
 - [ ] [P4-T2] Document any unreachable or anomalous lines found during coverage analysis in `docs/features/active/2025-12-04-identity-normalize-23/coverage-results.md` (REQ-004)
   - Acceptance: `coverage-results.md` contains a section titled `Uncovered Lines Analysis` with numbered entries (or the line `None` if no anomalies)

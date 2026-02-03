@@ -3,7 +3,7 @@ title: "2025-12-04-e2e-speakerless-notes - Plan"
 issue: "25"
 parent: "none"
 owner: "drmoisan"
-last_updated: "2026-02-02"
+last_updated: "2026-02-02T23:44:20Z"
 status: "Planned"
 status_color: "blue"
 version: "0.2"
@@ -16,7 +16,7 @@ version: "0.2"
 - **Issue:** [#25](https://github.com/drmoisan/transcript-etl-pipeline/issues/25)
 - **Parent (optional):** none
 - **Owner:** drmoisan
-- **Last Updated:** 2026-02-02
+- **Last Updated:** 2026-02-02T23:44:20Z
 - **Status:** Planned
 - **Version:** 0.2
 

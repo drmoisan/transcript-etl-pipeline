@@ -39,6 +39,42 @@ from transcript_etl_pipeline.transform.speaker_helpers import (
 )
 
 
+@pytest.fixture()
+def no_nltk_downloads(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Prevent NLTK downloads during tests."""
+    import nltk  # type: ignore[import-untyped]
+
+    def fake_find(_path: str) -> None:
+        return None
+
+    def fake_download(*args: object, **kwargs: object) -> None:
+        raise AssertionError("nltk.download should not be called during tests")
+
+    monkeypatch.setattr(nltk.data, "find", fake_find)
+    monkeypatch.setattr(nltk, "download", fake_download)
+
+
+@pytest.fixture()
+def stub_nltk_tagging(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Stub NLTK tokenization/tagging with deterministic behavior."""
+    import nltk  # type: ignore[import-untyped]
+
+    def fake_word_tokenize(text: str) -> list[str]:
+        return text.replace("?", "").replace(".", "").split()
+
+    def fake_pos_tag(tokens: list[str]) -> list[tuple[str, str]]:
+        tagged: list[tuple[str, str]] = []
+        for token in tokens:
+            if token.lower() in {"i", "we", "you", "me", "us", "my", "our"}:
+                tagged.append((token, "PRP"))
+            else:
+                tagged.append((token, "NN"))
+        return tagged
+
+    monkeypatch.setattr(nltk, "word_tokenize", fake_word_tokenize)
+    monkeypatch.setattr(nltk, "pos_tag", fake_pos_tag)
+
+
 class TestConstants:
     """Tests for module constants."""
 
@@ -92,7 +128,7 @@ class TestConstants:
 class TestEnsureNltkData:
     """Tests for NLTK data availability."""
 
-    def test_ensure_nltk_data_returns_true(self) -> None:
+    def test_ensure_nltk_data_returns_true(self, no_nltk_downloads: None) -> None:
         """Verify NLTK data can be loaded or downloaded."""
         result = ensure_nltk_data()
         assert result is True
@@ -191,7 +227,7 @@ class TestAnalyzePronounPatterns:
         result = analyze_pronoun_patterns([])
         assert result == []
 
-    def test_first_person_detection(self) -> None:
+    def test_first_person_detection(self, stub_nltk_tagging: None) -> None:
         """Verify first-person pronouns are detected."""
         sentences = ["I think we should proceed."]
         result = analyze_pronoun_patterns(sentences)
@@ -261,6 +297,11 @@ class TestDetectDialogueMarkers:
         assert detect_dialogue_markers("Sure, I can do that")["is_acknowledgment"] is True
         assert detect_dialogue_markers("Right, exactly")["is_acknowledgment"] is True
         assert detect_dialogue_markers("Great job everyone")["is_acknowledgment"] is True
+
+    def test_detect_dialogue_markers_right_tag_question_acknowledgment(self) -> None:
+        """Verify Right? is treated as an acknowledgment marker."""
+        markers = detect_dialogue_markers("Right?")
+        assert markers["is_acknowledgment"] is True
 
     def test_acknowledgment_handles_punctuation(self) -> None:
         """Verify acknowledgments handle punctuation correctly."""
@@ -508,6 +549,27 @@ class TestGroupSentencesBySimilarity:
         # With round-robin, should have 3 different speakers
         assert set(result) == {0, 1, 2}
 
+    def test_group_sentences_round_robin_two_segments(self) -> None:
+        """Verify two segments use round-robin assignment."""
+        sentences = ["I'm Alice.", "I'm Bob."]
+        change_points = [0, 1]
+        result = group_sentences_by_similarity(sentences, change_points, 3)
+        assert result == [0, 1]
+
+    def test_group_sentences_distinct_self_identifications(self) -> None:
+        """Verify distinct self-identifications map to distinct speakers."""
+        sentences = ["I'm Alice.", "I'm Bob.", "I'm Charlie."]
+        change_points = [0, 1, 2]
+        constraints = [
+            IdentityConstraint(sentence_idx=0, name="Alice", constraint_type="self_identification"),
+            IdentityConstraint(sentence_idx=1, name="Bob", constraint_type="self_identification"),
+            IdentityConstraint(
+                sentence_idx=2, name="Charlie", constraint_type="self_identification"
+            ),
+        ]
+        result = group_sentences_by_similarity(sentences, change_points, 3, constraints)
+        assert len({result[0], result[1], result[2]}) == 3
+
     def test_respects_identity_constraints(self) -> None:
         """Verify identity constraints prevent merging."""
         sentences = ["I'm Peter.", "Generic.", "I'm Frank."]
@@ -599,6 +661,23 @@ class TestResolveAddressesOtherViolations:
         result = resolve_addresses_other_violations(sentences, assignments, constraints, 3)
         # Sentence 1 should NOT be assigned to speaker 0 (Frank)
         assert result[1] != 0
+
+    def test_resolve_addresses_other_follow_through_reassigns(self) -> None:
+        """Verify follow-through sentences are reassigned away from addressee."""
+        sentences = ["I'm Frank.", "Thanks Frank.", "Fred?"]
+        assignments = [0, 0, 0]
+        constraints = [
+            IdentityConstraint(
+                sentence_idx=0, name="Frank Oz", constraint_type="self_identification"
+            ),
+            IdentityConstraint(sentence_idx=1, name="Frank", constraint_type="addresses_other"),
+        ]
+
+        result = resolve_addresses_other_violations(sentences, assignments, constraints, 3)
+
+        assert result[1] != 0
+        assert result[2] != 0
+        assert result[2] == result[1]
 
     def test_no_constraints_unchanged(self) -> None:
         """Verify no constraints returns unchanged assignments."""

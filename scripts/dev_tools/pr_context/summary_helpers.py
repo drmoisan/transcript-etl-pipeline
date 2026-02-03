@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import re
-from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Final
 
 from .models import (
     IssueDetails,
@@ -13,6 +13,8 @@ from .models import (
     section,
     truncate_lines,
 )
+
+UTC: Final[timezone] = timezone.utc  # noqa: UP017 - datetime.UTC unavailable before Python 3.11
 
 if TYPE_CHECKING:
     from pathlib import Path

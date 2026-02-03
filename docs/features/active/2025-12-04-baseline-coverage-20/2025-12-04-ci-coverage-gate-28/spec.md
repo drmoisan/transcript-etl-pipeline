@@ -16,6 +16,17 @@ CI does not currently enforce or surface coverage outcomes, so coverage can regr
 
 Add coverage reporting in CI and enforce a configurable minimum coverage threshold sourced from `pyproject.toml` (initial floor aligned to current baseline). The CI quality-checks job runs Pytest with coverage, uploads HTML/XML artifacts, and publishes a GitHub Actions step summary. The job fails when total coverage is below the configured floor, with a documented ratchet plan to raise the floor over time.
 
+## Coverage Gate Sequencing Criteria
+
+Coverage ratchets align with milestone completion and module targets:
+
+1. **Baseline gate (15%)** — current floor while #21–#23 are in progress.
+2. **Gate to 20%** — after #21–#23 meet per-module targets and M1 is complete.
+3. **Gate to 30%** — after #26–#27 meet coverage targets and M2 is complete.
+4. **Gate to 50%** — after #24–#25 stabilize and M3 is complete.
+
+Each ratchet requires updated coverage evidence in plan/spec files and an initiative milestone status update.
+
 
 ## Inputs / Outputs
 
