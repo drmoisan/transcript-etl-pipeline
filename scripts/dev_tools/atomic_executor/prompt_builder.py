@@ -192,7 +192,13 @@ class PromptBuilder:
         spec_path = feature_dir / "spec.md"
         story_path = feature_dir / "user-story.md"
 
-        if not self._fs.is_file(spec_path):
+        # Check if this is an epic folder (contains initiative.md and orchestration.md)
+        # Epic folders don't require spec.md (they use orchestration.md instead)
+        is_epic_folder = self._fs.is_file(feature_dir / "initiative.md") and self._fs.is_file(
+            feature_dir / "orchestration.md"
+        )
+
+        if not is_epic_folder and not self._fs.is_file(spec_path):
             raise FileNotFoundError(f"Missing required spec.md: {spec_path}")
 
         plan_text = self._read_text(plan_path)

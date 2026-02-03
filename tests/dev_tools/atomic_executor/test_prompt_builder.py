@@ -660,3 +660,42 @@ class TestPromptBuilderEdgeCases:
         assert "émojis 🎉" in prompt
         assert "émoji 📝" in prompt
         assert "émoji ✅" not in prompt
+
+    def test_build_allows_epic_folder_without_spec(self) -> None:
+        """build() allows missing spec.md when folder is an epic.
+
+        An epic folder is identified by having `initiative.md` and `orchestration.md`.
+        """
+        workspace = Path("/workspace")
+        template_path = Path("/workspace/template.md")
+        epic_dir = Path("/workspace/docs/features/active/2025-12-04-baseline-coverage-20")
+        plan_path = epic_dir / "plan.2026-02-03T18-30.md"
+        initiative_path = epic_dir / "initiative.md"
+        orchestration_path = epic_dir / "orchestration.md"
+
+        # Epic folder has initiative.md and orchestration.md but no spec.md
+        fs = InMemoryPromptBuilderFileSystem(
+            files={
+                template_path.as_posix(): "BASE TEMPLATE\n",
+                plan_path.as_posix(): "# Remediation Plan\n- [ ] [P0-T1] Task 1",
+                initiative_path.as_posix(): "# Initiative\nDetails.",
+                orchestration_path.as_posix(): "# Orchestration\nSequencing.",
+            },
+            dirs={epic_dir.as_posix()},
+        )
+        plan_resolver = make_default_plan_resolver(plan_filename="plan.2026-02-03T18-30.md")
+
+        task = PlanTask(
+            task_id="P0-T1",
+            phase=0,
+            task_num=1,
+            title="Task 1",
+            checked=False,
+            line_index=1,
+        )
+        builder = PromptBuilder(workspace, template_path, fs=fs, plan_resolver=plan_resolver)
+
+        # Should not raise FileNotFoundError for missing spec.md
+        prompt = builder.build(epic_dir, task)
+        assert "BASE TEMPLATE" in prompt
+        assert "P0-T1" in prompt
