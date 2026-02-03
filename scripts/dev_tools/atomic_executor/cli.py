@@ -1313,7 +1313,7 @@ def _run_preflight_qc_with_capture(
                 "run",
                 "pytest",
                 "--color=no",
-                "--cov=src/lexile_corpus_tuner",
+                "--cov=src/transcript_etl_pipeline",
                 "--cov=scripts/dev_tools",
                 "--cov-report=term-missing",
             ],
@@ -1458,7 +1458,7 @@ def _build_preflight_qc_fix_prompt(workspace: Path, qc_output: str) -> str:
         "   - `poetry run black .`\n"
         "   - `poetry run ruff check`\n"
         "   - `poetry run pyright`\n"
-        "   - `poetry run pytest --cov=src/lexile_corpus_tuner "
+        "   - `poetry run pytest --cov=src/transcript_etl_pipeline "
         "--cov=scripts/dev_tools --cov-report=term-missing`\n"
         "4. If any step fails, fix the issues and re-run from step 3.\n"
         "5. **Do NOT end your turn until all QC steps pass.**\n"

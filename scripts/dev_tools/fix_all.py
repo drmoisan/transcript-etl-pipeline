@@ -853,7 +853,7 @@ def run_fix_all(
         if include_coverage:
             pytest_command.extend(
                 [
-                    "--cov=src/lexile_corpus_tuner",
+                    "--cov=src/transcript_etl_pipeline",
                     "--cov=scripts/dev_tools",
                     "--cov-report=term-missing",
                 ]

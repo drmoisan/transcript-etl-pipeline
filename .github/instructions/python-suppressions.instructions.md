@@ -386,7 +386,7 @@ Parent-relative imports (`from ..module import`) reduce code clarity and create 
 from ..gutenberg_query_core import QueryGroupModel  # noqa: TID252
 
 # Use absolute imports:
-from lexile_corpus_tuner.lexile_scoring_model.pipeline_scripts.gutenberg_query_core import (
+from transcript_etl_pipeline.lexile_scoring_model.pipeline_scripts.gutenberg_query_core import (
     QueryGroupModel,
 )
 ```

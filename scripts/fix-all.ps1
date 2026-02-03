@@ -128,7 +128,7 @@ $exitCode = Invoke-Command-WithStatus @(
     "poetry",
     "run",
     "pytest",
-    "--cov=src/lexile_corpus_tuner",
+    "--cov=src/transcript_etl_pipeline",
     "--cov-report=term-missing"
 ) "Pytest: test with coverage"
 if ($exitCode -ne 0) {

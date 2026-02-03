@@ -294,7 +294,7 @@ Constraints:
   - python -m poetry run ruff check
   - python -m poetry run pyright
   - python -m poetry run pytest \\
-      --cov=src/lexile_corpus_tuner --cov=scripts/dev_tools \\
+    --cov=src/transcript_etl_pipeline --cov=scripts/dev_tools \\
       --cov-report=term-missing
 
 {check_instructions}

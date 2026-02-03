@@ -31,7 +31,7 @@ See `docs/code-change.instructions.md` for the end-to-end workflow.
 
 ## Coverage
 
-- With coverage: `poetry run pytest --cov=. --cov-report=term-missing`
+- With coverage: `poetry run pytest --cov=src/transcript_etl_pipeline --cov=scripts/dev_tools --cov-report=term-missing`
 - HTML report: `poetry run coverage html` → `htmlcov/index.html`
 
 ## Pre-commit Hooks

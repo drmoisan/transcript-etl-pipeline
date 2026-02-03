@@ -20,7 +20,7 @@ This plan closes evidence, coverage, and documentation gaps across the baseline 
   - Acceptance: Add a fenced output block labeled "Baseline — Ruff" in this plan file containing the exact command and its output.
 - [ ] [P0-T8] Capture baseline type-check output with `poetry run pyright`.
   - Acceptance: Add a fenced output block labeled "Baseline — Pyright" in this plan file containing the exact command and its output.
-- [ ] [P0-T9] Capture baseline test output with `poetry run pytest --cov=src/lexile_corpus_tuner --cov=scripts/dev_tools --cov-report=term-missing`.
+- [ ] [P0-T9] Capture baseline test output with `poetry run pytest --cov=src/transcript_etl_pipeline --cov=scripts/dev_tools --cov-report=term-missing`.
   - Acceptance: Add a fenced output block labeled "Baseline — Pytest (policy command)" in this plan file containing the exact command and its output.
 
 ### Phase 1 — Epic Evidence and MVP Gaps
@@ -99,7 +99,7 @@ This plan closes evidence, coverage, and documentation gaps across the baseline 
   - Acceptance: Command exits with code 0 and reports no fixes.
 - [ ] [P5-T3] Run `poetry run pyright` and restart the QA loop from P5-T1 if it fails.
   - Acceptance: Command exits with code 0.
-- [ ] [P5-T4] Run `poetry run pytest --cov=src/lexile_corpus_tuner --cov=scripts/dev_tools --cov-report=term-missing` and restart the QA loop from P5-T1 if it fails.
+- [ ] [P5-T4] Run `poetry run pytest --cov=src/transcript_etl_pipeline --cov=scripts/dev_tools --cov-report=term-missing` and restart the QA loop from P5-T1 if it fails.
   - Acceptance: Command exits with code 0 and the run is part of a single clean pass with P5-T1 through P5-T4.
 
 ## Context Checks

@@ -51,7 +51,7 @@ reportUnknownMemberType = true
 reportUnknownVariableType = true
 
 [tool.coverage.run]
-source = ["src"]
+source = ["src", "scripts/dev_tools"]
 omit = [
     "tests/*",
     "*/tests/*",
