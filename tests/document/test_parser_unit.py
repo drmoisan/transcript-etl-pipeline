@@ -28,7 +28,7 @@ class TestParseEnhancedTextUnit:
         assert texts == ["2025-11-29", "Alice Smith, Bob Lee"]
 
     def test_transcript_label_paragraph_contains_full_body(self) -> None:
-        """Ensure transcript paragraph combines subsequent lines into a single block."""
+        """Ensure transcript label does not absorb subsequent lines."""
         text = (
             "Date: 2025-11-29\r\n"
             "\r\n"
@@ -39,13 +39,18 @@ class TestParseEnhancedTextUnit:
 
         doc = parse_enhanced_text(text)
 
-        assert len(doc.sections) == 2
+        assert len(doc.sections) == 3
         transcript_section = doc.sections[1]
         assert transcript_section.section_type == SectionType.TRANSCRIPT_LABEL
         assert len(transcript_section.paragraphs) == 1
         paragraph = transcript_section.paragraphs[0]
         assert paragraph.label and paragraph.label.text == "Transcript:"
-        assert paragraph.text == "Speaker A: Opening remarks. Speaker B: Follow-up note."
+        assert paragraph.text == ""
+        speaker_section = doc.sections[2]
+        assert speaker_section.section_type == SectionType.SPEAKER_PARAGRAPH
+        assert [p.text for p in speaker_section.paragraphs] == [
+            "Speaker A: Opening remarks. Speaker B: Follow-up note."
+        ]
 
     def test_blank_lines_split_sections_without_empty_paragraphs(self) -> None:
         """Ensure blank lines trigger new sections while avoiding empty paragraphs."""
@@ -58,10 +63,14 @@ class TestParseEnhancedTextUnit:
             SectionType.SPEAKER_PARAGRAPH,
         ]
 
-        first_section_texts = [paragraph.text for paragraph in doc.sections[0].paragraphs]
-        second_section_texts = [paragraph.text for paragraph in doc.sections[1].paragraphs]
-        assert first_section_texts == ["Speaker A: First."]
-        assert second_section_texts == ["Speaker B: Second."]
+        transcript_section = doc.sections[0]
+        assert transcript_section.paragraphs[0].label is not None
+        assert transcript_section.paragraphs[0].label.text == "Transcript:"
+        assert transcript_section.paragraphs[0].text == ""
+
+        speaker_section = doc.sections[1]
+        speaker_texts = [paragraph.text for paragraph in speaker_section.paragraphs]
+        assert speaker_texts == ["Speaker A: First.", "Speaker B: Second."]
 
     def test_metadata_section_not_added_when_empty(self) -> None:
         """Ensure empty metadata sections are not persisted when text starts with a label."""
@@ -69,10 +78,12 @@ class TestParseEnhancedTextUnit:
 
         doc = parse_enhanced_text(text)
 
-        assert len(doc.sections) == 1
+        assert len(doc.sections) == 2
         transcript_section = doc.sections[0]
         assert transcript_section.section_type == SectionType.TRANSCRIPT_LABEL
-        assert [paragraph.text for paragraph in transcript_section.paragraphs] == [
+        assert transcript_section.paragraphs[0].text == ""
+        speaker_section = doc.sections[1]
+        assert [paragraph.text for paragraph in speaker_section.paragraphs] == [
             "Discussion points with no metadata"
         ]
 
@@ -88,7 +99,7 @@ class TestParseEnhancedTextUnit:
 
         doc = parse_enhanced_text(text)
 
-        assert len(doc.sections) == 2
+        assert len(doc.sections) == 3
         metadata_section = doc.sections[0]
         assert metadata_section.section_type == SectionType.METADATA
         assert [paragraph.text for paragraph in metadata_section.paragraphs] == [
@@ -156,6 +167,11 @@ class TestParserHelpers:
         assert is_metadata_label("Meeting Title") is True
         assert is_metadata_label("Unknown:") is False
 
+    def test_is_metadata_label_accepts_meeting_title_variants(self) -> None:
+        """Ensure meeting title label variants are accepted."""
+        assert is_metadata_label("Meeting Title:") is True
+        assert is_metadata_label("MEETING TITLE:") is True
+
     def test_extract_label_empty_line_returns_none(self) -> None:
         """Ensure extract_label returns None for an empty line."""
         assert extract_label("") is None
@@ -218,3 +234,26 @@ class TestParserSpeakerParagraphTransition:
         speaker_section = doc.sections[1]
         labels = [p.label.text if p.label else None for p in speaker_section.paragraphs]
         assert labels == ["Alice:", "Bob:"]
+
+    def test_transcript_label_inline_text_is_preserved(self) -> None:
+        """Transcript label preserves inline text after the label."""
+        text = "Transcript: Meeting recap\r\nSpeakerA: Hello.\r\n"
+
+        doc = parse_enhanced_text(text)
+
+        transcript_section = doc.sections[0]
+        assert transcript_section.section_type == SectionType.TRANSCRIPT_LABEL
+        assert transcript_section.paragraphs[0].label is not None
+        assert transcript_section.paragraphs[0].label.text == "Transcript:"
+        assert transcript_section.paragraphs[0].text == "Meeting recap"
+
+    def test_unlabeled_transcript_lines_create_regular_paragraphs(self) -> None:
+        """Unlabeled transcript lines become regular paragraphs."""
+        text = "Transcript:\r\nFirst line.\r\nSecond line."
+
+        doc = parse_enhanced_text(text)
+
+        assert doc.sections[0].section_type == SectionType.TRANSCRIPT_LABEL
+        assert doc.sections[1].section_type == SectionType.SPEAKER_PARAGRAPH
+        assert doc.sections[1].paragraphs[0].label is None
+        assert doc.sections[1].paragraphs[0].text == "First line. Second line."

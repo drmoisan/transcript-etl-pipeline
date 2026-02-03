@@ -14,6 +14,18 @@ fi
 REPO_ROOT="$(cd "$REPO_ROOT" && pwd)"
 export REPO_ROOT
 
+# If the repo root doesn't contain expected tooling, try common workspace mounts.
+if [ ! -f "$REPO_ROOT/scripts/powershell/PoshQC/PoshQC.psd1" ]; then
+  repo_name="$(basename "$REPO_ROOT")"
+  for candidate in "/workspaces/$repo_name" "/workspace/$repo_name"; do
+    if [ -f "$candidate/scripts/powershell/PoshQC/PoshQC.psd1" ]; then
+      REPO_ROOT="$candidate"
+      export REPO_ROOT
+      break
+    fi
+  done
+fi
+
 # Quick connectivity preflight to avoid long retries when PyPI is unreachable.
 check_pypi_connectivity() {
   if [ "${ALLOW_OFFLINE_INSTALL:-0}" = "1" ]; then
@@ -205,12 +217,47 @@ if command -v pwsh >/dev/null 2>&1; then
   '
 
   POSHQC_PATH="$REPO_ROOT/scripts/powershell/PoshQC/PoshQC.psd1"
+  if [ ! -f "$POSHQC_PATH" ]; then
+    echo "PoshQC module missing; attempting to restore from git..." >&2
+    if command -v git >/dev/null 2>&1 && git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+      # 1. Sparse checkout handling
+      if git -C "$REPO_ROOT" sparse-checkout list >/dev/null 2>&1; then
+        echo "Check for sparse-checkout..." >&2
+        # We don't blindly disable anymore; we try checkout first. 
+        # But if checkout fails, we might need to disable it.
+        # For now, let's try the direct checkout.
+      fi
+
+      # 2. Try restoring from local HEAD
+      echo "Attempting restore from HEAD..." >&2
+      git -C "$REPO_ROOT" checkout HEAD -- scripts/powershell/PoshQC >/dev/null 2>&1 || true
+
+      # 3. If still missing, try fetching and restoring from origin/development
+      if [ ! -f "$POSHQC_PATH" ]; then
+         echo "PoshQC still missing; attempting fetch from origin/development..." >&2
+         git -C "$REPO_ROOT" fetch origin development:refs/remotes/origin/development >/dev/null 2>&1 || true
+         git -C "$REPO_ROOT" checkout origin/development -- scripts/powershell/PoshQC >/dev/null 2>&1 || true
+      fi
+      
+      # 4. Fallback to master
+      if [ ! -f "$POSHQC_PATH" ]; then
+         echo "PoshQC still missing; attempting fetch from origin/master..." >&2
+         git -C "$REPO_ROOT" fetch origin master:refs/remotes/origin/master >/dev/null 2>&1 || true
+         git -C "$REPO_ROOT" checkout origin/master -- scripts/powershell/PoshQC >/dev/null 2>&1 || true
+      fi
+    fi
+  fi
+
   if [ -f "$POSHQC_PATH" ]; then
     echo "Importing PoshQC module (required for parity)..."
     pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass \
       -Command '& { Import-Module "$env:REPO_ROOT/scripts/powershell/PoshQC/PoshQC.psd1" -Force; Get-Command -Module PoshQC | Out-Host }'
   else
     echo "ERROR: PoshQC module not found at $POSHQC_PATH" >&2
+    if command -v git >/dev/null 2>&1 && git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+      echo "ERROR: git tracking info for PoshQC:" >&2
+      git -C "$REPO_ROOT" ls-files --stage scripts/powershell/PoshQC/PoshQC.psd1 >&2 || true
+    fi
     exit 1
   fi
 else

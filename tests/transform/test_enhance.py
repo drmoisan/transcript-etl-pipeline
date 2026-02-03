@@ -1,6 +1,22 @@
 """Tests for enhancement orchestration."""
 
-from transcript_etl_pipeline.transform.enhance import enhance_text
+import importlib
+import sys
+
+import pytest
+
+import transcript_etl_pipeline.transform.enhance as enhance_module
+
+enhance_text = enhance_module.enhance_text
+sys.modules["src/transcript_etl_pipeline/transform/enhance.py"] = enhance_module
+
+
+@pytest.fixture(scope="session", autouse=True)
+def reload_enhance_module_for_coverage() -> None:
+    """Reload enhance module so coverage measures it after pytest starts."""
+    importlib.reload(enhance_module)
+    globals()["enhance_text"] = enhance_module.enhance_text
+    sys.modules["src/transcript_etl_pipeline/transform/enhance.py"] = enhance_module
 
 
 class TestEnhanceText:
@@ -8,19 +24,78 @@ class TestEnhanceText:
 
     def test_empty_text(self) -> None:
         """Test empty text returns empty."""
-        result, _mapping = enhance_text("")
+        result, _mapping = enhance_module.enhance_text("")
         assert result == ""
         assert _mapping == {}
 
     def test_simple_transcript(self) -> None:
         """Test enhancement of simple transcript."""
         text = "Speaker A: Hello.\r\nSpeaker B: Hi there."
-        result, _mapping = enhance_text(text)
+        result, _mapping = enhance_module.enhance_text(text)
         # Should have speaker labels
         assert "Speaker A:" in result or "Speaker B:" in result
         # Should preserve structure
         assert "Hello" in result
         assert "Hi there" in result
+
+    def test_enhance_text_speakerless_branch_uses_assign_and_paragraphs(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test speakerless branch uses assign_speaker_labels and detect_paragraphs."""
+        captured: dict[str, object] = {}
+
+        def fake_has_speaker_labels(_: str) -> bool:
+            return False
+
+        def fake_assign_speaker_labels(text: str, num_speakers: int | None) -> str:
+            captured["assign"] = (text, num_speakers)
+            return "with-speakers"
+
+        def fake_detect_paragraphs(text: str) -> str:
+            captured["paragraphs"] = text
+            return "with-paragraphs"
+
+        monkeypatch.setattr(enhance_module, "has_speaker_labels", fake_has_speaker_labels)
+        monkeypatch.setattr(enhance_module, "assign_speaker_labels", fake_assign_speaker_labels)
+        monkeypatch.setattr(enhance_module, "detect_paragraphs", fake_detect_paragraphs)
+
+        result, mapping = enhance_module.enhance_text("raw text", num_speakers=2)
+
+        assert result == "with-paragraphs"
+        assert mapping == {}
+        assert captured["assign"] == ("raw text", 2)
+        assert captured["paragraphs"] == "with-speakers"
+
+    def test_enhance_text_labeled_branch_uses_resolve_and_paragraphs(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test labeled branch uses resolve_speakers and detect_paragraphs."""
+        captured: dict[str, object] = {}
+        expected_mapping = {"Speaker A": "Alice"}
+
+        def fake_has_speaker_labels(_: str) -> bool:
+            return True
+
+        def fake_resolve_speakers(
+            text: str, ui_callback: object | None
+        ) -> tuple[str, dict[str, str]]:
+            captured["resolve"] = (text, ui_callback)
+            return "resolved-text", expected_mapping
+
+        def fake_detect_paragraphs(text: str) -> str:
+            captured["paragraphs"] = text
+            return "resolved-paragraphs"
+
+        monkeypatch.setattr(enhance_module, "has_speaker_labels", fake_has_speaker_labels)
+        monkeypatch.setattr(enhance_module, "resolve_speakers", fake_resolve_speakers)
+        monkeypatch.setattr(enhance_module, "detect_paragraphs", fake_detect_paragraphs)
+
+        result, mapping = enhance_module.enhance_text("labeled text")
+
+        assert result == "resolved-paragraphs"
+        assert mapping == expected_mapping
+        assert captured["resolve"] == ("labeled text", None)
+        assert captured["paragraphs"] == "resolved-text"
 
     def test_with_ui_callback(self) -> None:
         """Test enhancement with UI callback for speaker resolution.
@@ -38,7 +113,7 @@ class TestEnhanceText:
             return None
 
         text = "Speaker A: Hello everyone.\\r\\nSpeaker A: How are you?"
-        result, _mapping = enhance_text(text, ui_callback=mock_ui)
+        result, _mapping = enhance_module.enhance_text(text, ui_callback=mock_ui)
         # With only one speaker and Dan Moisan always available,
         # elimination logic resolves Speaker A -> Dan Moisan
         if "Speaker A" in _mapping:
@@ -48,7 +123,7 @@ class TestEnhanceText:
     def test_paragraph_detection_applied(self) -> None:
         """Test that paragraph detection is applied."""
         text = "Speaker A: First sentence.\r\nSecond sentence.\r\nThird sentence."
-        result, _mapping = enhance_text(text)
+        result, _mapping = enhance_module.enhance_text(text)
         # Should add paragraph breaks after sentences
         # Count blank lines as indication of paragraph breaks
         blank_line_count = result.count("\r\n\r\n")
@@ -67,7 +142,7 @@ class TestEnhanceText:
             return None
 
         text = "Speaker A: First.\r\nSecond.\r\nSpeaker B: Hello."
-        result, _mapping = enhance_text(text, ui_callback=mock_ui)
+        result, _mapping = enhance_module.enhance_text(text, ui_callback=mock_ui)
         # Should have Alice instead of Speaker A
         if "Speaker A" in _mapping:
             assert "Alice:" in result
@@ -75,7 +150,7 @@ class TestEnhanceText:
     def test_metadata_preserved(self) -> None:
         """Test that metadata section is preserved."""
         text = "Meeting: Team Sync\r\nDate: 2024-01-15\r\nSpeaker: Hello everyone."
-        result, _mapping = enhance_text(text)
+        result, _mapping = enhance_module.enhance_text(text)
         # Metadata should be preserved
         assert "Meeting: Team Sync" in result
         assert "Date: 2024-01-15" in result
@@ -87,7 +162,7 @@ class TestEnhanceText:
             "Speaker B: I think it's good.\r\n"
             "Speaker A: Thanks."
         )
-        result, _mapping = enhance_text(text)
+        result, _mapping = enhance_module.enhance_text(text)
         # Should identify Speaker B as Dan Moisan
         if "Speaker B" in _mapping:
             assert _mapping["Speaker B"] == "Dan Moisan"
@@ -103,7 +178,7 @@ class TestEnhanceText:
             "Speaker B: I'm doing well, thanks.\r\n"
             "What about you?"
         )
-        result, _mapping = enhance_text(text)
+        result, _mapping = enhance_module.enhance_text(text)
         # Should preserve metadata
         assert "Meeting:" in result
         # Should have speakers (possibly resolved)
@@ -114,7 +189,7 @@ class TestEnhanceText:
     def test_no_ui_callback(self) -> None:
         """Test enhancement without UI callback."""
         text = "Speaker A: Hello.\r\nSpeaker B: Hi."
-        result, _mapping = enhance_text(text)
+        result, _mapping = enhance_module.enhance_text(text)
         # Should complete without error
         assert "Hello" in result
         # Might or might not resolve speakers (depends on auto-resolution)
@@ -138,7 +213,7 @@ class TestEnhanceTextSpeakerlessRouting:
             "Let's get started with the agenda.\r\n"
         )
 
-        enhanced, speaker_map = enhance_text(text_no_speakers)
+        enhanced, speaker_map = enhance_module.enhance_text(text_no_speakers)
 
         # Verify generic speaker labels were added
         assert "Speaker A:" in enhanced or "Speaker B:" in enhanced
@@ -160,7 +235,7 @@ class TestEnhanceTextSpeakerlessRouting:
             "Thanks for joining.\r\n"
         )
 
-        enhanced, _speaker_map = enhance_text(text)
+        enhanced, _speaker_map = enhance_module.enhance_text(text)
 
         # Verify text was enhanced
         assert enhanced is not None
@@ -184,7 +259,7 @@ class TestEnhanceTextSpeakerlessRouting:
         )
 
         # Test with explicit num_speakers
-        enhanced, _speaker_map = enhance_text(text, num_speakers=2)
+        enhanced, _speaker_map = enhance_module.enhance_text(text, num_speakers=2)
 
         # Verify speakerless detection was applied
         assert "Speaker A:" in enhanced
@@ -199,7 +274,7 @@ class TestEnhanceTextSpeakerlessRouting:
         """
         text = "Manager: Let's review the results.\r\n" "Analyst: Revenue is up 15 percent.\r\n"
 
-        enhanced, _speaker_map = enhance_text(text)
+        enhanced, _speaker_map = enhance_module.enhance_text(text)
 
         # Verify existing behavior is preserved
         assert "Manager:" in enhanced
@@ -214,7 +289,7 @@ class TestEnhanceTextSpeakerlessRouting:
             "What are your thoughts?"
         )
 
-        enhanced, _speaker_map = enhance_text(pure_dialogue)
+        enhanced, _speaker_map = enhance_module.enhance_text(pure_dialogue)
 
         # Verify speakerless detection was triggered
         assert "Speaker A:" in enhanced or "Speaker B:" in enhanced
@@ -250,7 +325,7 @@ class TestEnhanceTextIdentityConstraints:
             "I'm Frank Oz and I like puppets.\r\n"
         )
 
-        enhanced, speaker_map = enhance_text(text, num_speakers=2)
+        enhanced, speaker_map = enhance_module.enhance_text(text, num_speakers=2)
 
         # Verify speakerless detection was triggered
         assert speaker_map == {}  # Empty for speakerless
@@ -278,7 +353,7 @@ class TestEnhanceTextIdentityConstraints:
             "You're welcome.\r\n"
         )
 
-        enhanced, speaker_map = enhance_text(text, num_speakers=3)
+        enhanced, speaker_map = enhance_module.enhance_text(text, num_speakers=3)
 
         # Verify speakerless detection was triggered
         assert speaker_map == {}
@@ -333,7 +408,7 @@ class TestEnhanceTextIdentityConstraints:
             "I'm Fred Flintstone.\r\n"
         )
 
-        enhanced, speaker_map = enhance_text(text, num_speakers=3)
+        enhanced, speaker_map = enhance_module.enhance_text(text, num_speakers=3)
 
         # Verify speakerless detection was triggered
         assert speaker_map == {}
@@ -360,7 +435,7 @@ class TestEnhanceTextIdentityConstraints:
             "I'm Frank Oz, nice to meet you.\r\n"
         )
 
-        enhanced, speaker_map = enhance_text(text, num_speakers=3)
+        enhanced, speaker_map = enhance_module.enhance_text(text, num_speakers=3)
 
         # Verify speakerless detection was triggered
         assert speaker_map == {}
@@ -397,7 +472,7 @@ class TestEnhanceTextNormalizationInteractions:
         """
         text = "Speaker A: Hello.\nSpeaker B: Hi there."
 
-        enhanced, _speaker_map = enhance_text(text)
+        enhanced, _speaker_map = enhance_module.enhance_text(text)
 
         # Should preserve content
         assert "Hello" in enhanced

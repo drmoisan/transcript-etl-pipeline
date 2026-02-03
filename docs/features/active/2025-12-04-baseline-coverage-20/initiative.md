@@ -8,6 +8,31 @@
 
 Raise test coverage on core logic while preventing regressions. Target 80% coverage on core transform/speakerless flows without blocking on full CLI/UI parity, and enforce a “no merge without tests” standard with regression coverage for bug-prone areas.
 
+## MVP Scope & Metrics
+
+MVP scope focuses on core transformation and formatting modules needed for deterministic transcript and notes processing:
+
+- `src/transcript_etl_pipeline/transform/enhance.py`
+- `src/transcript_etl_pipeline/transform/speakerless.py`
+- `src/transcript_etl_pipeline/transform/speaker_helpers.py`
+- `src/transcript_etl_pipeline/transform/identity_constraints.py`
+- `src/transcript_etl_pipeline/transform/normalize.py`
+- `src/transcript_etl_pipeline/transform/notes.py`
+- `src/transcript_etl_pipeline/document/parser.py`
+- `src/transcript_etl_pipeline/formatters/docx_formatter.py`
+- `src/transcript_etl_pipeline/formatters/md_formatter.py`
+- `src/transcript_etl_pipeline/formatters/rtf_formatter.py`
+
+Coverage targets (MVP):
+
+| Module / Group | Target |
+| --- | --- |
+| `enhance.py` | ≥ 70% |
+| `speakerless.py` + `speaker_helpers.py` | ≥ 70% each |
+| `identity_constraints.py` + `normalize.py` | ≥ 75% combined |
+| `notes.py` | ≥ 70% |
+| `docx_formatter.py`, `md_formatter.py`, `rtf_formatter.py`, `document/parser.py` | ≥ 70% each |
+
 ## Decomposition (Child Features/Workstreams)
 
 - [x] Enhance core transform coverage (Issue #21) - `../2025-12-04-baseline-coverage/`
@@ -31,10 +56,10 @@ Dependencies: Core logic tests (#21–#23) unblock higher-level regression and E
 
 ## Milestones & Status
 
-- M1 Core coverage to 80% (transform + speakerless) - In progress (complete issues #24–#27)
-- M2 Regression suite stabilized (notes, 3+ speakers, parser/formatters) - Not started
-- M3 CI coverage gate + reporting - Done (Issue #28)
-- CLI/UX alignment: end-to-end speakerless + notes CLI tests - Not started (Issue #25)
+- M1 Core coverage to 80% (transform + speakerless) - Planned
+- M2 Regression suite stabilized (notes, 3+ speakers, parser/formatters) - Planned
+- M3 CI coverage gate + reporting - Planned (Issue #28)
+- CLI/UX alignment: end-to-end speakerless + notes CLI tests - Planned (Issue #25)
 
 ## Initiative-Level Validation
 

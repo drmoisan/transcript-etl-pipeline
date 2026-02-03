@@ -33,3 +33,14 @@ These have minimal cross-dependencies and can run concurrently.
 - Keep tests in `tests/...`; use the per-issue `*.agent.md` for scope/policies/acceptance.
 - Update issue #20 checklist as each child issue progresses.
 - If two issues touch the same fixtures, nominate one owner (e.g., #24) to host them and have others import/reuse.
+
+## Coverage Gate Sequencing Criteria
+
+Coverage gate ratchets should follow milestone completion and module targets:
+
+1. **Baseline gate (15%)** — current CI default while #21–#23 are in progress.
+2. **Gate to 20%** — after #21–#23 reach their per-module targets and M1 is marked complete.
+3. **Gate to 30%** — after #26–#27 coverage targets are met and M2 is marked complete.
+4. **Gate to 50%** — after #24–#25 regression/E2E fixtures stabilize and M3 is marked complete.
+
+Each ratchet requires updated coverage evidence in the relevant plan/spec files and an initiative milestone status update.

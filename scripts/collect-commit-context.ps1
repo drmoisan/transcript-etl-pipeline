@@ -1,6 +1,6 @@
 # PowerShell
 param(
-  [string]$Output = "artifacts/commit_context.txt"
+    [string]$Output = "artifacts/commit_context.txt"
 )
 
 $ErrorActionPreference = "Stop"
@@ -19,24 +19,24 @@ $PSDefaultParameterValues['Add-Content:Encoding']  = 'utf8'
 $PSDefaultParameterValues['Export-Csv:Encoding']   = 'utf8'
 
 function Add-Section {
-  param(
-    [string]$Title,
-    [ScriptBlock]$Cmd,
-    [switch]$AllowFail
-  )
-  Add-Content -Path $Output -Value "`n===== $Title =====`n"
-  try {
-    if ($Cmd) {
-      $result = & $Cmd | Out-String
-      Add-Content -Path $Output -Value $result.TrimEnd()
+    param(
+        [string]$Title,
+        [ScriptBlock]$Cmd,
+        [switch]$AllowFail
+    )
+    Add-Content -Path $Output -Value "`n===== $Title =====`n"
+    try {
+        if ($Cmd) {
+            $result = & $Cmd | Out-String
+            Add-Content -Path $Output -Value $result.TrimEnd()
+        }
+    } catch {
+        if ($AllowFail) {
+            Add-Content -Path $Output -Value "[n/a]"
+        } else {
+            throw
+        }
     }
-  } catch {
-    if ($AllowFail) {
-      Add-Content -Path $Output -Value "[n/a]"
-    } else {
-      throw
-    }
-  }
 }
 
 # Ensure we are inside a Git repo and move to root

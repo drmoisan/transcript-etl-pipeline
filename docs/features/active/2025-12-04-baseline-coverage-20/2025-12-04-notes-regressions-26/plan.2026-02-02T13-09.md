@@ -3,7 +3,7 @@ title: "2025-12-04-notes-regressions - Plan"
 issue: "26"
 parent: "none"
 owner: "drmoisan"
-last_updated: "2026-02-02"
+last_updated: "2026-02-02T23:44:20Z"
 status: "Planned"
 status_color: "blue"
 version: "0.2"
@@ -16,7 +16,7 @@ version: "0.2"
 - **Issue:** [#26](https://github.com/drmoisan/transcript-etl-pipeline/issues/26)
 - **Parent (optional):** none
 - **Owner:** drmoisan
-- **Last Updated:** 2026-02-02
+- **Last Updated:** 2026-02-02T23:44:20Z
 - **Status:** Planned
 - **Version:** 0.2
 
@@ -83,15 +83,15 @@ version: "0.2"
   - Acceptance: Command exits with code 0.
 
 ### Phase 1 — Notes Regression Tests (`tests/transform/test_notes.py`)
-- [ ] [P1-T1] TASK-1 Add a Pytest case in `tests/transform/test_notes.py` that calls `_clean_markdown_text` with input `"\\$100 **bold** __strong__"` and asserts output equals `"$100 bold strong"` (REQ-1, REQ-3).
+- [x] [P1-T1] TASK-1 Add a Pytest case in `tests/transform/test_notes.py` that calls `_clean_markdown_text` with input `"\\$100 **bold** __strong__"` and asserts output equals `"$100 bold strong"` (REQ-1, REQ-3).
   - Acceptance: `Select-String -Path tests/transform/test_notes.py -Pattern 'clean_markdown_text'` returns a match and the test asserts the exact cleaned string.
-- [ ] [P1-T2] TASK-2 Add a Pytest case in `tests/transform/test_notes.py` that calls `_parse_bullet_line` with `"- Item"` and `"  - Nested"` and asserts bullet levels `(1, "Item")` and `(2, "Nested")` (REQ-1, REQ-3).
+- [x] [P1-T2] TASK-2 Add a Pytest case in `tests/transform/test_notes.py` that calls `_parse_bullet_line` with `"- Item"` and `"  - Nested"` and asserts bullet levels `(1, "Item")` and `(2, "Nested")` (REQ-1, REQ-3).
   - Acceptance: `Select-String -Path tests/transform/test_notes.py -Pattern 'parse_bullet_line'` returns a match and the test asserts exact tuples.
-- [ ] [P1-T3] TASK-3 Add a Pytest case in `tests/transform/test_notes.py` that calls `_get_heading_level` with `"  ## Heading"` and asserts heading level `2` (REQ-1, REQ-3).
+- [x] [P1-T3] TASK-3 Add a Pytest case in `tests/transform/test_notes.py` that calls `_get_heading_level` with `"  ## Heading"` and asserts heading level `2` (REQ-1, REQ-3).
   - Acceptance: `Select-String -Path tests/transform/test_notes.py -Pattern 'get_heading_level'` returns a match and the test asserts `== 2`.
-- [ ] [P1-T4] TASK-4 Add a Pytest case in `tests/transform/test_notes.py` that calls `transform_notes` with text `"# Title\n\n- Bullet"` and label `"Meeting Notes"` and asserts an H2 notes header uses the provided label (REQ-1, REQ-3).
+- [x] [P1-T4] TASK-4 Add a Pytest case in `tests/transform/test_notes.py` that calls `transform_notes` with text `"# Title\n\n- Bullet"` and label `"Meeting Notes"` and asserts an H2 notes header uses the provided label (REQ-1, REQ-3).
   - Acceptance: `Select-String -Path tests/transform/test_notes.py -Pattern 'Meeting Notes'` returns a match and the test asserts the H2 header text equals `"Meeting Notes"`.
-- [ ] [P1-T5] TASK-5 Add a Pytest case in `tests/transform/test_notes.py` that calls `_parse_markdown` with mixed input `"# Title\n- One\n## Section\n- Two"` and asserts paragraph ordering and heading levels are preserved (REQ-1, REQ-3).
+- [x] [P1-T5] TASK-5 Add a Pytest case in `tests/transform/test_notes.py` that calls `_parse_markdown` with mixed input `"# Title\n- One\n## Section\n- Two"` and asserts paragraph ordering and heading levels are preserved (REQ-1, REQ-3).
   - Acceptance: `Select-String -Path tests/transform/test_notes.py -Pattern 'parse_markdown_mixed'` returns a match and the test asserts the expected sequence of heading levels and bullet flags.
 
 ### Phase 2 — Coverage Evidence and Issue Updates

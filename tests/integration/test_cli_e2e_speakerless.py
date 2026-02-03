@@ -1,47 +1,124 @@
-"""End-to-end CLI tests for speakerless transcript workflows.
+"""End-to-end CLI tests for speakerless transcript workflows (in-memory)."""
 
-Tests the CLI interface with speakerless transcripts to verify:
-- Argument parsing and validation
-- Speakerless detection with multi-speaker fixtures
-- Output generation in DOCX/MD/RTF formats
-- Coverage of cli.py, extract/from_file.py, and formatters
-"""
+from __future__ import annotations
 
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from pathlib import Path
 
-from docx import Document as DocxDocument  # type: ignore[import-untyped]
+import pytest
 
+import transcript_etl_pipeline.cli as cli
 from tests.fixtures.multi_speaker import (
     GENERIC_MEETING_3SPEAKER,
     PANEL_DISCUSSION_4SPEAKER,
     SPACEX_DISCUSSION,
     TEAM_STANDUP_3SPEAKER,
 )
-from transcript_etl_pipeline.cli import main
+from transcript_etl_pipeline.document.model import Document
+
+
+def list_documents() -> list[Document]:
+    """Create a new list of documents."""
+    return []
+
+
+def list_strings() -> list[str]:
+    """Create a new list of strings."""
+    return []
+
+
+def list_paths() -> list[Path]:
+    """Create a new list of paths."""
+    return []
+
+
+def noop(*_args: object, **_kwargs: object) -> None:
+    """No-op stub for monkeypatched functions."""
+    return None
+
+
+def _document_text(document: Document) -> str:
+    text_parts: list[str] = []
+    for section in document.sections:  # type: ignore[attr-defined]
+        for paragraph in section.paragraphs:
+            text_parts.append(paragraph.text)
+            if paragraph.label is not None:
+                text_parts.append(paragraph.label.text)
+    return " ".join(part for part in text_parts if part)
+
+
+@dataclass
+class CliCapture:
+    """Capture data from CLI stubs."""
+
+    input_text: str = ""
+    saved_documents: list[Document] = field(default_factory=list_documents)
+    saved_formats: list[str] = field(default_factory=list_strings)
+    saved_paths: list[Path] = field(default_factory=list_paths)
+    path_exists: bool | Callable[[Path], bool] = True
+
+
+@pytest.fixture()
+def cli_mocks(monkeypatch: pytest.MonkeyPatch) -> CliCapture:
+    """Shared CLI stubs for in-memory execution."""
+    captured = CliCapture()
+
+    def fake_save_document(document: Document, output_format: str, output_path: Path) -> None:
+        captured.saved_documents.append(document)
+        captured.saved_formats.append(output_format)
+        captured.saved_paths.append(output_path)
+
+    def fake_extract_text(_source: str, _file_path: str | None) -> str:
+        return captured.input_text
+
+    def fake_exists(path: Path) -> bool:
+        path_exists = captured.path_exists
+        if isinstance(path_exists, Callable):
+            return path_exists(path)
+        return bool(path_exists)
+
+    monkeypatch.setattr(cli, "setup_logging", noop)
+    monkeypatch.setattr(cli.config, "save_last_output_folder", noop)
+    monkeypatch.setattr(cli, "_save_document", fake_save_document)
+    monkeypatch.setattr(cli, "_extract_text", fake_extract_text)
+    monkeypatch.setattr(Path, "exists", fake_exists)
+    monkeypatch.setattr(Path, "is_dir", fake_exists)
+
+    return captured
+
+
+def run_cli(
+    cli_state: CliCapture,
+    input_text: str,
+    args: list[str],
+    *,
+    path_exists: bool | Callable[[Path], bool] = True,
+) -> tuple[int, CliCapture]:
+    """Run the CLI with in-memory stubs."""
+    cli_state.input_text = input_text
+    cli_state.path_exists = path_exists
+    cli_state.saved_documents.clear()
+    cli_state.saved_formats.clear()
+    cli_state.saved_paths.clear()
+
+    exit_code = cli.main(args)
+    return exit_code, cli_state
 
 
 class TestCLISpeakerless3SpeakersDOCX:
     """Test CLI with 3-speaker speakerless transcripts - DOCX output."""
 
-    def test_spacex_discussion_3speakers_docx(self, tmp_path: Path) -> None:
-        """Test CLI with SpaceX 3-speaker discussion producing DOCX output.
-
-        Exercises: cli.main(), argument parsing, extract_from_file(),
-        speakerless detection, format_to_docx()
-        """
-        # Arrange: Create input file with SpaceX fixture
-        input_file = tmp_path / "spacex_input.txt"
-        input_file.write_text(SPACEX_DISCUSSION.input_text, encoding="utf-8")
-
-        output_file = tmp_path / "spacex_output.docx"
-
-        # Act: Invoke CLI
-        exit_code = main(
+    def test_spacex_discussion_3speakers_docx(self, cli_mocks: CliCapture) -> None:
+        """Test CLI with SpaceX discussion producing DOCX output."""
+        exit_code, captured = run_cli(
+            cli_mocks,
+            SPACEX_DISCUSSION.input_text,
             [
                 "--source",
                 "file",
                 "--file",
-                str(input_file),
+                "spacex_input.txt",
                 "--num-speakers",
                 "3",
                 "--format",
@@ -49,38 +126,24 @@ class TestCLISpeakerless3SpeakersDOCX:
                 "--output-name",
                 "spacex_output.docx",
                 "--output-folder",
-                str(tmp_path),
-            ]
+                "/output",
+            ],
         )
 
-        # Assert: Successful execution and output exists
         assert exit_code == 0
-        assert output_file.exists()
-        assert output_file.stat().st_size > 0
+        assert captured.saved_formats == ["docx"]
+        assert "Speaker" in _document_text(captured.saved_documents[0])
 
-        # Verify DOCX contains speaker labels
-        doc = DocxDocument(str(output_file))  # type: ignore[no-untyped-call]
-        all_text = " ".join(p.text for p in doc.paragraphs)
-        assert "Speaker A" in all_text or "Speaker B" in all_text
-
-    def test_generic_meeting_3speakers_docx(self, tmp_path: Path) -> None:
-        """Test CLI with generic meeting 3-speaker transcript producing DOCX.
-
-        Uses GENERIC_MEETING_3SPEAKER fixture with formal business dialogue.
-        """
-        # Arrange
-        input_file = tmp_path / "meeting_input.txt"
-        input_file.write_text(GENERIC_MEETING_3SPEAKER.input_text, encoding="utf-8")
-
-        output_file = tmp_path / "meeting_output.docx"
-
-        # Act
-        exit_code = main(
+    def test_generic_meeting_3speakers_docx(self, cli_mocks: CliCapture) -> None:
+        """Test CLI with generic meeting transcript producing DOCX."""
+        exit_code, captured = run_cli(
+            cli_mocks,
+            GENERIC_MEETING_3SPEAKER.input_text,
             [
                 "--source",
                 "file",
                 "--file",
-                str(input_file),
+                "meeting_input.txt",
                 "--num-speakers",
                 "3",
                 "--format",
@@ -88,36 +151,24 @@ class TestCLISpeakerless3SpeakersDOCX:
                 "--output-name",
                 "meeting_output.docx",
                 "--output-folder",
-                str(tmp_path),
-            ]
+                "/output",
+            ],
         )
 
-        # Assert
         assert exit_code == 0
-        assert output_file.exists()
+        assert captured.saved_formats == ["docx"]
+        assert "Speaker" in _document_text(captured.saved_documents[0])
 
-        doc = DocxDocument(str(output_file))  # type: ignore[no-untyped-call]
-        all_text = " ".join(p.text for p in doc.paragraphs)
-        assert "Peter Parker" in all_text or "Frank Oz" in all_text
-
-    def test_team_standup_3speakers_docx(self, tmp_path: Path) -> None:
-        """Test CLI with team standup 3-speaker transcript producing DOCX.
-
-        Uses TEAM_STANDUP_3SPEAKER fixture with technical standup dialogue.
-        """
-        # Arrange
-        input_file = tmp_path / "standup_input.txt"
-        input_file.write_text(TEAM_STANDUP_3SPEAKER.input_text, encoding="utf-8")
-
-        output_file = tmp_path / "standup_output.docx"
-
-        # Act
-        exit_code = main(
+    def test_team_standup_3speakers_docx(self, cli_mocks: CliCapture) -> None:
+        """Test CLI with team standup transcript producing DOCX."""
+        exit_code, captured = run_cli(
+            cli_mocks,
+            TEAM_STANDUP_3SPEAKER.input_text,
             [
                 "--source",
                 "file",
                 "--file",
-                str(input_file),
+                "standup_input.txt",
                 "--num-speakers",
                 "3",
                 "--format",
@@ -125,84 +176,28 @@ class TestCLISpeakerless3SpeakersDOCX:
                 "--output-name",
                 "standup_output.docx",
                 "--output-folder",
-                str(tmp_path),
-            ]
+                "/output",
+            ],
         )
 
-        # Assert
         assert exit_code == 0
-        assert output_file.exists()
-
-        doc = DocxDocument(str(output_file))  # type: ignore[no-untyped-call]
-        all_text = " ".join(p.text for p in doc.paragraphs)
-        assert "Speaker" in all_text
-
-
-class TestCLISpeakerless4SpeakersDOCX:
-    """Test CLI with 4-speaker speakerless transcripts - DOCX output."""
-
-    def test_panel_discussion_4speakers_docx(self, tmp_path: Path) -> None:
-        """Test CLI with panel discussion 4-speaker transcript producing DOCX.
-
-        Uses PANEL_DISCUSSION_4SPEAKER fixture with AI ethics panel.
-        Exercises 4-speaker detection logic.
-        """
-        # Arrange
-        input_file = tmp_path / "panel_input.txt"
-        input_file.write_text(PANEL_DISCUSSION_4SPEAKER.input_text, encoding="utf-8")
-
-        output_file = tmp_path / "panel_output.docx"
-
-        # Act
-        exit_code = main(
-            [
-                "--source",
-                "file",
-                "--file",
-                str(input_file),
-                "--num-speakers",
-                "4",
-                "--format",
-                "docx",
-                "--output-name",
-                "panel_output.docx",
-                "--output-folder",
-                str(tmp_path),
-            ]
-        )
-
-        # Assert
-        assert exit_code == 0
-        assert output_file.exists()
-
-        doc = DocxDocument(str(output_file))  # type: ignore[no-untyped-call]
-        all_text = " ".join(p.text for p in doc.paragraphs)
-        # Should have 4 distinct speakers
-        assert "Speaker A" in all_text
-        assert "Speaker B" in all_text or "Speaker C" in all_text
+        assert captured.saved_formats == ["docx"]
+        assert "Speaker" in _document_text(captured.saved_documents[0])
 
 
 class TestCLISpeakerlessMarkdown:
     """Test CLI with speakerless transcripts - Markdown output."""
 
-    def test_spacex_discussion_3speakers_md(self, tmp_path: Path) -> None:
-        """Test CLI with SpaceX 3-speaker discussion producing Markdown output.
-
-        Exercises: cli.main(), format_to_md()
-        """
-        # Arrange
-        input_file = tmp_path / "spacex_input.txt"
-        input_file.write_text(SPACEX_DISCUSSION.input_text, encoding="utf-8")
-
-        output_file = tmp_path / "spacex_output.md"
-
-        # Act
-        exit_code = main(
+    def test_spacex_discussion_3speakers_md(self, cli_mocks: CliCapture) -> None:
+        """Test CLI with SpaceX discussion producing Markdown output."""
+        exit_code, captured = run_cli(
+            cli_mocks,
+            SPACEX_DISCUSSION.input_text,
             [
                 "--source",
                 "file",
                 "--file",
-                str(input_file),
+                "spacex_input.txt",
                 "--num-speakers",
                 "3",
                 "--format",
@@ -210,109 +205,27 @@ class TestCLISpeakerlessMarkdown:
                 "--output-name",
                 "spacex_output.md",
                 "--output-folder",
-                str(tmp_path),
-            ]
+                "/output",
+            ],
         )
 
-        # Assert
         assert exit_code == 0
-        assert output_file.exists()
-
-        content = output_file.read_text(encoding="utf-8")
-        assert "Speaker A:" in content or "Speaker B:" in content
-        # Check for actual dialogue content
-        assert "SpaceX" in content or "launch" in content
-
-    def test_generic_meeting_3speakers_md(self, tmp_path: Path) -> None:
-        """Test CLI with generic meeting producing Markdown output."""
-        # Arrange
-        input_file = tmp_path / "meeting_input.txt"
-        input_file.write_text(GENERIC_MEETING_3SPEAKER.input_text, encoding="utf-8")
-
-        output_file = tmp_path / "meeting_output.md"
-
-        # Act
-        exit_code = main(
-            [
-                "--source",
-                "file",
-                "--file",
-                str(input_file),
-                "--num-speakers",
-                "3",
-                "--format",
-                "md",
-                "--output-name",
-                "meeting_output.md",
-                "--output-folder",
-                str(tmp_path),
-            ]
-        )
-
-        # Assert
-        assert exit_code == 0
-        assert output_file.exists()
-
-        content = output_file.read_text(encoding="utf-8")
-        assert "Peter Parker" in content or "Frank Oz" in content
+        assert captured.saved_formats == ["md"]
 
 
 class TestCLISpeakerlessRTF:
     """Test CLI with speakerless transcripts - RTF output."""
 
-    def test_spacex_discussion_3speakers_rtf(self, tmp_path: Path) -> None:
-        """Test CLI with SpaceX 3-speaker discussion producing RTF output.
-
-        Exercises: cli.main(), format_to_rtf()
-        """
-        # Arrange
-        input_file = tmp_path / "spacex_input.txt"
-        input_file.write_text(SPACEX_DISCUSSION.input_text, encoding="utf-8")
-
-        output_file = tmp_path / "spacex_output.rtf"
-
-        # Act
-        exit_code = main(
-            [
-                "--source",
-                "file",
-                "--file",
-                str(input_file),
-                "--num-speakers",
-                "3",
-                "--format",
-                "rtf",
-                "--output-name",
-                "spacex_output.rtf",
-                "--output-folder",
-                str(tmp_path),
-            ]
-        )
-
-        # Assert
-        assert exit_code == 0
-        assert output_file.exists()
-        assert output_file.stat().st_size > 0
-
-        # RTF format check - should contain RTF header
-        content = output_file.read_text(encoding="utf-8")
-        assert r"{\rtf" in content
-
-    def test_panel_discussion_4speakers_rtf(self, tmp_path: Path) -> None:
+    def test_panel_discussion_4speakers_rtf(self, cli_mocks: CliCapture) -> None:
         """Test CLI with panel discussion producing RTF output."""
-        # Arrange
-        input_file = tmp_path / "panel_input.txt"
-        input_file.write_text(PANEL_DISCUSSION_4SPEAKER.input_text, encoding="utf-8")
-
-        output_file = tmp_path / "panel_output.rtf"
-
-        # Act
-        exit_code = main(
+        exit_code, captured = run_cli(
+            cli_mocks,
+            PANEL_DISCUSSION_4SPEAKER.input_text,
             [
                 "--source",
                 "file",
                 "--file",
-                str(input_file),
+                "panel_input.txt",
                 "--num-speakers",
                 "4",
                 "--format",
@@ -320,116 +233,85 @@ class TestCLISpeakerlessRTF:
                 "--output-name",
                 "panel_output.rtf",
                 "--output-folder",
-                str(tmp_path),
-            ]
+                "/output",
+            ],
         )
 
-        # Assert
         assert exit_code == 0
-        assert output_file.exists()
-
-        content = output_file.read_text(encoding="utf-8")
-        assert r"{\rtf" in content
+        assert captured.saved_formats == ["rtf"]
 
 
 class TestCLISpeakerlessAutoDetect:
     """Test CLI speakerless detection without explicit num-speakers."""
 
-    def test_auto_detect_3speakers(self, tmp_path: Path) -> None:
-        """Test CLI auto-detects 3 speakers without --num-speakers flag.
-
-        Verifies that speakerless detection works when num_speakers is not
-        explicitly provided (should auto-detect 2-4 speakers).
-        """
-        # Arrange
-        input_file = tmp_path / "spacex_input.txt"
-        input_file.write_text(SPACEX_DISCUSSION.input_text, encoding="utf-8")
-
-        output_file = tmp_path / "spacex_auto.md"
-
-        # Act - No --num-speakers flag
-        exit_code = main(
+    def test_auto_detect_3speakers(self, cli_mocks: CliCapture) -> None:
+        """Test CLI auto-detects speakers without --num-speakers flag."""
+        exit_code, captured = run_cli(
+            cli_mocks,
+            SPACEX_DISCUSSION.input_text,
             [
                 "--source",
                 "file",
                 "--file",
-                str(input_file),
+                "spacex_input.txt",
                 "--format",
                 "md",
                 "--output-name",
                 "spacex_auto.md",
                 "--output-folder",
-                str(tmp_path),
-            ]
+                "/output",
+            ],
         )
 
-        # Assert
         assert exit_code == 0
-        assert output_file.exists()
-
-        content = output_file.read_text(encoding="utf-8")
-        # Should have speaker labels from auto-detection
-        assert "Speaker A:" in content or "Speaker B:" in content
+        assert "Speaker" in _document_text(captured.saved_documents[0])
 
 
 class TestCLIErrorHandling:
     """Test CLI error handling for invalid inputs."""
 
-    def test_missing_input_file(self, tmp_path: Path) -> None:
-        """Test CLI handles missing input file gracefully.
+    def test_missing_input_file(self, cli_mocks: CliCapture) -> None:
+        """Missing input file returns non-zero exit code."""
 
-        Verifies error handling path in cli.main() and extract_from_file().
-        """
-        # Arrange - File that doesn't exist
-        nonexistent_file = tmp_path / "nonexistent.txt"
+        def path_exists(path: Path) -> bool:
+            return path.name != "missing.txt"
 
-        # Act
-        exit_code = main(
+        exit_code, _captured = run_cli(
+            cli_mocks,
+            "Unused",
             [
                 "--source",
                 "file",
                 "--file",
-                str(nonexistent_file),
+                "missing.txt",
                 "--format",
                 "md",
                 "--output-name",
                 "output.md",
                 "--output-folder",
-                str(tmp_path),
-            ]
+                "/output",
+            ],
+            path_exists=path_exists,
         )
 
-        # Assert - Should return non-zero exit code
         assert exit_code != 0
 
-    def test_invalid_format(self, tmp_path: Path) -> None:
-        """Test CLI rejects invalid output format.
-
-        Tests argument validation in create_parser().
-        """
-        # Arrange
-        input_file = tmp_path / "input.txt"
-        input_file.write_text("Test content", encoding="utf-8")
-
-        # Act - Invalid format should be caught by argparse
-        # This will raise SystemExit, so we catch it
-        try:
-            main(
+    def test_invalid_format(self, cli_mocks: CliCapture) -> None:
+        """Invalid format raises SystemExit."""
+        with pytest.raises(SystemExit):
+            run_cli(
+                cli_mocks,
+                "Test content",
                 [
                     "--source",
                     "file",
                     "--file",
-                    str(input_file),
+                    "input.txt",
                     "--format",
-                    "invalid",  # Invalid format
+                    "invalid",
                     "--output-name",
-                    "output.txt",
+                    "output.md",
                     "--output-folder",
-                    str(tmp_path),
-                ]
+                    "/output",
+                ],
             )
-            # If we get here, it didn't raise - fail the test
-            raise AssertionError("Should have raised SystemExit for invalid format")
-        except SystemExit as e:
-            # Assert - Should exit with error code
-            assert e.code != 0

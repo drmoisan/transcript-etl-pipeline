@@ -3,7 +3,7 @@ title: "2025-12-04-enhance-tests - Plan"
 issue: "21"
 parent: "none"
 owner: "drmoisan"
-last_updated: "2026-02-02"
+last_updated: "2026-02-02T23:44:20Z"
 status: "Planned"
 status_color: "blue"
 version: "0.1"
@@ -14,7 +14,7 @@ version: "0.1"
 - **Issue:** #21
 - **Parent (optional):** none
 - **Owner:** drmoisan
-- **Last Updated:** 2026-02-02T12-10
+- **Last Updated:** 2026-02-02T23:44:20Z
 - **Status:** Planned
 - **Version:** 0.1
 
@@ -66,19 +66,19 @@ Requirements (REQ-):
   - Acceptance: Command exits with code 0
 
 ### Phase 4 — Coverage Verification and Evidence
-- [ ] [P4-T1] TASK-ENH-040 Run coverage for the module with `poetry run pytest tests/transform/test_enhance.py --cov=src/transcript_etl_pipeline/transform/enhance.py --cov-report=term`
+- [x] [P4-T1] TASK-ENH-040 Run coverage for the module with `poetry run pytest tests/transform/test_enhance.py --cov=src/transcript_etl_pipeline/transform/enhance.py --cov-report=term`
   - Acceptance: Coverage report shows `src/transcript_etl_pipeline/transform/enhance.py` coverage >= 70%
 - [ ] [P4-T2] TASK-ENH-041 Update issue #21 with the coverage report snippet and list of added tests from `tests/transform/test_enhance.py`
   - Acceptance: Issue #21 contains the coverage snippet and test list in a comment or description update
 
 ### Phase 5 — Full Toolchain Pass
-- [ ] [P5-T1] TASK-ENH-050 Run `poetry run black .`
+- [x] [P5-T1] TASK-ENH-050 Run `poetry run black .`
   - Acceptance: Command exits with code 0 and no files are modified
-- [ ] [P5-T2] TASK-ENH-051 Run `poetry run ruff check`
+- [x] [P5-T2] TASK-ENH-051 Run `poetry run ruff check`
   - Acceptance: Command exits with code 0
-- [ ] [P5-T3] TASK-ENH-052 Run `poetry run pyright`
+- [x] [P5-T3] TASK-ENH-052 Run `poetry run pyright`
   - Acceptance: Command exits with code 0
-- [ ] [P5-T4] TASK-ENH-053 Run `poetry run pytest`
+- [x] [P5-T4] TASK-ENH-053 Run `poetry run pytest`
   - Acceptance: Command exits with code 0
 
 ## Test Plan
@@ -89,4 +89,38 @@ Requirements (REQ-):
 
 ## Open Questions / Notes
 
-- None.
+- Coverage evidence:
+
+```Coverage Output
+The currently activated Python version 3.10.19 is not supported by the project (^3.12).
+Trying to find and use a compatible version. 
+Using python3.14 (3.14.0)
+Skipping virtualenv creation, as specified in config file.
+============================= test session starts ==============================
+platform linux -- Python 3.10.19, pytest-8.4.2, pluggy-1.6.0
+rootdir: /workspace/transcript-etl-pipeline
+configfile: pytest.ini
+plugins: cov-5.0.0, anyio-4.12.1
+collected 37 items
+
+tests/transform/test_enhance.py ...................................../root/.pyenv/versions/3.10.19/lib/python3.10/site-packages/coverage/inorout.py:537: CoverageWarning: Module src/transcript_etl_pipeline/transform/enhance.py was previously imported, but not measured (module-not-measured); see https://coverage.readthedocs.io/en/7.12.0/messages.html#warning-module-not-measured
+  self.warn(msg, slug="module-not-measured")
+    [100%]
+
+=============================== warnings summary ===============================
+src/transcript_etl_pipeline/transform/speakers.py:12
+  /workspace/transcript-etl-pipeline/src/transcript_etl_pipeline/transform/speakers.py:12: DeprecationWarning: dialogue_names_deprecated is deprecated; use extract_person_names_from_text instead.
+    from transcript_etl_pipeline.transform import dialogue_names_deprecated
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+
+---------- coverage: platform linux, python 3.10.19-final-0 ----------
+Name                                               Stmts   Miss  Cover
+----------------------------------------------------------------------
+src/transcript_etl_pipeline/transform/enhance.py      13      0   100%
+----------------------------------------------------------------------
+TOTAL                                                 13      0   100%
+
+Required test coverage of 15.0% reached. Total coverage: 100.00%
+======================== 37 passed, 1 warning in 0.67s =========================
+```
