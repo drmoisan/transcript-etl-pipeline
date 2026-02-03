@@ -41,6 +41,8 @@ In particular, for any plan that changes code or tests, the plan must:
 - Include Phase 0 tasks that (a) read applicable repo policies, and (b) capture baseline results for the **language-specific toolchains** applicable to the files being changed (see table below).
 - Include a final QA phase that runs the full toolchain loop for **each applicable language** and reports pass/fail.
 
+Baseline capture outputs MUST be saved to a `baseline/` subdirectory located alongside the plan file. Store baseline artifacts in `baseline/` next to that plan.
+
 **Language-specific toolchains (run only for languages touched by the plan):**
 
 | Language   | Baseline & Final QC commands                                                                 |

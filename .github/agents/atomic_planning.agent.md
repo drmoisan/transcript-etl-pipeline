@@ -152,6 +152,8 @@ A plan that changes **only Bash** files requires only the Bash toolchain in Phas
 
 These baseline-capture tasks are required so the executor can (a) detect regressions, and (b) prove the final QA pass is meaningful.
 
+Baseline capture outputs MUST be saved to a `baseline/` subdirectory located alongside the plan file. Store baseline artifacts in `baseline/` next to that plan.
+
 Additionally, if the plan involves new libraries, complex bugs, or unfamiliar tools, you MUST include **Mandatory Research** tasks in Phase 0 to verify assumptions (e.g., "Research known issues with extension X").
 
 Example:

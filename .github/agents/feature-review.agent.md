@@ -31,6 +31,9 @@ handoffs:
       - Preserve atomic planner conventions (phases, [P#-T#] task IDs, checkboxes, verifiable acceptance criteria).
       - Separate discovery/research from implementation tasks.
       - Include Phase 0 tasks for: reading applicable repo policies, capturing baseline, and defining success criteria.
+         - Store baseline artifacts in a `baseline/` folder next to the plan file.
+         - For multi-feature epics, store the epic-wide baseline at the epic root `baseline/`.
+         - For multi-version features, keep a feature-level baseline in the feature root `baseline/` and version baselines next to each plan.
       - Include a final QA phase: repo-standard format -> lint -> type-check -> tests loop.
       - Use ONLY the explicit output path supplied (no path confirmation questions).
     send: false
@@ -87,6 +90,11 @@ Constraints:
   - `artifacts/pr_context.summary.txt` (primary; read thoroughly)
   - `artifacts/pr_context.appendix.txt` (secondary; full baseline diff + raw evidence)
 - If the pr_context artifacts are missing or stale, re-generate them (see Phase A).
+
+## 1b) Baseline capture location (canonical)
+- Store baseline artifacts in a `baseline/` folder next to the plan file.
+- For multi-feature epics, store the epic-wide baseline at the epic root `baseline/`.
+- For multi-version features, keep a feature-level baseline in the feature root `baseline/`, and store version-specific baselines in a `baseline/` folder next to each version plan.
 
 ## 2) No silent fixes
 - Do not “clean up” code during review.

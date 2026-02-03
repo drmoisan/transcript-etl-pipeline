@@ -17,6 +17,12 @@ Do not ask clarifying questions. Make best-effort inferences, document assumptio
 
 Write outputs to the **active feature folder** determined by the agent. If no active feature folder can be inferred, use the agent’s fallback (e.g., `docs/features/active/<date>-feature-review/`).
 
+### Baseline capture location (canonical)
+
+- Store baseline artifacts in a `baseline/` folder next to the plan file.
+- For multi-feature epics, store the epic-wide baseline at the epic root `baseline/`.
+- For multi-version features, keep a feature-level baseline in the feature root `baseline/`, and store version-specific baselines in a `baseline/` folder next to each version plan.
+
 ### Required deliverables
 
 All filenames must include a timestamp in ISO-8601 format `yyyy-MM-ddTHH-mm` (e.g., `policy-audit.2026-01-08T14-30.md`).

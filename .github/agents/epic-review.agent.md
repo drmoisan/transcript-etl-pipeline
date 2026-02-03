@@ -15,6 +15,7 @@ handoffs:
       - Preserve atomic planner conventions (phases, [P#-T#] task IDs, checkboxes, verifiable acceptance criteria).
       - Separate discovery/research from implementation tasks.
       - Include Phase 0 tasks for: reading applicable repo policies, confirming epic scope/docs, and defining success criteria.
+      - If baseline capture is required, store artifacts in `<EPIC_FOLDER>/baseline/`.
       - Include a final QA phase: doc structure checks -> lint (if available) -> link checks (if available).
       - Use ONLY the explicit output path supplied (no path confirmation questions).
     send: false
@@ -121,6 +122,10 @@ Apply these requirements to any **numeric/metric claim** (coverage, pass rates, 
 4. **Blocking claims must be Verified:**
   - Any blocking item based on metrics requires **Verified** status.
   - Otherwise, phrase it as **“needs verification”** rather than **“fails.”**
+
+## 7) Baseline capture location (canonical)
+- For multi-feature epics, store the epic-level baseline in `<EPIC_FOLDER>/baseline/`.
+- For multi-version features within the epic, store the feature-level baseline in the feature root `baseline/`, and store version-specific baselines in a `baseline/` folder next to each version plan.
 
 # Execution plan (phased, deterministic)
 
