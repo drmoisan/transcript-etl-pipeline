@@ -17,3 +17,4 @@ build/
 !.vscode/tasks.json
 artifacts/*
 src/transcript_etl_pipeline.egg-info/
+.agent_logs

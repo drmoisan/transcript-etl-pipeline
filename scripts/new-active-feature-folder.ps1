@@ -252,3 +252,4 @@ if ($codeCmd) {
     Write-Warning "VS Code 'code' command not found. Files to edit:"
     $filesToOpen | ForEach-Object { Write-Information ("  {0}" -f $_) -InformationAction Continue }
 }
+

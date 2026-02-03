@@ -204,3 +204,4 @@ if ($PSCmdlet.ShouldProcess($tmp, "Remove temporary file")) {
     Remove-Item $tmp -ErrorAction SilentlyContinue
 }
 exit $exit
+
