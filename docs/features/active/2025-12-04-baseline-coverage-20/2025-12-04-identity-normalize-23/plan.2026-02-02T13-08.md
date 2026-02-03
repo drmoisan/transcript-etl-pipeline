@@ -148,9 +148,9 @@ Atomic, deterministic execution plan to raise combined coverage for `src/transcr
 ### Phase 4 — Coverage Evidence & Reporting
 - [x] [P4-T1] Run `poetry run pytest --cov=src/transcript_etl_pipeline --cov-report=term-missing` and record module-level coverage for `identity_constraints.py` and `normalize.py` in `docs/features/active/2025-12-04-identity-normalize-23/coverage-results.md` (REQ-001, REQ-004)
   - Acceptance: `coverage-results.md` exists and contains a table with per-module statement/missing/coverage values
-- [ ] [P4-T2] Document any unreachable or anomalous lines found during coverage analysis in `docs/features/active/2025-12-04-identity-normalize-23/coverage-results.md` (REQ-004)
+- [x] [P4-T2] Document any unreachable or anomalous lines found during coverage analysis in `docs/features/active/2025-12-04-identity-normalize-23/coverage-results.md` (REQ-004)
   - Acceptance: `coverage-results.md` contains a section titled `Uncovered Lines Analysis` with numbered entries (or the line `None` if no anomalies)
-- [ ] [P4-T3] Update Issue #23 with coverage results, test command, and links to `coverage-results.md` (REQ-004)
+- [ ] [P4-T3] Update Issue #23 with coverage results, test command, and links to `coverage-results.md` (REQ-004). Blocked: `gh` CLI unavailable in the execution environment.
   - Acceptance: Issue #23 comment includes the exact coverage table values and the command `poetry run pytest --cov=src/transcript_etl_pipeline --cov-report=term-missing`
 
 ### Phase 5 — QA Toolchain

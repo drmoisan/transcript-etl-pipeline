@@ -95,11 +95,11 @@ version: "0.2"
   - Acceptance: `Select-String -Path tests/transform/test_notes.py -Pattern 'parse_markdown_mixed'` returns a match and the test asserts the expected sequence of heading levels and bullet flags.
 
 ### Phase 2 — Coverage Evidence and Issue Updates
-- [ ] [P2-T1] TASK-6 Run `poetry run pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-report=html` and capture coverage for `src/transcript_etl_pipeline/transform/notes.py` (REQ-2).
+- [x] [P2-T1] TASK-6 Run `poetry run pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-report=html` and capture coverage for `src/transcript_etl_pipeline/transform/notes.py` (REQ-2).
   - Acceptance: `Select-String -Path coverage.xml -Pattern 'transform/notes.py'` returns a match.
-- [ ] [P2-T2] TASK-7 Update Issue #26 with PR/test links and outcomes (REQ-4).
+- [ ] [P2-T2] TASK-7 Update Issue #26 with PR/test links and outcomes (REQ-4). Blocked: `gh` CLI unavailable in the execution environment.
   - Acceptance: `gh issue view 26 --json body -q ".body"` output contains a PR URL matching `https://github.com/drmoisan/transcript-etl-pipeline/pull/` and mentions "notes regressions".
-- [ ] [P2-T3] TASK-8 Update `docs/features/active/2025-12-04-notes-regressions-26/26-notes-regressions.prompt.md` with edge cases or outcomes discovered during test authoring.
+- [x] [P2-T3] TASK-8 Update `docs/features/active/2025-12-04-notes-regressions-26/26-notes-regressions.prompt.md` with edge cases or outcomes discovered during test authoring.
   - Acceptance: `Select-String -Path docs/features/active/2025-12-04-notes-regressions-26/26-notes-regressions.prompt.md -Pattern 'Edge cases|Outcomes'` returns a match.
 
 ### Phase 3 — QA (Python Toolchain)

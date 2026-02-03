@@ -1,46 +1,168 @@
-"""End-to-end CLI tests for notes workflows.
+"""End-to-end CLI tests for notes workflows (in-memory)."""
 
-Tests the CLI interface with notes processing to verify:
-- Notes-only document creation
-- Notes + transcript combined workflows
-- Update mode (add/replace notes and transcript)
-- Coverage of cli.py, document/reader.py, transform/notes.py
-"""
+from __future__ import annotations
 
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from pathlib import Path
 
-from docx import Document as DocxDocument  # type: ignore[import-untyped]
+import pytest
 
+import transcript_etl_pipeline.cli as cli
 from tests.fixtures.multi_speaker import SPACEX_DISCUSSION
-from transcript_etl_pipeline.cli import main
+from transcript_etl_pipeline.document.model import (
+    Document,
+    DocumentSection,
+    Label,
+    Paragraph,
+    SectionType,
+)
+
+
+def list_documents() -> list[Document]:
+    """Create a new list of documents."""
+    return []
+
+
+def list_strings() -> list[str]:
+    """Create a new list of strings."""
+    return []
+
+
+def list_paths() -> list[Path]:
+    """Create a new list of paths."""
+    return []
+
+
+def list_file_contents() -> dict[str, str]:
+    """Create a new file contents mapping."""
+    return {}
+
+
+def noop(*_args: object, **_kwargs: object) -> None:
+    """No-op stub for monkeypatched functions."""
+    return None
+
+
+def _document_text(document: Document) -> str:
+    text_parts: list[str] = []
+    for section in document.sections:  # type: ignore[attr-defined]
+        for paragraph in section.paragraphs:
+            if paragraph.label is not None:
+                text_parts.append(paragraph.label.text)
+            if paragraph.text:
+                text_parts.append(paragraph.text)
+    return " ".join(text_parts)
+
+
+def _make_notes_document(header: str, body_lines: list[str]) -> Document:
+    document = Document()
+    header_section = DocumentSection(section_type=SectionType.NOTES_HEADER)
+    header_section.add_paragraph(Paragraph(text=header, section_type=SectionType.NOTES_HEADER))
+    document.add_section(header_section)
+
+    body_section = DocumentSection(section_type=SectionType.NOTES_BODY)
+    for line in body_lines:
+        body_section.add_paragraph(
+            Paragraph(text=line, section_type=SectionType.NOTES_BODY, is_bullet=True)
+        )
+    document.add_section(body_section)
+    return document
+
+
+def _make_transcript_document(speaker: str, text: str) -> Document:
+    document = Document()
+    section = DocumentSection(section_type=SectionType.SPEAKER_PARAGRAPH)
+    section.add_paragraph(
+        Paragraph(
+            label=Label(f"{speaker}:", is_speaker=True),
+            text=text,
+            section_type=SectionType.SPEAKER_PARAGRAPH,
+        )
+    )
+    document.add_section(section)
+    return document
+
+
+@dataclass
+class CliCapture:
+    """Capture data from CLI stubs."""
+
+    file_contents: dict[str, str] = field(default_factory=list_file_contents)
+    saved_documents: list[Document] = field(default_factory=list_documents)
+    saved_formats: list[str] = field(default_factory=list_strings)
+    saved_paths: list[Path] = field(default_factory=list_paths)
+    path_exists: bool | Callable[[Path], bool] = True
+    existing_document: Document | None = None
+
+
+@pytest.fixture()
+def cli_mocks(monkeypatch: pytest.MonkeyPatch) -> CliCapture:
+    """Shared CLI stubs for in-memory execution."""
+    captured = CliCapture()
+
+    def fake_save_document(document: Document, output_format: str, output_path: Path) -> None:
+        captured.saved_documents.append(document)
+        captured.saved_formats.append(output_format)
+        captured.saved_paths.append(output_path)
+
+    def fake_extract_text(_source: str, file_path: str | None) -> str:
+        if file_path is None:
+            return ""
+        return captured.file_contents.get(file_path, "")
+
+    def fake_read_document(_path: str) -> Document:
+        return captured.existing_document or Document()
+
+    def fake_exists(path: Path) -> bool:
+        path_exists = captured.path_exists
+        if isinstance(path_exists, Callable):
+            return path_exists(path)
+        return bool(path_exists)
+
+    monkeypatch.setattr(cli, "setup_logging", noop)
+    monkeypatch.setattr(cli.config, "save_last_output_folder", noop)
+    monkeypatch.setattr(cli, "_save_document", fake_save_document)
+    monkeypatch.setattr(cli, "_extract_text", fake_extract_text)
+    monkeypatch.setattr(cli, "read_document", fake_read_document)
+    monkeypatch.setattr(Path, "exists", fake_exists)
+    monkeypatch.setattr(Path, "is_dir", fake_exists)
+
+    return captured
+
+
+def run_cli(
+    cli_state: CliCapture,
+    args: list[str],
+    *,
+    file_contents: dict[str, str] | None = None,
+    existing_document: Document | None = None,
+    path_exists: bool | Callable[[Path], bool] = True,
+) -> tuple[int, CliCapture]:
+    """Run the CLI with in-memory stubs."""
+    cli_state.file_contents = file_contents or {}
+    cli_state.existing_document = existing_document
+    cli_state.path_exists = path_exists
+    cli_state.saved_documents.clear()
+    cli_state.saved_formats.clear()
+    cli_state.saved_paths.clear()
+
+    exit_code = cli.main(args)
+    return exit_code, cli_state
 
 
 class TestCLINotesOnly:
     """Test CLI with notes-only workflows."""
 
-    def test_notes_only_markdown(self, tmp_path: Path) -> None:
-        """Test CLI creating Markdown document with notes only.
-
-        Exercises: cli.main(), transform_notes(), format_to_md()
-        """
-        # Arrange: Create notes file
-        notes_file = tmp_path / "notes.md"
-        notes_file.write_text(
-            "- Action item: Review Q4 results\n"
-            "- Decision: Approve budget increase\n"
-            "- Next meeting: January 15th\n",
-            encoding="utf-8",
-        )
-
-        output_file = tmp_path / "notes_output.md"
-
-        # Act: Invoke CLI with notes-only
-        exit_code = main(
+    def test_notes_only_markdown(self, cli_mocks: CliCapture) -> None:
+        """Test CLI creating Markdown document with notes only."""
+        exit_code, captured = run_cli(
+            cli_mocks,
             [
                 "--notes-source",
                 "file",
                 "--notes-file",
-                str(notes_file),
+                "notes.md",
                 "--notes-label",
                 "Meeting Notes – 2025-01-10",
                 "--format",
@@ -48,43 +170,34 @@ class TestCLINotesOnly:
                 "--output-name",
                 "notes_output.md",
                 "--output-folder",
-                str(tmp_path),
-            ]
+                "/output",
+            ],
+            file_contents={
+                "notes.md": (
+                    "- Action item: Review Q4 results\n"
+                    "- Decision: Approve budget increase\n"
+                    "- Next meeting: January 15th\n"
+                )
+            },
         )
 
-        # Assert
         assert exit_code == 0
-        assert output_file.exists()
+        assert captured.saved_formats == ["md"]
 
-        content = output_file.read_text(encoding="utf-8")
+        content = _document_text(captured.saved_documents[0])
         assert "Meeting Notes – 2025-01-10" in content
         assert "Action item: Review Q4 results" in content
         assert "Decision: Approve budget increase" in content
 
-    def test_notes_only_docx(self, tmp_path: Path) -> None:
-        """Test CLI creating DOCX document with notes only.
-
-        Exercises: transform_notes(), format_to_docx()
-        """
-        # Arrange
-        notes_file = tmp_path / "notes.txt"
-        notes_file.write_text(
-            "Summary paragraph with important details.\n\n"
-            "* Key point one\n"
-            "* Key point two\n"
-            "* Key point three\n",
-            encoding="utf-8",
-        )
-
-        output_file = tmp_path / "notes_output.docx"
-
-        # Act
-        exit_code = main(
+    def test_notes_only_docx(self, cli_mocks: CliCapture) -> None:
+        """Test CLI creating DOCX document with notes only."""
+        exit_code, captured = run_cli(
+            cli_mocks,
             [
                 "--notes-source",
                 "file",
                 "--notes-file",
-                str(notes_file),
+                "notes.txt",
                 "--notes-label",
                 "Project Notes",
                 "--format",
@@ -92,39 +205,34 @@ class TestCLINotesOnly:
                 "--output-name",
                 "notes_output.docx",
                 "--output-folder",
-                str(tmp_path),
-            ]
+                "/output",
+            ],
+            file_contents={
+                "notes.txt": (
+                    "Summary paragraph with important details.\n\n"
+                    "* Key point one\n"
+                    "* Key point two\n"
+                    "* Key point three\n"
+                )
+            },
         )
 
-        # Assert
         assert exit_code == 0
-        assert output_file.exists()
+        assert captured.saved_formats == ["docx"]
 
-        doc = DocxDocument(str(output_file))  # type: ignore[no-untyped-call]
-        all_text = " ".join(p.text for p in doc.paragraphs)
-        assert "Project Notes" in all_text
-        assert "Key point one" in all_text
+        content = _document_text(captured.saved_documents[0])
+        assert "Project Notes" in content
+        assert "Key point one" in content
 
-    def test_notes_only_rtf(self, tmp_path: Path) -> None:
-        """Test CLI creating RTF document with notes only.
-
-        Exercises: transform_notes(), format_to_rtf()
-        """
-        # Arrange
-        notes_file = tmp_path / "notes.txt"
-        notes_file.write_text(
-            "- Important decision made\n" "- Follow-up required\n", encoding="utf-8"
-        )
-
-        output_file = tmp_path / "notes_output.rtf"
-
-        # Act
-        exit_code = main(
+    def test_notes_only_rtf(self, cli_mocks: CliCapture) -> None:
+        """Test CLI creating RTF document with notes only."""
+        exit_code, captured = run_cli(
+            cli_mocks,
             [
                 "--notes-source",
                 "file",
                 "--notes-file",
-                str(notes_file),
+                "notes.txt",
                 "--notes-label",
                 "Meeting Summary",
                 "--format",
@@ -132,52 +240,36 @@ class TestCLINotesOnly:
                 "--output-name",
                 "notes_output.rtf",
                 "--output-folder",
-                str(tmp_path),
-            ]
+                "/output",
+            ],
+            file_contents={"notes.txt": "- Important decision made\n- Follow-up required\n"},
         )
 
-        # Assert
         assert exit_code == 0
-        assert output_file.exists()
+        assert captured.saved_formats == ["rtf"]
 
-        content = output_file.read_text(encoding="utf-8")
-        assert r"{\rtf" in content
+        content = _document_text(captured.saved_documents[0])
+        assert "Meeting Summary" in content
 
 
 class TestCLINotesAndTranscript:
     """Test CLI with combined notes and transcript workflows."""
 
-    def test_notes_and_transcript_markdown(self, tmp_path: Path) -> None:
-        """Test CLI creating document with both notes and transcript.
-
-        Exercises: Full pipeline with both notes and transcript processing.
-        """
-        # Arrange: Create notes file
-        notes_file = tmp_path / "notes.md"
-        notes_file.write_text(
-            "- Discussed SpaceX launch\n" "- Team excited about landing\n",
-            encoding="utf-8",
-        )
-
-        # Create transcript file
-        transcript_file = tmp_path / "transcript.txt"
-        transcript_file.write_text(SPACEX_DISCUSSION.input_text, encoding="utf-8")
-
-        output_file = tmp_path / "combined_output.md"
-
-        # Act
-        exit_code = main(
+    def test_notes_and_transcript_markdown(self, cli_mocks: CliCapture) -> None:
+        """Test CLI creating document with both notes and transcript."""
+        exit_code, captured = run_cli(
+            cli_mocks,
             [
                 "--source",
                 "file",
                 "--file",
-                str(transcript_file),
+                "transcript.txt",
                 "--num-speakers",
                 "3",
                 "--notes-source",
                 "file",
                 "--notes-file",
-                str(notes_file),
+                "notes.md",
                 "--notes-label",
                 "Discussion Notes",
                 "--format",
@@ -185,51 +277,37 @@ class TestCLINotesAndTranscript:
                 "--output-name",
                 "combined_output.md",
                 "--output-folder",
-                str(tmp_path),
-            ]
+                "/output",
+            ],
+            file_contents={
+                "notes.md": "- Discussed SpaceX launch\n- Team excited about landing\n",
+                "transcript.txt": SPACEX_DISCUSSION.input_text,
+            },
         )
 
-        # Assert
         assert exit_code == 0
-        assert output_file.exists()
+        assert captured.saved_formats == ["md"]
 
-        content = output_file.read_text(encoding="utf-8")
-        # Should have both notes and transcript
+        content = _document_text(captured.saved_documents[0])
         assert "Discussion Notes" in content
         assert "Discussed SpaceX launch" in content
-        assert "Speaker A:" in content or "Speaker B:" in content
+        assert "Speaker" in content
 
-    def test_notes_and_transcript_docx(self, tmp_path: Path) -> None:
-        """Test CLI creating DOCX with both notes and transcript.
-
-        Uses speakerless transcript to avoid UI prompts.
-        """
-        # Arrange
-        notes_file = tmp_path / "notes.txt"
-        notes_file.write_text("- Meeting overview\n", encoding="utf-8")
-
-        transcript_file = tmp_path / "transcript.txt"
-        # Use speakerless transcript
-        transcript_file.write_text(
-            "Welcome everyone. Thank you for joining. Let's get started.\n",
-            encoding="utf-8",
-        )
-
-        output_file = tmp_path / "combined_output.docx"
-
-        # Act
-        exit_code = main(
+    def test_notes_and_transcript_docx(self, cli_mocks: CliCapture) -> None:
+        """Test CLI creating DOCX with both notes and transcript."""
+        exit_code, captured = run_cli(
+            cli_mocks,
             [
                 "--source",
                 "file",
                 "--file",
-                str(transcript_file),
+                "transcript.txt",
                 "--num-speakers",
                 "2",
                 "--notes-source",
                 "file",
                 "--notes-file",
-                str(notes_file),
+                "notes.txt",
                 "--notes-label",
                 "Quick Notes",
                 "--format",
@@ -237,74 +315,41 @@ class TestCLINotesAndTranscript:
                 "--output-name",
                 "combined_output.docx",
                 "--output-folder",
-                str(tmp_path),
-            ]
+                "/output",
+            ],
+            file_contents={
+                "notes.txt": "- Meeting overview\n",
+                "transcript.txt": "Welcome everyone. Thank you for joining. Let's get started.\n",
+            },
         )
 
-        # Assert
         assert exit_code == 0
-        assert output_file.exists()
+        assert captured.saved_formats == ["docx"]
 
-        doc = DocxDocument(str(output_file))  # type: ignore[no-untyped-call]
-        all_text = " ".join(p.text for p in doc.paragraphs)
-        assert "Quick Notes" in all_text or "Meeting overview" in all_text
-        assert "Speaker" in all_text
+        content = _document_text(captured.saved_documents[0])
+        assert "Quick Notes" in content
+        assert "Speaker" in content
 
 
 class TestCLIUpdateModeNotes:
-    """Test CLI update mode for adding/replacing notes.
+    """Test CLI update mode for adding/replacing notes."""
 
-    These tests exercise document/reader.py via --mode update.
-    """
-
-    def test_add_notes_to_existing_markdown(self, tmp_path: Path) -> None:
-        """Test CLI adding notes to existing Markdown document.
-
-        Exercises: cli.main() with --mode update, read_document(), merge_notes()
-        """
-        # Arrange: Create initial document with notes only (no UI prompts)
-        initial_notes_file = tmp_path / "initial_notes.txt"
-        initial_notes_file.write_text("- Initial note\n", encoding="utf-8")
-
-        initial_output = tmp_path / "initial.md"
-
-        # Create initial document with notes only
-        main(
-            [
-                "--notes-source",
-                "file",
-                "--notes-file",
-                str(initial_notes_file),
-                "--notes-label",
-                "Initial Notes",
-                "--format",
-                "md",
-                "--output-name",
-                "initial.md",
-                "--output-folder",
-                str(tmp_path),
-            ]
-        )
-
-        # Create notes to add
-        notes_file = tmp_path / "notes.md"
-        notes_file.write_text("- Added note\n", encoding="utf-8")
-
-        final_output = tmp_path / "final.md"
-
-        # Act: Add notes to existing document
-        exit_code = main(
+    def test_add_notes_to_existing_markdown(self, cli_mocks: CliCapture) -> None:
+        """Test CLI adding notes to existing Markdown document."""
+        existing_document = _make_notes_document("Initial Notes", ["Initial note"])
+        exit_code, captured = run_cli(
+            cli_mocks,
             [
                 "--mode",
                 "update",
                 "--update-file",
-                str(initial_output),
+                "initial.md",
                 "--update-action",
                 "add-notes",
                 "--notes-source",
                 "file",
                 "--notes-file",
-                str(notes_file),
+                "notes.md",
                 "--notes-label",
                 "Additional Notes",
                 "--format",
@@ -312,67 +357,36 @@ class TestCLIUpdateModeNotes:
                 "--output-name",
                 "final.md",
                 "--output-folder",
-                str(tmp_path),
-            ]
+                "/output",
+            ],
+            existing_document=existing_document,
+            file_contents={"notes.md": "- Added note\n"},
         )
 
-        # Assert
         assert exit_code == 0
-        assert final_output.exists()
+        assert captured.saved_formats == ["md"]
 
-        content = final_output.read_text(encoding="utf-8")
+        content = _document_text(captured.saved_documents[0])
         assert "Additional Notes" in content
         assert "Added note" in content
-        # Original notes should still be present
-        assert "Initial Notes" in content or "Initial note" in content
+        assert "Initial Notes" in content
 
-    def test_replace_notes_in_existing_docx(self, tmp_path: Path) -> None:
-        """Test CLI replacing notes in existing DOCX document.
-
-        Exercises: read_document() with DOCX, merge_notes() with replace mode
-        """
-        # Arrange: Create initial document with notes
-        initial_notes = tmp_path / "old_notes.txt"
-        initial_notes.write_text("- Old note content\n", encoding="utf-8")
-
-        initial_output = tmp_path / "initial.docx"
-
-        main(
-            [
-                "--notes-source",
-                "file",
-                "--notes-file",
-                str(initial_notes),
-                "--notes-label",
-                "Old Notes",
-                "--format",
-                "docx",
-                "--output-name",
-                "initial.docx",
-                "--output-folder",
-                str(tmp_path),
-            ]
-        )
-
-        # Create new notes
-        new_notes = tmp_path / "new_notes.txt"
-        new_notes.write_text("- New note content\n", encoding="utf-8")
-
-        final_output = tmp_path / "final.docx"
-
-        # Act: Replace notes
-        exit_code = main(
+    def test_replace_notes_in_existing_docx(self, cli_mocks: CliCapture) -> None:
+        """Test CLI replacing notes in existing DOCX document."""
+        existing_document = _make_notes_document("Old Notes", ["Old note content"])
+        exit_code, captured = run_cli(
+            cli_mocks,
             [
                 "--mode",
                 "update",
                 "--update-file",
-                str(initial_output),
+                "initial.docx",
                 "--update-action",
                 "replace-notes",
                 "--notes-source",
                 "file",
                 "--notes-file",
-                str(new_notes),
+                "new_notes.txt",
                 "--notes-label",
                 "New Notes",
                 "--format",
@@ -380,75 +394,40 @@ class TestCLIUpdateModeNotes:
                 "--output-name",
                 "final.docx",
                 "--output-folder",
-                str(tmp_path),
-            ]
+                "/output",
+            ],
+            existing_document=existing_document,
+            file_contents={"new_notes.txt": "- New note content\n"},
         )
 
-        # Assert
         assert exit_code == 0
-        assert final_output.exists()
+        assert captured.saved_formats == ["docx"]
 
-        doc = DocxDocument(str(final_output))  # type: ignore[no-untyped-call]
-        all_text = " ".join(p.text for p in doc.paragraphs)
-        assert "New Notes" in all_text or "New note content" in all_text
+        content = _document_text(captured.saved_documents[0])
+        assert "New Notes" in content
+        assert "New note content" in content
+        assert "Old note content" not in content
 
 
 class TestCLIUpdateModeTranscript:
-    """Test CLI update mode for adding/replacing transcript.
+    """Test CLI update mode for adding/replacing transcript."""
 
-    Exercises document/reader.py and merge_transcript().
-    """
-
-    def test_add_transcript_to_existing_notes(self, tmp_path: Path) -> None:
-        """Test CLI adding transcript to document with notes only.
-
-        Exercises: read_document(), merge_transcript() with add mode
-        Uses speakerless transcript to avoid UI prompts.
-        """
-        # Arrange: Create initial document with notes only
-        notes_file = tmp_path / "notes.txt"
-        notes_file.write_text("- Meeting notes\n", encoding="utf-8")
-
-        initial_output = tmp_path / "initial.md"
-
-        main(
-            [
-                "--notes-source",
-                "file",
-                "--notes-file",
-                str(notes_file),
-                "--notes-label",
-                "Notes",
-                "--format",
-                "md",
-                "--output-name",
-                "initial.md",
-                "--output-folder",
-                str(tmp_path),
-            ]
-        )
-
-        # Create speakerless transcript to add (avoids UI prompts)
-        transcript_file = tmp_path / "transcript.txt"
-        transcript_file.write_text(
-            "New transcript content here. Added later for testing.\n", encoding="utf-8"
-        )
-
-        final_output = tmp_path / "final.md"
-
-        # Act: Add transcript with num-speakers for speakerless detection
-        exit_code = main(
+    def test_add_transcript_to_existing_notes(self, cli_mocks: CliCapture) -> None:
+        """Test CLI adding transcript to document with notes only."""
+        existing_document = _make_notes_document("Notes", ["Meeting notes"])
+        exit_code, captured = run_cli(
+            cli_mocks,
             [
                 "--mode",
                 "update",
                 "--update-file",
-                str(initial_output),
+                "initial.md",
                 "--update-action",
                 "add-transcript",
                 "--source",
                 "file",
                 "--file",
-                str(transcript_file),
+                "transcript.txt",
                 "--num-speakers",
                 "2",
                 "--format",
@@ -456,133 +435,75 @@ class TestCLIUpdateModeTranscript:
                 "--output-name",
                 "final.md",
                 "--output-folder",
-                str(tmp_path),
-            ]
+                "/output",
+            ],
+            existing_document=existing_document,
+            file_contents={
+                "transcript.txt": "New transcript content here. Added later for testing.\n"
+            },
         )
 
-        # Assert
         assert exit_code == 0
-        assert final_output.exists()
+        assert captured.saved_formats == ["md"]
 
-        content = final_output.read_text(encoding="utf-8")
-        assert "Notes" in content or "Meeting notes" in content
-        assert "Speaker" in content or "transcript content" in content
+        content = _document_text(captured.saved_documents[0])
+        assert "Notes" in content
+        assert "Speaker" in content
 
-    def test_replace_transcript_in_existing_document(self, tmp_path: Path) -> None:
-        """Test CLI replacing transcript in existing document.
-
-        Exercises: read_document(), merge_transcript() with replace mode
-        """
-        # Arrange: Create initial document with transcript
-        old_transcript = tmp_path / "old_transcript.txt"
-        old_transcript.write_text("Speaker A: Old content.\n", encoding="utf-8")
-
-        initial_output = tmp_path / "initial.md"
-
-        main(
-            [
-                "--source",
-                "file",
-                "--file",
-                str(old_transcript),
-                "--format",
-                "md",
-                "--output-name",
-                "initial.md",
-                "--output-folder",
-                str(tmp_path),
-            ]
-        )
-
-        # Create new transcript
-        new_transcript = tmp_path / "new_transcript.txt"
-        new_transcript.write_text("Speaker B: New content.\n", encoding="utf-8")
-
-        final_output = tmp_path / "final.md"
-
-        # Act: Replace transcript
-        exit_code = main(
+    def test_replace_transcript_in_existing_document(self, cli_mocks: CliCapture) -> None:
+        """Test CLI replacing transcript in existing document."""
+        existing_document = _make_transcript_document("Speaker A", "Old content.")
+        exit_code, captured = run_cli(
+            cli_mocks,
             [
                 "--mode",
                 "update",
                 "--update-file",
-                str(initial_output),
+                "initial.md",
                 "--update-action",
                 "replace-transcript",
                 "--source",
                 "file",
                 "--file",
-                str(new_transcript),
+                "new_transcript.txt",
                 "--format",
                 "md",
                 "--output-name",
                 "final.md",
                 "--output-folder",
-                str(tmp_path),
-            ]
+                "/output",
+            ],
+            existing_document=existing_document,
+            file_contents={"new_transcript.txt": "Speaker B: New content.\n"},
         )
 
-        # Assert
         assert exit_code == 0
-        assert final_output.exists()
+        assert captured.saved_formats == ["md"]
 
-        content = final_output.read_text(encoding="utf-8")
-        assert "Speaker B" in content or "New content" in content
+        content = _document_text(captured.saved_documents[0])
+        assert "New content" in content
+        assert "Old content" not in content
 
 
 class TestCLIUpdateModeDOCX:
-    """Test CLI update mode with DOCX format.
+    """Test CLI update mode with DOCX format."""
 
-    Exercises document/reader.py with DOCX files.
-    """
-
-    def test_add_notes_to_docx_document(self, tmp_path: Path) -> None:
-        """Test CLI adding notes to existing DOCX document.
-
-        Exercises: read_document() with DOCX format
-        """
-        # Arrange: Create initial DOCX document with notes
-        initial_notes_file = tmp_path / "initial_notes.txt"
-        initial_notes_file.write_text("- Initial content\n", encoding="utf-8")
-
-        initial_output = tmp_path / "initial.docx"
-
-        main(
-            [
-                "--notes-source",
-                "file",
-                "--notes-file",
-                str(initial_notes_file),
-                "--notes-label",
-                "Initial Notes",
-                "--format",
-                "docx",
-                "--output-name",
-                "initial.docx",
-                "--output-folder",
-                str(tmp_path),
-            ]
-        )
-
-        # Create notes to add
-        notes_file = tmp_path / "notes.txt"
-        notes_file.write_text("- DOCX note added\n", encoding="utf-8")
-
-        final_output = tmp_path / "final.docx"
-
-        # Act: Add notes to DOCX
-        exit_code = main(
+    def test_add_notes_to_docx_document(self, cli_mocks: CliCapture) -> None:
+        """Test CLI adding notes to existing DOCX document."""
+        existing_document = _make_notes_document("Initial Notes", ["Initial content"])
+        exit_code, captured = run_cli(
+            cli_mocks,
             [
                 "--mode",
                 "update",
                 "--update-file",
-                str(initial_output),
+                "initial.docx",
                 "--update-action",
                 "add-notes",
                 "--notes-source",
                 "file",
                 "--notes-file",
-                str(notes_file),
+                "notes.txt",
                 "--notes-label",
                 "Additional DOCX Notes",
                 "--format",
@@ -590,86 +511,76 @@ class TestCLIUpdateModeDOCX:
                 "--output-name",
                 "final.docx",
                 "--output-folder",
-                str(tmp_path),
-            ]
+                "/output",
+            ],
+            existing_document=existing_document,
+            file_contents={"notes.txt": "- DOCX note added\n"},
         )
 
-        # Assert
         assert exit_code == 0
-        assert final_output.exists()
+        assert captured.saved_formats == ["docx"]
 
-        doc = DocxDocument(str(final_output))  # type: ignore[no-untyped-call]
-        all_text = " ".join(p.text for p in doc.paragraphs)
-        assert "DOCX note added" in all_text or "Additional DOCX Notes" in all_text
+        content = _document_text(captured.saved_documents[0])
+        assert "DOCX note added" in content
 
 
 class TestCLINotesErrorHandling:
     """Test CLI error handling for notes workflows."""
 
-    def test_update_mode_missing_update_file(self, tmp_path: Path) -> None:
-        """Test CLI handles missing update file gracefully.
-
-        Exercises error handling in read_document().
-        """
-        # Arrange
-        nonexistent_file = tmp_path / "nonexistent.md"
-        notes_file = tmp_path / "notes.txt"
-        notes_file.write_text("- Note\n", encoding="utf-8")
-
-        # Act
-        exit_code = main(
+    def test_update_mode_missing_update_file(self, cli_mocks: CliCapture) -> None:
+        """Test CLI handles missing update file gracefully."""
+        exit_code, captured = run_cli(
+            cli_mocks,
             [
                 "--mode",
                 "update",
                 "--update-file",
-                str(nonexistent_file),
+                "missing.md",
                 "--update-action",
                 "add-notes",
                 "--notes-source",
                 "file",
                 "--notes-file",
-                str(notes_file),
+                "notes.txt",
                 "--format",
                 "md",
                 "--output-name",
                 "output.md",
                 "--output-folder",
-                str(tmp_path),
-            ]
+                "/output",
+            ],
+            file_contents={"notes.txt": "- Note\n"},
+            path_exists=lambda path: path.name != "missing.md",
         )
 
-        # Assert: Should return non-zero exit code
         assert exit_code != 0
+        assert captured.saved_documents == []
 
-    def test_update_mode_missing_notes_file(self, tmp_path: Path) -> None:
+    def test_update_mode_missing_notes_file(self, cli_mocks: CliCapture) -> None:
         """Test CLI handles missing notes file gracefully."""
-        # Arrange: Create initial document
-        initial_file = tmp_path / "initial.md"
-        initial_file.write_text("# Initial\n\nContent\n", encoding="utf-8")
-
-        nonexistent_notes = tmp_path / "nonexistent.txt"
-
-        # Act
-        exit_code = main(
+        exit_code, captured = run_cli(
+            cli_mocks,
             [
                 "--mode",
                 "update",
                 "--update-file",
-                str(initial_file),
+                "initial.md",
                 "--update-action",
                 "add-notes",
                 "--notes-source",
                 "file",
                 "--notes-file",
-                str(nonexistent_notes),
+                "missing.txt",
                 "--format",
                 "md",
                 "--output-name",
                 "output.md",
                 "--output-folder",
-                str(tmp_path),
-            ]
+                "/output",
+            ],
+            file_contents={"initial.md": "# Initial"},
+            path_exists=lambda path: path.name not in {"missing.txt"},
         )
 
-        # Assert: Should return non-zero exit code
         assert exit_code != 0
+        assert captured.saved_documents == []

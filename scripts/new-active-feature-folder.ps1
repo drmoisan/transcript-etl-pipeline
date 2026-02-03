@@ -1,5 +1,5 @@
 # Creates an active feature folder from the template.
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess = $true)]
 param(
     [Parameter(Mandatory = $true)]
     [string] $FeatureName,
@@ -43,7 +43,7 @@ function Get-Section {
     return ''
 }
 
-function Set-Section {
+function Format-SectionContent {
     param(
         [string] $Content,
         [string] $Name,
@@ -66,7 +66,7 @@ function Set-Section {
 }
 
 if ([string]::IsNullOrWhiteSpace($FeatureName)) {
-    Write-Host 'Aborted: no feature name provided. Use -FeatureName.'
+    Write-Error 'Aborted: no feature name provided. Use -FeatureName.'
     exit 1
 }
 
@@ -81,7 +81,7 @@ if ($PSBoundParameters.ContainsKey('IssueNumber')) {
 
 $namePattern = '^[a-z0-9]+([-_][a-z0-9]+)*$'
 if ($FeatureName -notmatch $namePattern) {
-    Write-Host "Aborted: '$FeatureName' is invalid. Use kebab/underscore-case letters/numbers (e.g., notes-feature or notes_feature)."
+    Write-Error "Aborted: '$FeatureName' is invalid. Use kebab/underscore-case letters/numbers (e.g., notes-feature or notes_feature)."
     exit 1
 }
 
@@ -90,21 +90,25 @@ $template = Join-Path $workspace 'docs/features/templates/feature'
 $target = Join-Path $workspace "docs/features/active/$FeatureName"
 
 if (-not (Test-Path $template)) {
-    Write-Host "Template folder not found: $template"
+    Write-Error "Template folder not found: $template"
     exit 1
 }
 
 if ((Test-Path $target) -and -not $Force) {
-    Write-Host "Target exists: $target. Use -Force to overwrite."
+    Write-Error "Target exists: $target. Use -Force to overwrite."
     exit 1
 }
 
 if (-not (Test-Path $target)) {
-    New-Item -ItemType Directory -Path $target | Out-Null
+    if ($PSCmdlet.ShouldProcess($target, "Create target directory")) {
+        New-Item -ItemType Directory -Path $target | Out-Null
+    }
 }
 
-Copy-Item $template\* $target -Recurse -Force
-Write-Host "Created/updated: $target"
+if ($PSCmdlet.ShouldProcess($target, "Copy template files")) {
+    Copy-Item $template\* $target -Recurse -Force
+}
+Write-Information ("Created/updated: {0}" -f $target) -InformationAction Continue
 
 $filesToOpen = @()
 $filesToOpen += (Join-Path $target 'user-story.md')
@@ -172,7 +176,7 @@ $specPath = Join-Path $target 'spec.md'
 $planPath = Join-Path $target 'plan.md'
 
 # Helper to replace common header placeholders in a template file
-function Set-HeaderPlaceholders {
+function Format-HeaderPlaceholder {
     param(
         [string] $Content
     )
@@ -187,57 +191,65 @@ function Set-HeaderPlaceholders {
 # Update user-story from template + potential content
 if (Test-Path $userStoryPath) {
     $content = Get-Content -Raw -Path $userStoryPath
-    $content = Set-HeaderPlaceholders -Content $content
+    $content = Format-HeaderPlaceholder -Content $content
     if ($problem) {
-        $content = Set-Section -Content $content -Name 'Problem / Why' -Body $problem
+        $content = Format-SectionContent -Content $content -Name 'Problem / Why' -Body $problem
     }
     if ($criteria) {
-        $content = Set-Section -Content $content -Name 'Acceptance Criteria' -Body $criteria
+        $content = Format-SectionContent -Content $content -Name 'Acceptance Criteria' -Body $criteria
     }
     $content = $content -replace '<feature-name>', $FeatureName
-    Set-Content -Path $userStoryPath -Value $content -Encoding UTF8
+    if ($PSCmdlet.ShouldProcess($userStoryPath, "Update user story content")) {
+        Set-Content -Path $userStoryPath -Value $content -Encoding UTF8
+    }
 }
 
 # Update spec from template + potential content
 if (Test-Path $specPath) {
     $content = Get-Content -Raw -Path $specPath
-    $content = Set-HeaderPlaceholders -Content $content
+    $content = Format-HeaderPlaceholder -Content $content
     if ($problem) {
-        $content = Set-Section -Content $content -Name 'Overview' -Body $problem
+        $content = Format-SectionContent -Content $content -Name 'Overview' -Body $problem
     }
     if ($behavior) {
-        $content = Set-Section -Content $content -Name 'Behavior' -Body $behavior
+        $content = Format-SectionContent -Content $content -Name 'Behavior' -Body $behavior
     }
     if ($constraints) {
-        $content = Set-Section -Content $content -Name 'Constraints & Risks' -Body $constraints
+        $content = Format-SectionContent -Content $content -Name 'Constraints & Risks' -Body $constraints
     }
     if ($testsFormatted) {
-        $content = Set-Section -Content $content -Name 'Seeded Test Conditions (from potential)' -Body $testsFormatted
+        $content = Format-SectionContent -Content $content -Name 'Seeded Test Conditions (from potential)' -Body $testsFormatted
     }
     $content = $content -replace '<feature-name>', $FeatureName
-    Set-Content -Path $specPath -Value $content -Encoding UTF8
+    if ($PSCmdlet.ShouldProcess($specPath, "Update spec content")) {
+        Set-Content -Path $specPath -Value $content -Encoding UTF8
+    }
 }
 
 # Update plan headers from template (no section seeding yet)
 if (Test-Path $planPath) {
     $content = Get-Content -Raw -Path $planPath
-    $content = Set-HeaderPlaceholders -Content $content
+    $content = Format-HeaderPlaceholder -Content $content
     $content = $content -replace '<feature-name>', $FeatureName
-    Set-Content -Path $planPath -Value $content -Encoding UTF8
+    if ($PSCmdlet.ShouldProcess($planPath, "Update plan content")) {
+        Set-Content -Path $planPath -Value $content -Encoding UTF8
+    }
 }
 
 if ($potentialFile) {
-    Write-Host "Seeded docs from potential: $($potentialFile.Name)"
+    Write-Information ("Seeded docs from potential: {0}" -f $potentialFile.Name) -InformationAction Continue
 }
 
 $codeCmd = Get-Command code -ErrorAction SilentlyContinue
 if ($codeCmd) {
     $filesToEdit = $filesToOpen | Where-Object { Test-Path $_ }
     if ($filesToEdit.Count -gt 0) {
-        Start-Process code -ArgumentList $filesToEdit
+        if ($PSCmdlet.ShouldProcess("VS Code", "Open feature files")) {
+            Start-Process code -ArgumentList $filesToEdit
+        }
     }
 } else {
-    Write-Host "VS Code 'code' command not found. Files to edit:"
-    $filesToOpen | ForEach-Object { Write-Host "  $_" }
+    Write-Warning "VS Code 'code' command not found. Files to edit:"
+    $filesToOpen | ForEach-Object { Write-Information ("  {0}" -f $_) -InformationAction Continue }
 }
 

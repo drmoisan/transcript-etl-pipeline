@@ -8,3 +8,5 @@ Command: `poetry run pytest --cov=src/transcript_etl_pipeline --cov-report=term-
 | `src/transcript_etl_pipeline/transform/normalize.py` | 100% |
 
 Combined coverage: 99% (≥ 75% target).
+
+Uncovered Lines Analysis: None.
