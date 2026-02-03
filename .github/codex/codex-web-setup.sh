@@ -14,6 +14,18 @@ fi
 REPO_ROOT="$(cd "$REPO_ROOT" && pwd)"
 export REPO_ROOT
 
+# If the repo root doesn't contain expected tooling, try common workspace mounts.
+if [ ! -f "$REPO_ROOT/scripts/powershell/PoshQC/PoshQC.psd1" ]; then
+  repo_name="$(basename "$REPO_ROOT")"
+  for candidate in "/workspaces/$repo_name" "/workspace/$repo_name"; do
+    if [ -f "$candidate/scripts/powershell/PoshQC/PoshQC.psd1" ]; then
+      REPO_ROOT="$candidate"
+      export REPO_ROOT
+      break
+    fi
+  done
+fi
+
 # Quick connectivity preflight to avoid long retries when PyPI is unreachable.
 check_pypi_connectivity() {
   if [ "${ALLOW_OFFLINE_INSTALL:-0}" = "1" ]; then
