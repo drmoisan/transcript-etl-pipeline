@@ -16,7 +16,7 @@ version: "0.2"
 - **Issue:** [#27](https://github.com/drmoisan/transcript-etl-pipeline/issues/27)
 - **Parent (optional):** none
 - **Owner:** drmoisan
-- **Last Updated:** 2026-02-02
+- **Last Updated:** 2026-02-02T23:44:20Z
 - **Status:** Planned
 - **Version:** 0.2
 
@@ -88,43 +88,43 @@ version: "0.2"
   - Acceptance: Command exits with code 0.
 
 ### Phase 1 — DOCX Formatter Tests (`tests/formatters/test_docx_formatter.py`)
-- [ ] [P1-T1] TASK-1 Add lightweight fake classes (`FakeDocxDocument`, `FakeDocxParagraph`, `FakeDocxRun`, `FakeParagraphFormat`) in `tests/formatters/test_docx_formatter.py` to capture `add_paragraph`, `add_run`, and spacing/font assignments without touching the filesystem (REQ-1, REQ-2).
+- [x] [P1-T1] TASK-1 Add lightweight fake classes (`FakeDocxDocument`, `FakeDocxParagraph`, `FakeDocxRun`, `FakeParagraphFormat`) in `tests/formatters/test_docx_formatter.py` to capture `add_paragraph`, `add_run`, and spacing/font assignments without touching the filesystem (REQ-1, REQ-2).
   - Acceptance: `Select-String -Path tests/formatters/test_docx_formatter.py -Pattern 'class FakeDocxDocument|class FakeDocxParagraph|class FakeDocxRun|class FakeParagraphFormat'` returns matches.
-- [ ] [P1-T2] TASK-2 Replace file-based `format_to_docx` tests with in-memory tests that call `_format_paragraph`, `_apply_spacing`, and `_apply_font` using the fake classes; remove all `tmp_path` usage and direct `DocxDocument` reads (REQ-1, REQ-2).
+- [x] [P1-T2] TASK-2 Replace file-based `format_to_docx` tests with in-memory tests that call `_format_paragraph`, `_apply_spacing`, and `_apply_font` using the fake classes; remove all `tmp_path` usage and direct `DocxDocument` reads (REQ-1, REQ-2).
   - Acceptance: `Select-String -Path tests/formatters/test_docx_formatter.py -Pattern 'tmp_path|DocxDocument\('` returns no matches.
-- [ ] [P1-T3] TASK-3 Add docx test `test_format_paragraph_notes_header_heading_level` that calls `_format_paragraph` with `SectionType.NOTES_HEADER` and `Paragraph(heading_level=3)` and asserts the fake paragraph style equals `HEADING_STYLES[3]` (`Heading 3`).
+- [x] [P1-T3] TASK-3 Add docx test `test_format_paragraph_notes_header_heading_level` that calls `_format_paragraph` with `SectionType.NOTES_HEADER` and `Paragraph(heading_level=3)` and asserts the fake paragraph style equals `HEADING_STYLES[3]` (`Heading 3`).
   - Acceptance: `Select-String -Path tests/formatters/test_docx_formatter.py -Pattern 'notes_header_heading_level'` returns a match and the test asserts `Heading 3`.
-- [ ] [P1-T4] TASK-4 Add docx test `test_format_paragraph_notes_body_bullet_level_two` that calls `_format_paragraph` with `SectionType.NOTES_BODY` and `Paragraph(is_bullet=True, bullet_level=2)` and asserts `List Bullet 2` is used.
+- [x] [P1-T4] TASK-4 Add docx test `test_format_paragraph_notes_body_bullet_level_two` that calls `_format_paragraph` with `SectionType.NOTES_BODY` and `Paragraph(is_bullet=True, bullet_level=2)` and asserts `List Bullet 2` is used.
   - Acceptance: `Select-String -Path tests/formatters/test_docx_formatter.py -Pattern 'notes_body_bullet_level_two'` returns a match and the test asserts `List Bullet 2`.
-- [ ] [P1-T5] TASK-5 Add docx test `test_apply_spacing_sets_before_after_and_single_spacing` that calls `_apply_spacing` with `SpacingRule(before_pt=12.0, after_pt=0.0, line_spacing=1.0)` and asserts `space_before`, `space_after`, and `line_spacing_rule` are set on the fake paragraph format.
+- [x] [P1-T5] TASK-5 Add docx test `test_apply_spacing_sets_before_after_and_single_spacing` that calls `_apply_spacing` with `SpacingRule(before_pt=12.0, after_pt=0.0, line_spacing=1.0)` and asserts `space_before`, `space_after`, and `line_spacing_rule` are set on the fake paragraph format.
   - Acceptance: `Select-String -Path tests/formatters/test_docx_formatter.py -Pattern 'apply_spacing_sets_before_after_and_single_spacing'` returns a match and the test asserts `space_before == 12` and `space_after == 0`.
 
 ### Phase 2 — RTF Formatter Tests (`tests/formatters/test_rtf_formatter.py`)
-- [ ] [P2-T1] TASK-6 Replace file-based RTF tests with unit tests for `_generate_rtf`, `_format_paragraph`, and `_escape_rtf` in `tests/formatters/test_rtf_formatter.py`; remove all `tempfile` and `Path(...).unlink()` usage (REQ-1, REQ-2).
+- [x] [P2-T1] TASK-6 Replace file-based RTF tests with unit tests for `_generate_rtf`, `_format_paragraph`, and `_escape_rtf` in `tests/formatters/test_rtf_formatter.py`; remove all `tempfile` and `Path(...).unlink()` usage (REQ-1, REQ-2).
   - Acceptance: `Select-String -Path tests/formatters/test_rtf_formatter.py -Pattern 'tempfile|NamedTemporaryFile|unlink'` returns no matches.
-- [ ] [P2-T2] TASK-7 Add RTF test `test_format_paragraph_speaker_label_bold_and_body_text` that calls `_format_paragraph` with `SectionType.SPEAKER_PARAGRAPH` and `Label("Speaker:")` and asserts the returned RTF contains `{"\\b Speaker: "}` and the escaped body text.
+- [x] [P2-T2] TASK-7 Add RTF test `test_format_paragraph_speaker_label_bold_and_body_text` that calls `_format_paragraph` with `SectionType.SPEAKER_PARAGRAPH` and `Label("Speaker:")` and asserts the returned RTF contains `{"\\b Speaker: "}` and the escaped body text.
   - Acceptance: `Select-String -Path tests/formatters/test_rtf_formatter.py -Pattern 'speaker_label_bold_and_body_text'` returns a match and asserts the bold wrapper.
-- [ ] [P2-T3] TASK-8 Add RTF test `test_escape_rtf_converts_newlines_to_par` that calls `_escape_rtf("Line1\nLine2")` and asserts it returns `"Line1\\par Line2"`.
+- [x] [P2-T3] TASK-8 Add RTF test `test_escape_rtf_converts_newlines_to_par` that calls `_escape_rtf("Line1\nLine2")` and asserts it returns `"Line1\\par Line2"`.
   - Acceptance: `Select-String -Path tests/formatters/test_rtf_formatter.py -Pattern 'escape_rtf_converts_newlines_to_par'` returns a match and asserts exact output.
 
 ### Phase 3 — Markdown Formatter Tests (`tests/formatters/test_md_formatter.py`)
-- [ ] [P3-T1] TASK-9 Replace file-based Markdown tests with unit tests for `_generate_markdown` and `_format_paragraph` in `tests/formatters/test_md_formatter.py`; remove all `tempfile` and `Path(...).unlink()` usage (REQ-1, REQ-2).
+- [x] [P3-T1] TASK-9 Replace file-based Markdown tests with unit tests for `_generate_markdown` and `_format_paragraph` in `tests/formatters/test_md_formatter.py`; remove all `tempfile` and `Path(...).unlink()` usage (REQ-1, REQ-2).
   - Acceptance: `Select-String -Path tests/formatters/test_md_formatter.py -Pattern 'tempfile|NamedTemporaryFile|unlink'` returns no matches.
-- [ ] [P3-T2] TASK-10 Add Markdown test `test_notes_header_inserts_blank_line_and_heading_prefix` that calls `_format_paragraph` with `SectionType.NOTES_HEADER` and `is_first=False`, asserting a leading blank line and `# {text}` output.
+- [x] [P3-T2] TASK-10 Add Markdown test `test_notes_header_inserts_blank_line_and_heading_prefix` that calls `_format_paragraph` with `SectionType.NOTES_HEADER` and `is_first=False`, asserting a leading blank line and `# {text}` output.
   - Acceptance: `Select-String -Path tests/formatters/test_md_formatter.py -Pattern 'notes_header_inserts_blank_line'` returns a match and asserts `""` then `"# "`.
-- [ ] [P3-T3] TASK-11 Add Markdown test `test_transcript_label_gets_blank_line_before_when_not_first` that uses `_format_paragraph` with `SectionType.REGULAR_PARAGRAPH`, `Label("Transcript:")`, `is_first=False`, and asserts a blank line precedes `**Transcript:**` output.
+- [x] [P3-T3] TASK-11 Add Markdown test `test_transcript_label_gets_blank_line_before_when_not_first` that uses `_format_paragraph` with `SectionType.REGULAR_PARAGRAPH`, `Label("Transcript:")`, `is_first=False`, and asserts a blank line precedes `**Transcript:**` output.
   - Acceptance: `Select-String -Path tests/formatters/test_md_formatter.py -Pattern 'transcript_label_gets_blank_line'` returns a match and asserts the blank-line rule.
 
 ### Phase 4 — Parser Tests (`tests/document/test_parser_unit.py`)
-- [ ] [P4-T1] TASK-12 Add parser test `test_transcript_label_inline_text_is_preserved` that passes `"Transcript: Intro text\r\nSpeaker A: More"` to `parse_enhanced_text` and asserts the transcript section paragraph text starts with `"Intro text"` and includes subsequent lines joined by spaces (REQ-1).
+- [x] [P4-T1] TASK-12 Add parser test `test_transcript_label_inline_text_is_preserved` that passes `"Transcript: Intro text\r\nSpeaker A: More"` to `parse_enhanced_text` and asserts the transcript section paragraph text starts with `"Intro text"` and includes subsequent lines joined by spaces (REQ-1).
   - Acceptance: `Select-String -Path tests/document/test_parser_unit.py -Pattern 'transcript_label_inline_text_is_preserved'` returns a match and asserts expected paragraph text.
-- [ ] [P4-T2] TASK-13 Add parser test `test_unlabeled_transcript_lines_create_regular_paragraphs` that provides transcript lines without labels after a labeled speaker and asserts those lines are appended to the current paragraph rather than creating new labeled paragraphs (REQ-1).
+- [x] [P4-T2] TASK-13 Add parser test `test_unlabeled_transcript_lines_create_regular_paragraphs` that provides transcript lines without labels after a labeled speaker and asserts those lines are appended to the current paragraph rather than creating new labeled paragraphs (REQ-1).
   - Acceptance: `Select-String -Path tests/document/test_parser_unit.py -Pattern 'unlabeled_transcript_lines_create_regular_paragraphs'` returns a match and asserts paragraph count remains 1.
-- [ ] [P4-T3] TASK-14 Add parser test `test_is_metadata_label_accepts_meeting_title_variants` that calls `is_metadata_label("meeting title")` and `is_metadata_label("Meeting Title")` and asserts `True` for both, while `"Meeting Title:"` remains `False` (REQ-1).
+- [x] [P4-T3] TASK-14 Add parser test `test_is_metadata_label_accepts_meeting_title_variants` that calls `is_metadata_label("meeting title")` and `is_metadata_label("Meeting Title")` and asserts `True` for both, while `"Meeting Title:"` remains `False` (REQ-1).
   - Acceptance: `Select-String -Path tests/document/test_parser_unit.py -Pattern 'metadata_label_accepts_meeting_title_variants'` returns a match and asserts expected booleans.
 
 ### Phase 5 — Coverage Evidence and Issue Updates
-- [ ] [P5-T1] TASK-15 Run `poetry run pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-report=html` followed by `poetry run coverage report --include=src/transcript_etl_pipeline/formatters/docx_formatter.py,src/transcript_etl_pipeline/formatters/rtf_formatter.py,src/transcript_etl_pipeline/formatters/md_formatter.py,src/transcript_etl_pipeline/document/parser.py --fail-under=70` and capture the output (REQ-3).
+- [x] [P5-T1] TASK-15 Run `poetry run pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-report=html` followed by `poetry run coverage report --include=src/transcript_etl_pipeline/formatters/docx_formatter.py,src/transcript_etl_pipeline/formatters/rtf_formatter.py,src/transcript_etl_pipeline/formatters/md_formatter.py,src/transcript_etl_pipeline/document/parser.py --fail-under=70` and capture the output (REQ-3).
   - Acceptance: The `coverage report --fail-under=70` command exits with code 0.
 - [ ] [P5-T2] TASK-16 Update Issue #27 with PR/test links and coverage evidence (REQ-4).
   - Acceptance: `gh issue view 27 --json body -q ".body"` output contains a PR URL matching `https://github.com/drmoisan/transcript-etl-pipeline/pull/` and mentions `coverage report --fail-under=70`.

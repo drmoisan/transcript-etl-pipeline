@@ -3,7 +3,7 @@ title: "2025-12-04-speakerless-heuristics - Plan"
 issue: "22"
 parent: "none"
 owner: "drmoisan"
-last_updated: "2026-02-02"
+last_updated: "2026-02-02T23:44:20Z"
 status: "Planned"
 status_color: "blue"
 version: "0.2"
@@ -16,7 +16,7 @@ version: "0.2"
 - **Issue:** [#22](https://github.com/drmoisan/transcript-etl-pipeline/issues/22)
 - **Parent (optional):** none
 - **Owner:** drmoisan
-- **Last Updated:** 2026-02-02
+- **Last Updated:** 2026-02-02T23:44:20Z
 - **Status:** Planned
 - **Version:** 0.2
 
@@ -86,23 +86,23 @@ version: "0.2"
   - Acceptance: Command exits with code 0.
 
 ### Phase 1 — Speakerless Heuristic Tests (`tests/transform/test_speakerless.py`)
-- [ ] [P1-T1] TASK-1 Add a Pytest case in `tests/transform/test_speakerless.py` for `detect_speaker_changes` using a rhetorical/tag question input `"We should proceed, right?\r\nYes, let's do it."` and assert change points include index `1`.
+- [x] [P1-T1] TASK-1 Add a Pytest case in `tests/transform/test_speakerless.py` for `detect_speaker_changes` using a rhetorical/tag question input `"We should proceed, right?\r\nYes, let's do it."` and assert change points include index `1`.
   - Acceptance: `powershell -Command "Select-String -Path tests/transform/test_speakerless.py -Pattern 'rhetorical|tag question'"` returns a match and the test asserts `1 in changes`.
-- [ ] [P1-T2] TASK-2 Add a Pytest case in `tests/transform/test_speakerless.py` for `detect_speaker_changes` using continuation text `"I think we should proceed.\r\nYou know I agree."` and assert `changes == [0]` to validate the anti-shift rule (current sentence contains both first and second person).
+- [x] [P1-T2] TASK-2 Add a Pytest case in `tests/transform/test_speakerless.py` for `detect_speaker_changes` using continuation text `"I think we should proceed.\r\nYou know I agree."` and assert `changes == [0]` to validate the anti-shift rule (current sentence contains both first and second person).
   - Acceptance: `powershell -Command "Select-String -Path tests/transform/test_speakerless.py -Pattern 'anti-shift|continuation'"` returns a match and the test asserts `changes == [0]`.
-- [ ] [P1-T3] TASK-3 Add a Pytest case in `tests/transform/test_speakerless.py` for `assign_speaker_labels` with `num_speakers=3` that includes a self-identification and an addressee line (e.g., `"I'm Frank Oz. Thanks Frank."`) and assert the addressee line is not assigned to Frank’s speaker.
+- [x] [P1-T3] TASK-3 Add a Pytest case in `tests/transform/test_speakerless.py` for `assign_speaker_labels` with `num_speakers=3` that includes a self-identification and an addressee line (e.g., `"I'm Frank Oz. Thanks Frank."`) and assert the addressee line is not assigned to Frank’s speaker.
   - Acceptance: `powershell -Command "Select-String -Path tests/transform/test_speakerless.py -Pattern 'Thanks Frank'"` returns a match and the test asserts the addressee line’s speaker label differs from the self-identified speaker.
-- [ ] [P1-T4] TASK-4 Add a Pytest case in `tests/transform/test_speakerless.py` for `assign_speaker_labels` that includes a short closing statement (e.g., `"Great. Thank you both."`) after self-identifications and assert the closing sentence is assigned to the organizer’s speaker.
+- [x] [P1-T4] TASK-4 Add a Pytest case in `tests/transform/test_speakerless.py` for `assign_speaker_labels` that includes a short closing statement (e.g., `"Great. Thank you both."`) after self-identifications and assert the closing sentence is assigned to the organizer’s speaker.
   - Acceptance: `powershell -Command "Select-String -Path tests/transform/test_speakerless.py -Pattern 'closing statement|Thank you both'"` returns a match and the test asserts the closing line’s speaker equals the organizer’s speaker.
 
 ### Phase 2 — Helper Heuristic Tests (`tests/transform/test_speaker_helpers.py`)
-- [ ] [P2-T1] TASK-5 Add a Pytest case in `tests/transform/test_speaker_helpers.py` for `detect_dialogue_markers` using `"Right?"` and assert `is_acknowledgment` is `True` to cover tag-question acknowledgments.
+- [x] [P2-T1] TASK-5 Add a Pytest case in `tests/transform/test_speaker_helpers.py` for `detect_dialogue_markers` using `"Right?"` and assert `is_acknowledgment` is `True` to cover tag-question acknowledgments.
   - Acceptance: `powershell -Command "Select-String -Path tests/transform/test_speaker_helpers.py -Pattern 'Right\?"'"` returns a match and the test asserts `markers["is_acknowledgment"] is True`.
-- [ ] [P2-T2] TASK-6 Add a Pytest case in `tests/transform/test_speaker_helpers.py` for `resolve_addresses_other_violations` with sentences `"I'm Frank.", "Thanks Frank.", "Fred?"` and assignments that initially assign the addressee lines to Frank; assert both the address and follow-through lines are reassigned away from Frank.
+- [x] [P2-T2] TASK-6 Add a Pytest case in `tests/transform/test_speaker_helpers.py` for `resolve_addresses_other_violations` with sentences `"I'm Frank.", "Thanks Frank.", "Fred?"` and assignments that initially assign the addressee lines to Frank; assert both the address and follow-through lines are reassigned away from Frank.
   - Acceptance: `powershell -Command "Select-String -Path tests/transform/test_speaker_helpers.py -Pattern 'follow-through|Thanks Frank'"` returns a match and the test asserts both indices are not assigned to Frank’s speaker.
-- [ ] [P2-T3] TASK-7 Add a Pytest case in `tests/transform/test_speaker_helpers.py` for `group_sentences_by_similarity` where `sentences = ["A.", "B."]`, `change_points = [0, 1]`, `num_speakers = 3`, and assert assignments are `[0, 1]` to validate the round-robin branch for `len(segments) <= num_speakers`.
+- [x] [P2-T3] TASK-7 Add a Pytest case in `tests/transform/test_speaker_helpers.py` for `group_sentences_by_similarity` where `sentences = ["A.", "B."]`, `change_points = [0, 1]`, `num_speakers = 3`, and assert assignments are `[0, 1]` to validate the round-robin branch for `len(segments) <= num_speakers`.
   - Acceptance: `powershell -Command "Select-String -Path tests/transform/test_speaker_helpers.py -Pattern 'round-robin'"` returns a match and the test asserts assignments equal `[0, 1]`.
-- [ ] [P2-T4] TASK-8 Add a Pytest case in `tests/transform/test_speaker_helpers.py` for `group_sentences_by_similarity` with self-identification constraints for three distinct names and assert the resulting assignments keep those three indices mapped to three distinct speakers.
+- [x] [P2-T4] TASK-8 Add a Pytest case in `tests/transform/test_speaker_helpers.py` for `group_sentences_by_similarity` with self-identification constraints for three distinct names and assert the resulting assignments keep those three indices mapped to three distinct speakers.
   - Acceptance: `powershell -Command "Select-String -Path tests/transform/test_speaker_helpers.py -Pattern 'distinct speakers'"` returns a match and the test asserts `len(set(...)) == 3` for the three self-identified indices.
 
 ### Phase 3 — Coverage Evidence and Issue Updates
@@ -110,7 +110,7 @@ version: "0.2"
   - Acceptance: The `coverage report --fail-under=70` command exits with code 0.
 - [ ] [P3-T2] TASK-10 Update Issue #22 with coverage evidence and links to tests/PRs (REQ-4).
   - Acceptance: `gh issue view 22 --json body -q ".body"` output contains a PR URL matching `https://github.com/drmoisan/transcript-etl-pipeline/pull/` and mentions `coverage report --fail-under=70`.
-- [ ] [P3-T3] TASK-11 Update `docs/features/active/2025-12-04-speakerless-heuristics-22/22-speakerless-heuristics.md` with any edge cases or surprises discovered during test authoring.
+- [x] [P3-T3] TASK-11 Update `docs/features/active/2025-12-04-speakerless-heuristics-22/22-speakerless-heuristics.md` with any edge cases or surprises discovered during test authoring.
   - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-speakerless-heuristics-22/22-speakerless-heuristics.md -Pattern 'Edge cases|Surprises'"` returns a match.
 
 ### Phase 4 — QA (Python Toolchain)

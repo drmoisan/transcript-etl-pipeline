@@ -1,12 +1,12 @@
 # Creates a GitHub issue from a potential feature file using gh.
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess = $true)]
 param(
     [Parameter(Mandatory = $true)]
     [string] $PotentialPath
 )
 
-function Stop-ScriptWithError($msg) {
-    Write-Host $msg
+function Write-ScriptError($msg) {
+    Write-Error $msg
     exit 1
 }
 
@@ -16,16 +16,16 @@ $resolved = $null
 try {
     $resolved = (Resolve-Path $PotentialPath -ErrorAction Stop).Path
 } catch {
-    Stop-ScriptWithError "Potential file not found: $PotentialPath"
+    Write-ScriptError "Potential file not found: $PotentialPath"
 }
 
 if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
-    Stop-ScriptWithError "gh CLI not found on PATH. Install gh and authenticate first."
+    Write-ScriptError "gh CLI not found on PATH. Install gh and authenticate first."
 }
 
 $content = Get-Content -Raw -Path $resolved
 if ([string]::IsNullOrWhiteSpace($content)) {
-    Stop-ScriptWithError "Potential file is empty: $resolved"
+    Write-ScriptError "Potential file is empty: $resolved"
 }
 
 $headingMatch = [regex]::Match(
@@ -96,19 +96,32 @@ From: $relativePath
 "@
 
 $tmp = [System.IO.Path]::ChangeExtension([System.IO.Path]::GetTempFileName(), '.md')
-Set-Content -Path $tmp -Value $body -Encoding UTF8
+if ($PSCmdlet.ShouldProcess($tmp, "Write issue body to temp file")) {
+    Set-Content -Path $tmp -Value $body -Encoding UTF8
+}
 
-Write-Host "Creating issue: $issueTitle"
-$result = & gh issue create --title "$issueTitle" --body-file "$tmp" --label "enhancement"
-$exit = $LASTEXITCODE
+Write-Information ("Creating issue: {0}" -f $issueTitle) -InformationAction Continue
+if ($PSCmdlet.ShouldProcess($issueTitle, "Create GitHub issue")) {
+    $result = & gh issue create --title "$issueTitle" --body-file "$tmp" --label "enhancement"
+    $exit = $LASTEXITCODE
+} else {
+    $result = $null
+    $exit = 0
+}
 
 if ($exit -ne 0) {
-    Write-Host $result
-    Remove-Item $tmp -ErrorAction SilentlyContinue
+    if ($result) {
+        Write-Output $result
+    }
+    if ($PSCmdlet.ShouldProcess($tmp, "Remove temporary file")) {
+        Remove-Item $tmp -ErrorAction SilentlyContinue
+    }
     exit $exit
 }
 
-Write-Host $result
+if ($result) {
+    Write-Output $result
+}
 
 $issueUrl = $null
 $issueNumber = $null
@@ -121,7 +134,7 @@ if ($urlMatch.Matches.Count -gt 0) {
 
 $issueData = $null
 if ($issueNumber) {
-    $json = & gh issue view $issueNumber --json number,title,url,author,updatedAt
+    $json = & gh issue view $issueNumber --json number, title, url, author, updatedAt
     if ($LASTEXITCODE -eq 0 -and $json) {
         $issueData = $json | ConvertFrom-Json
     }
@@ -143,7 +156,7 @@ if ($issueNumber -and $issueUrl) {
         if ($lines[$i] -match '^\s*##\s+') { $metaEnd = $i; break }
     }
 
-    function Set-LineValue([System.Collections.Generic.List[string]] $arr, [string] $label, [string] $value, [ref] $metaEndRef) {
+    function Format-LineValue([System.Collections.Generic.List[string]] $arr, [string] $label, [string] $value, [ref] $metaEndRef) {
         $pattern = "^- $($label):"
         $found = $false
         for ($j = 0; $j -lt $arr.Count; $j++) {
@@ -160,26 +173,34 @@ if ($issueNumber -and $issueUrl) {
     }
 
     $metaEndRef = [ref] $metaEnd
-    Set-LineValue -arr $lines -label 'Issue' -value "#$issueNumber" -metaEndRef $metaEndRef
-    Set-LineValue -arr $lines -label 'Issue URL' -value $issueUrl -metaEndRef $metaEndRef
+    Format-LineValue -arr $lines -label 'Issue' -value "#$issueNumber" -metaEndRef $metaEndRef
+    Format-LineValue -arr $lines -label 'Issue URL' -value $issueUrl -metaEndRef $metaEndRef
     if ($issueData -and $issueData.updatedAt) {
         $updated = ([datetime]$issueData.updatedAt).ToString('yyyy-MM-dd')
-        Set-LineValue -arr $lines -label 'Last Updated' -value $updated -metaEndRef $metaEndRef
+        Format-LineValue -arr $lines -label 'Last Updated' -value $updated -metaEndRef $metaEndRef
     }
     $promotedValue = "Promoted -> docs/features/active/$featurePath/ (Issue #$issueNumber)"
-    Set-LineValue -arr $lines -label 'Status' -value $promotedValue -metaEndRef $metaEndRef
+    Format-LineValue -arr $lines -label 'Status' -value $promotedValue -metaEndRef $metaEndRef
 
-    Set-Content -Path $resolved -Value $lines -Encoding UTF8
-    Write-Host "Updated potential file with issue metadata: $resolved"
+    if ($PSCmdlet.ShouldProcess($resolved, "Update potential file with issue metadata")) {
+        Set-Content -Path $resolved -Value $lines -Encoding UTF8
+    }
+    Write-Information ("Updated potential file with issue metadata: {0}" -f $resolved) -InformationAction Continue
 }
 
 $promotedDir = Join-Path $workspace 'docs/features/potential/promoted'
 if (-not (Test-Path $promotedDir)) {
-    New-Item -ItemType Directory -Path $promotedDir | Out-Null
+    if ($PSCmdlet.ShouldProcess($promotedDir, "Create promoted folder")) {
+        New-Item -ItemType Directory -Path $promotedDir | Out-Null
+    }
 }
 $destPath = Join-Path $promotedDir (Split-Path $resolved -Leaf)
-Move-Item -Path $resolved -Destination $destPath -Force
-Write-Host "Moved potential file to promoted folder: $destPath"
+if ($PSCmdlet.ShouldProcess($destPath, "Move potential file to promoted folder")) {
+    Move-Item -Path $resolved -Destination $destPath -Force
+}
+Write-Information ("Moved potential file to promoted folder: {0}" -f $destPath) -InformationAction Continue
 
-Remove-Item $tmp -ErrorAction SilentlyContinue
+if ($PSCmdlet.ShouldProcess($tmp, "Remove temporary file")) {
+    Remove-Item $tmp -ErrorAction SilentlyContinue
+}
 exit $exit

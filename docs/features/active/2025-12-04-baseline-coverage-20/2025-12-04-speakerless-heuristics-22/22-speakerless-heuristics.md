@@ -39,3 +39,6 @@ Do not guess. Do not omit steps. Do not introduce inconsistencies. Follow the po
 - Coverage for `transform/speakerless.py` and `transform/speaker_helpers.py` reaches roughly 70%+ (cite report).
 - Tests follow unit-test policy; deterministic and scoped.
 - Issue #22 updated with findings, PR/test links, and coverage evidence.
+
+## Edge cases
+- Tag-question phrasing like "Right?" should be treated as an acknowledgment cue for speaker shifts, while continuation phrasing such as "You know I agree." should not introduce a new change point on its own.

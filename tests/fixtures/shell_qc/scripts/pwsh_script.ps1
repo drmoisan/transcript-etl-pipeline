@@ -1,1 +1,1 @@
-Write-Host "PowerShell"
+Write-Output "PowerShell"

@@ -72,15 +72,16 @@ def parse_enhanced_text(text: str) -> Document:
 
         # Look ahead for continuation lines
         i += 1
-        while i < len(lines):
-            next_line = lines[i]
+        if not (para_label and para_label.text.lower() == "transcript:"):
+            while i < len(lines):
+                next_line = lines[i]
 
-            # Stop if we hit a blank line or another label
-            if not next_line.strip() or extract_label(next_line):
-                break
+                # Stop if we hit a blank line or another label
+                if not next_line.strip() or extract_label(next_line):
+                    break
 
-            paragraph_lines.append(next_line)
-            i += 1
+                paragraph_lines.append(next_line)
+                i += 1
 
         # Create paragraph
         para_text = " ".join(paragraph_lines).strip()
@@ -142,12 +143,15 @@ def is_metadata_label(label_text: str) -> bool:
         True if it's a metadata label
     """
     metadata_labels = {
-        "date:",
-        "time:",
-        "attendees:",
-        "participants:",
-        "location:",
-        "subject:",
+        "date",
+        "time",
+        "attendees",
+        "participants",
+        "location",
+        "subject",
         "meeting title",
     }
-    return label_text.lower() in metadata_labels
+    normalized = label_text.strip().lower()
+    if normalized.endswith(":"):
+        normalized = normalized[:-1]
+    return normalized in metadata_labels

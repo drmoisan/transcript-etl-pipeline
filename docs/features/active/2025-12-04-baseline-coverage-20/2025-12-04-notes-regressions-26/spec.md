@@ -23,6 +23,61 @@ Capture known notes conversion issues and add regression tests that document the
 - Alternate/edge flows: Tests include tricky inputs from prior reports (e.g., mixed bullets, blank lines, label-like prefixes) and assert normalization and section segmentation behavior.
 - Error handling and recovery behavior: Tests verify deterministic outputs without filesystem or network dependencies.
 
+## Regression Cases
+
+1. Markdown cleanup removes formatting markers while preserving literal symbols.
+   - Input:
+     ```
+     \$100 **bold** __strong__
+     ```
+   - Expected output snippet:
+     ```
+     $100 bold strong
+     ```
+2. Bullet indentation levels are mapped consistently.
+   - Input:
+     ```
+     - Item
+       - Nested
+     ```
+   - Expected output snippet:
+     ```
+     (level=1, text="Item")
+     (level=2, text="Nested")
+     ```
+3. Heading level detection ignores leading whitespace.
+   - Input:
+     ```
+       ## Heading
+     ```
+   - Expected output snippet:
+     ```
+     level=2, text="Heading"
+     ```
+4. Notes label is inserted as H2 after an H1 title when a label is provided.
+   - Input:
+     ```
+     # Title
+
+     - Bullet
+     ```
+   - Expected output snippet:
+     ```
+     ## Meeting Notes
+     ```
+5. Mixed heading/bullet ordering is preserved.
+   - Input:
+     ```
+     # Title
+     - One
+     ## Section
+     - Two
+     ```
+   - Expected output snippet:
+     ```
+     Title -> Bullet("One") -> Section -> Bullet("Two")
+     ```
+
 
 ## Inputs / Outputs
 
