@@ -184,6 +184,31 @@ class TestCLISpeakerless3SpeakersDOCX:
         assert captured.saved_formats == ["docx"]
         assert "Speaker" in _document_text(captured.saved_documents[0])
 
+    def test_panel_discussion_docx(self, cli_mocks: CliCapture) -> None:
+        """Test CLI with panel discussion transcript producing DOCX output."""
+        exit_code, captured = run_cli(
+            cli_mocks,
+            PANEL_DISCUSSION_4SPEAKER.input_text,
+            [
+                "--source",
+                "file",
+                "--file",
+                "panel_input.txt",
+                "--num-speakers",
+                "4",
+                "--format",
+                "docx",
+                "--output-name",
+                "panel_output.docx",
+                "--output-folder",
+                "/output",
+            ],
+        )
+
+        assert exit_code == 0
+        assert captured.saved_formats == ["docx"]
+        assert "Speaker" in _document_text(captured.saved_documents[0])
+
 
 class TestCLISpeakerlessMarkdown:
     """Test CLI with speakerless transcripts - Markdown output."""
@@ -212,6 +237,30 @@ class TestCLISpeakerlessMarkdown:
         assert exit_code == 0
         assert captured.saved_formats == ["md"]
 
+    def test_generic_meeting_md(self, cli_mocks: CliCapture) -> None:
+        """Test CLI with generic meeting transcript producing Markdown output."""
+        exit_code, captured = run_cli(
+            cli_mocks,
+            GENERIC_MEETING_3SPEAKER.input_text,
+            [
+                "--source",
+                "file",
+                "--file",
+                "meeting_input.txt",
+                "--num-speakers",
+                "3",
+                "--format",
+                "md",
+                "--output-name",
+                "meeting_output.md",
+                "--output-folder",
+                "/output",
+            ],
+        )
+
+        assert exit_code == 0
+        assert captured.saved_formats == ["md"]
+
 
 class TestCLISpeakerlessRTF:
     """Test CLI with speakerless transcripts - RTF output."""
@@ -232,6 +281,54 @@ class TestCLISpeakerlessRTF:
                 "rtf",
                 "--output-name",
                 "panel_output.rtf",
+                "--output-folder",
+                "/output",
+            ],
+        )
+
+        assert exit_code == 0
+        assert captured.saved_formats == ["rtf"]
+
+    def test_spacex_rtf(self, cli_mocks: CliCapture) -> None:
+        """Test CLI with SpaceX discussion producing RTF output."""
+        exit_code, captured = run_cli(
+            cli_mocks,
+            SPACEX_DISCUSSION.input_text,
+            [
+                "--source",
+                "file",
+                "--file",
+                "spacex_input.txt",
+                "--num-speakers",
+                "3",
+                "--format",
+                "rtf",
+                "--output-name",
+                "spacex_output.rtf",
+                "--output-folder",
+                "/output",
+            ],
+        )
+
+        assert exit_code == 0
+        assert captured.saved_formats == ["rtf"]
+
+    def test_team_standup_rtf(self, cli_mocks: CliCapture) -> None:
+        """Test CLI with team standup transcript producing RTF output."""
+        exit_code, captured = run_cli(
+            cli_mocks,
+            TEAM_STANDUP_3SPEAKER.input_text,
+            [
+                "--source",
+                "file",
+                "--file",
+                "standup_input.txt",
+                "--num-speakers",
+                "3",
+                "--format",
+                "rtf",
+                "--output-name",
+                "standup_output.rtf",
                 "--output-folder",
                 "/output",
             ],

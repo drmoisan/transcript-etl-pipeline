@@ -1,0 +1,38 @@
+Timestamp: 2026-02-04T12:25:21Z
+Command: poetry run pytest tests/formatters tests/document --cov=src/transcript_etl_pipeline/formatters --cov=src/transcript_etl_pipeline/document --cov-report=term-missing --cov-fail-under=70
+
+============================= test session starts ==============================
+platform linux -- Python 3.13.9, pytest-8.4.2, pluggy-1.6.0
+rootdir: /workspaces/transcript-etl-pipeline
+configfile: pytest.ini
+plugins: anyio-4.12.1, cov-5.0.0
+collected 125 items
+
+tests/formatters/test_docx_formatter.py .....                            [  4%]
+tests/formatters/test_md_formatter.py ...                                [  6%]
+tests/formatters/test_notes_formatting.py ...........                    [ 15%]
+tests/formatters/test_rtf_formatter.py .....                             [ 19%]
+tests/document/test_formatting_rules.py ................                 [ 32%]
+tests/document/test_model.py ................                            [ 44%]
+tests/document/test_model_merge.py ....................                  [ 60%]
+tests/document/test_parser_unit.py ...................                   [ 76%]
+tests/document/test_reader.py ..............................             [100%]
+
+---------- coverage: platform linux, python 3.13.9-final-0 -----------
+Name                                                       Stmts   Miss  Cover   Missing
+----------------------------------------------------------------------------------------
+src/transcript_etl_pipeline/document/__init__.py               2      0   100%
+src/transcript_etl_pipeline/document/formatting_rules.py      22      0   100%
+src/transcript_etl_pipeline/document/model.py                102      9    91%   125-128, 132-135, 156
+src/transcript_etl_pipeline/document/parser.py                61      0   100%
+src/transcript_etl_pipeline/document/reader.py               206     18    91%   69, 77-78, 82, 181-182, 202-203, 261, 300, 335, 367, 424-425, 452, 464-466
+src/transcript_etl_pipeline/formatters/__init__.py             0      0   100%
+src/transcript_etl_pipeline/formatters/docx_formatter.py      57      1    98%   156
+src/transcript_etl_pipeline/formatters/md_formatter.py        44      4    91%   111-116
+src/transcript_etl_pipeline/formatters/rtf_formatter.py       57      2    96%   128-129
+----------------------------------------------------------------------------------------
+TOTAL                                                        551     34    94%
+
+Required test coverage of 70% reached. Total coverage: 93.83%
+
+============================= 125 passed in 0.59s ==============================

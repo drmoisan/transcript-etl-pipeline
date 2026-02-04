@@ -1,0 +1,21 @@
+Timestamp: 2026-02-04T02:48:05Z
+Command: ls -la docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-formatters-parser-27 && ls -1 docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-formatters-parser-27
+
+--- ls -la ---
+total 44
+drwxr-xr-x  3 vscode vscode  4096 Feb  3 17:47 .
+drwxr-xr-x 14 vscode vscode  4096 Feb  3 21:33 ..
+-rw-r--r--  1 vscode vscode  2895 Feb  3 17:47 27-formatters-parser.prompt.md
+drwxr-xr-x  2 vscode vscode  4096 Feb  3 17:47 baseline
+-rw-r--r--  1 vscode vscode  1932 Feb  3 17:47 issue.md
+-rw-r--r--  1 vscode vscode 14706 Feb  3 17:47 plan.2026-02-02T13-08.md
+-rw-r--r--  1 vscode vscode  3031 Feb  2 21:15 spec.md
+-rw-r--r--  1 vscode vscode  2277 Feb  2 21:15 user-story.md
+
+--- ls -1 ---
+27-formatters-parser.prompt.md
+baseline
+issue.md
+plan.2026-02-02T13-08.md
+spec.md
+user-story.md

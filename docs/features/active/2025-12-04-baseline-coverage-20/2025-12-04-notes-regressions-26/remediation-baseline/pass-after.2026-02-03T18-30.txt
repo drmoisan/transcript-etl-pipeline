@@ -1,0 +1,37 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.9, pytest-8.4.2, pluggy-1.6.0 -- /workspaces/transcript-etl-pipeline/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /workspaces/transcript-etl-pipeline
+configfile: pytest.ini
+plugins: anyio-4.12.1, cov-5.0.0
+collecting ... collected 27 items
+
+tests/transform/test_notes.py::TestTransformNotes::test_transform_notes_simple_text_no_header PASSED [  3%]
+tests/transform/test_notes.py::TestTransformNotes::test_transform_notes_with_label_no_heading PASSED [  7%]
+tests/transform/test_notes.py::TestTransformNotes::test_transform_notes_with_h1_title PASSED [ 11%]
+tests/transform/test_notes.py::TestTransformNotes::test_regression_transform_notes_label_after_h1_with_label PASSED [ 14%]
+tests/transform/test_notes.py::TestTransformNotes::test_transform_notes_empty_text_with_label PASSED [ 18%]
+tests/transform/test_notes.py::TestTransformNotes::test_transform_notes_empty_text_no_label PASSED [ 22%]
+tests/transform/test_notes.py::TestTransformNotes::test_transform_notes_whitespace_only_returns_empty PASSED [ 25%]
+tests/transform/test_notes.py::TestTransformNotes::test_transform_notes_bullet_points PASSED [ 29%]
+tests/transform/test_notes.py::TestTransformNotes::test_transform_notes_nested_bullets PASSED [ 33%]
+tests/transform/test_notes.py::TestTransformNotes::test_transform_notes_asterisk_bullets PASSED [ 37%]
+tests/transform/test_notes.py::TestTransformNotes::test_transform_notes_h3_section_headers PASSED [ 40%]
+tests/transform/test_notes.py::TestGenerateNotesLabel::test_generate_notes_label_format PASSED [ 44%]
+tests/transform/test_notes.py::TestGenerateNotesLabel::test_generate_notes_label_uses_current_time PASSED [ 48%]
+tests/transform/test_notes.py::TestParseMarkdown::test_parse_markdown_empty_returns_empty_list PASSED [ 51%]
+tests/transform/test_notes.py::TestParseMarkdown::test_parse_markdown_single_line PASSED [ 55%]
+tests/transform/test_notes.py::TestParseMarkdown::test_parse_markdown_h1_heading PASSED [ 59%]
+tests/transform/test_notes.py::TestParseMarkdown::test_parse_markdown_h2_heading PASSED [ 62%]
+tests/transform/test_notes.py::TestParseMarkdown::test_parse_markdown_h3_heading PASSED [ 66%]
+tests/transform/test_notes.py::TestParseMarkdown::test_parse_markdown_bullet_level_1 PASSED [ 70%]
+tests/transform/test_notes.py::TestParseMarkdown::test_regression_parse_markdown_mixed_order PASSED [ 74%]
+tests/transform/test_notes.py::TestCleanMarkdownText::test_regression_clean_markdown_text_escapes PASSED [ 77%]
+tests/transform/test_notes.py::TestHeadingAndBulletHelpers::test_regression_get_heading_level_leading_whitespace PASSED [ 81%]
+tests/transform/test_notes.py::TestHeadingAndBulletHelpers::test_regression_parse_bullet_line_indentation_levels PASSED [ 85%]
+tests/transform/test_notes.py::TestHeadingAndBulletHelpers::test_parse_markdown_bullet_level_2 PASSED [ 88%]
+tests/transform/test_notes.py::TestHeadingAndBulletHelpers::test_parse_markdown_consecutive_bullets PASSED [ 92%]
+tests/transform/test_notes.py::TestHeadingAndBulletHelpers::test_parse_markdown_mixed_bullet_levels PASSED [ 96%]
+tests/transform/test_notes.py::TestHeadingAndBulletHelpers::test_parse_markdown_strips_whitespace PASSED [100%]
+
+============================== 27 passed in 0.17s ==============================

@@ -1,0 +1,49 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.9, pytest-8.4.2, pluggy-1.6.0
+rootdir: /workspaces/transcript-etl-pipeline
+configfile: pytest.ini
+plugins: anyio-4.12.1, cov-5.0.0
+collected 27 items
+
+tests/transform/test_notes.py ...........................                [100%]
+
+---------- coverage: platform linux, python 3.13.9-final-0 -----------
+Name                                                                 Stmts   Miss  Cover   Missing
+--------------------------------------------------------------------------------------------------
+src/transcript_etl_pipeline/__init__.py                                  1      0   100%
+src/transcript_etl_pipeline/__main__.py                                  4      4     0%   3-13
+src/transcript_etl_pipeline/cli.py                                     274    274     0%   13-648
+src/transcript_etl_pipeline/config.py                                   30     30     0%   7-69
+src/transcript_etl_pipeline/devtools/__init__.py                         2      2     0%   3-10
+src/transcript_etl_pipeline/devtools/debug_callgraph.py                114    114     0%   3-245
+src/transcript_etl_pipeline/document/__init__.py                         2      0   100%
+src/transcript_etl_pipeline/document/formatting_rules.py                22     22     0%   7-58
+src/transcript_etl_pipeline/document/model.py                          102     52    49%   36-39, 58-60, 64, 76, 95, 99-102, 106-109, 113, 117, 125-128, 132-135, 143-149, 156, 160, 164, 168, 172, 186-195, 209-217
+src/transcript_etl_pipeline/document/parser.py                          61     61     0%   7-157
+src/transcript_etl_pipeline/document/reader.py                         206    206     0%   7-468
+src/transcript_etl_pipeline/extract/__init__.py                          3      3     0%   3-6
+src/transcript_etl_pipeline/extract/from_clipboard.py                   33     33     0%   7-82
+src/transcript_etl_pipeline/extract/from_file.py                        28     28     0%   7-73
+src/transcript_etl_pipeline/formatters/__init__.py                       0      0   100%
+src/transcript_etl_pipeline/formatters/docx_formatter.py                57     57     0%   7-170
+src/transcript_etl_pipeline/formatters/md_formatter.py                  44     44     0%   7-131
+src/transcript_etl_pipeline/formatters/rtf_formatter.py                 57     57     0%   7-177
+src/transcript_etl_pipeline/logging_config.py                           22     22     0%   3-54
+src/transcript_etl_pipeline/transform/__init__.py                        3      0   100%
+src/transcript_etl_pipeline/transform/dialogue_names_deprecated.py     108    108     0%   8-1643
+src/transcript_etl_pipeline/transform/enhance.py                        13     13     0%   6-54
+src/transcript_etl_pipeline/transform/identity_constraints.py           81     66    19%   48-51, 72-86, 110-250, 266-285
+src/transcript_etl_pipeline/transform/name.py                           79     79     0%   11-266
+src/transcript_etl_pipeline/transform/normalize.py                      47     39    17%   33-36, 53-76, 90-105, 122-135, 152-155
+src/transcript_etl_pipeline/transform/notes.py                          78      1    99%   281
+src/transcript_etl_pipeline/transform/paragraphs.py                    161    139    14%   65-109, 122-123, 140-157, 163-170, 176-190, 196-222, 226-243, 249-266, 270-272, 276-282, 286-287, 292-302, 314-317
+src/transcript_etl_pipeline/transform/speaker_helpers.py               371    345     7%   91-130, 136-149, 163-184, 199-205, 222-260, 278-309, 332-365, 383-425, 448-467, 493-620, 637-654, 681-864, 889-922, 946-960
+src/transcript_etl_pipeline/transform/speakerless.py                   144    135     6%   63-85, 106-182, 207-382
+src/transcript_etl_pipeline/transform/speakers.py                      417    417     0%   7-1116
+src/transcript_etl_pipeline/ui.py                                      202    202     0%   7-466
+--------------------------------------------------------------------------------------------------
+TOTAL                                                                 2766   2553     8%
+
+FAIL Required test coverage of 15.0% not reached. Total coverage: 7.70%
+
+============================== 27 passed in 0.33s ==============================

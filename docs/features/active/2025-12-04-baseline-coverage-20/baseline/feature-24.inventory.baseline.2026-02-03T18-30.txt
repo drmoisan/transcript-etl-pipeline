@@ -1,0 +1,7 @@
+Timestamp: 2026-02-04T02:43:33Z
+Command: ls -la docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-global-speaker-ids-24 && ls -1 docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-global-speaker-ids-24
+
+Feature: #24
+Feature folder: docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-global-speaker-ids-24
+
+--- ls -la ---

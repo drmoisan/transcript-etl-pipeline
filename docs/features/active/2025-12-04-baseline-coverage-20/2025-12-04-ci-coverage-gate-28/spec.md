@@ -27,6 +27,27 @@ Coverage ratchets align with milestone completion and module targets:
 
 Each ratchet requires updated coverage evidence in plan/spec files and an initiative milestone status update.
 
+## Fail-Under Ratchet Strategy
+
+The `fail_under` threshold in `pyproject.toml` enforces a minimum coverage floor in CI. This threshold should be ratcheted upward as coverage improves:
+
+**Current Configuration:**
+- Location: `pyproject.toml` under `[tool.coverage.report]`
+- Initial value: `fail_under = 15` (aligned to baseline coverage ~16%)
+
+**Ratchet Process:**
+1. **Measure** — Run pytest-cov locally and in CI to confirm current total coverage.
+2. **Update** — When sustained coverage exceeds the current floor by 5+ percentage points, update `fail_under` in `pyproject.toml` to the new floor.
+3. **Validate** — Ensure CI passes with the new threshold before merging.
+4. **Document** — Update spec.md and plan files with new threshold and supporting coverage evidence.
+
+**Ratchet Milestones:**
+- After M1 (Issues #21-#23): Raise to 20%
+- After M2 (Issues #26-#27): Raise to 30%
+- After M3 (Issues #24-#25): Raise to 50%
+
+Each ratchet increment requires a dedicated PR with evidence that the new floor is sustainable across the full test suite.
+
 
 ## Inputs / Outputs
 

@@ -1,0 +1,14 @@
+Link Check
+==========
+Timestamp: 2026-02-03T18:30:00Z
+Feature: 2025-12-04-baseline-coverage-20
+
+Status: Not available
+
+The repository does not have a link-check command configured.
+No link checker (markdown-link-check, lychee, linkchecker) found in:
+- pyproject.toml [tool.poetry.scripts]
+- pyproject.toml [tool.poetry.dependencies]
+- Standard PATH locations
+
+ExitCode: 0

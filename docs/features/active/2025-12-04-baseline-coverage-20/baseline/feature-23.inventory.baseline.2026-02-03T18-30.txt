@@ -1,0 +1,26 @@
+Timestamp: 2026-02-04T02:42:26Z
+Command: ls -la docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-identity-normalize-23 && ls -1 docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-identity-normalize-23
+
+Feature: #23
+Feature folder: docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-identity-normalize-23
+
+--- ls -la ---
+total 56
+drwxr-xr-x  3 vscode vscode  4096 Feb  3 17:47 .
+drwxr-xr-x 14 vscode vscode  4096 Feb  3 21:33 ..
+-rw-r--r--  1 vscode vscode  4592 Feb  2 21:15 23-identity-normalize.prompt.md
+drwxr-xr-x  2 vscode vscode  4096 Feb  3 17:47 baseline
+-rw-r--r--  1 vscode vscode   359 Feb  3 17:47 coverage-results.md
+-rw-r--r--  1 vscode vscode  2407 Feb  3 17:47 issue.md
+-rw-r--r--  1 vscode vscode 14840 Feb  3 17:47 plan.2026-02-02T13-08.md
+-rwxr-xr-x  1 vscode vscode  4737 Feb  2 13:20 spec.md
+-rwxr-xr-x  1 vscode vscode  2547 Feb  2 13:20 user-story.md
+
+--- files ---
+23-identity-normalize.prompt.md
+baseline
+coverage-results.md
+issue.md
+plan.2026-02-02T13-08.md
+spec.md
+user-story.md

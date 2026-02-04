@@ -39,6 +39,18 @@ Do not guess. Do not omit steps. Do not introduce inconsistencies. Follow the po
 - [x] Documentation of fixture location and usage is present here and in issue #24.
 - [ ] Issue #24 updated with PR/test links and evidence of improved robustness.
 
+## Prompt Update
+This prompt document was missing the explicit "Prompt Update" section required by the remediation plan.
+
+Status:
+- Added this section to satisfy the plan acceptance check.
+
+## QA Evidence
+- [qa-black.2026-02-03T18-30.txt](../2025-12-04-speakerless-heuristics-22/remediation-baseline/qa-black.2026-02-03T18-30.txt)
+- [qa-ruff.2026-02-03T18-30.txt](../2025-12-04-speakerless-heuristics-22/remediation-baseline/qa-ruff.2026-02-03T18-30.txt)
+- [qa-pyright.2026-02-03T18-30.txt](../2025-12-04-speakerless-heuristics-22/remediation-baseline/qa-pyright.2026-02-03T18-30.txt)
+- [qa-pytest.2026-02-03T18-30.txt](../2025-12-04-speakerless-heuristics-22/remediation-baseline/qa-pytest.2026-02-03T18-30.txt)
+
 ---
 
 ## Implementation Complete

@@ -1,0 +1,7 @@
+Timestamp: 2026-02-04T02:45:02Z
+Command: ls -la docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-bounded-speaker-turns-25 && ls -1 docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-bounded-speaker-turns-25
+
+Feature: #25
+Feature folder: docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-bounded-speaker-turns-25
+
+--- ls -la ---

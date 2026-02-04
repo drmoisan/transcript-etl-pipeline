@@ -74,7 +74,31 @@ Created two new test modules with 23 E2E tests total:
 
 All tests pass (23/23) with proper AAA structure, docstrings, and type annotations.
 
+## Scenario Notes
 
+This remediation adds comprehensive E2E CLI integration tests to protect key user workflows:
+- **Speakerless transcription**: Tests covering 3-speaker and 4-speaker scenarios across DOCX, MD, and RTF formats, plus auto-detection and error handling
+- **Notes workflows**: Tests covering notes-only documents, combined notes+transcript, and update-mode operations (adding/replacing notes or transcript sections)
+- **Format coverage**: All three output formats (DOCX, MD, RTF) are tested across both speakerless and notes workflows
+- **Update mode**: Exercises the document reader functionality by testing modification of existing documents
+
+The tests use representative fixtures (e.g., SPACEX_DISCUSSION, GENERIC_MEETING_3SPEAKER, PANEL_DISCUSSION_4SPEAKER, SAMPLE_NOTES_MD) and verify outputs through file existence, content extraction, and golden-file validation where appropriate.
+
+All tests are deterministic, follow AAA structure, and include proper type annotations and docstrings per repo policy.
+
+## Evidence Links
+
+- **Commit**: `3ab288535f1eecea32a940806044ce63afa63f9a` ([baseline/commit.txt](./baseline/commit.txt))
+- **Pre-remediation baseline**:
+  - Black: [baseline/black.txt](./baseline/black.txt)
+  - Ruff: [baseline/ruff.txt](./baseline/ruff.txt)
+  - Pyright: [baseline/pyright.txt](./baseline/pyright.txt)
+  - Pytest coverage: [baseline/pytest_cov.txt](./baseline/pytest_cov.txt)
+- **Post-remediation coverage**: [remediation-baseline/coverage.2026-02-03T18-30.txt](./remediation-baseline/coverage.2026-02-03T18-30.txt)
+- **Issue**: #25
+- **Related test files**:
+  - `tests/integration/test_cli_e2e_speakerless.py`
+  - `tests/integration/test_cli_e2e_notes.py`
 
 ## Acceptance Criteria
 - New E2E tests cover at least one speakerless and one notes CLI flow.

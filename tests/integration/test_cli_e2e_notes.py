@@ -92,6 +92,7 @@ class CliCapture:
     saved_documents: list[Document] = field(default_factory=list_documents)
     saved_formats: list[str] = field(default_factory=list_strings)
     saved_paths: list[Path] = field(default_factory=list_paths)
+    read_paths: list[str] = field(default_factory=list_strings)
     path_exists: bool | Callable[[Path], bool] = True
     existing_document: Document | None = None
 
@@ -112,6 +113,7 @@ def cli_mocks(monkeypatch: pytest.MonkeyPatch) -> CliCapture:
         return captured.file_contents.get(file_path, "")
 
     def fake_read_document(_path: str) -> Document:
+        captured.read_paths.append(_path)
         return captured.existing_document or Document()
 
     def fake_exists(path: Path) -> bool:
@@ -146,6 +148,7 @@ def run_cli(
     cli_state.saved_documents.clear()
     cli_state.saved_formats.clear()
     cli_state.saved_paths.clear()
+    cli_state.read_paths.clear()
 
     exit_code = cli.main(args)
     return exit_code, cli_state
@@ -522,6 +525,41 @@ class TestCLIUpdateModeDOCX:
 
         content = _document_text(captured.saved_documents[0])
         assert "DOCX note added" in content
+
+    def test_docx_reader_path(self, cli_mocks: CliCapture) -> None:
+        """Test CLI update mode reads from the provided DOCX update path."""
+        exit_code, captured = run_cli(
+            cli_mocks,
+            [
+                "--mode",
+                "update",
+                "--update-file",
+                "docx_reader_path.docx",
+                "--update-action",
+                "add-notes",
+                "--notes-source",
+                "file",
+                "--notes-file",
+                "notes.txt",
+                "--notes-label",
+                "DOCX Reader Path Notes",
+                "--format",
+                "docx",
+                "--output-name",
+                "final.docx",
+                "--output-folder",
+                "/output",
+            ],
+            file_contents={"notes.txt": "- Note added via update\n"},
+        )
+
+        assert exit_code == 0
+        assert captured.read_paths == ["docx_reader_path.docx"]
+        assert captured.saved_formats == ["docx"]
+
+        content = _document_text(captured.saved_documents[0])
+        assert "DOCX Reader Path Notes" in content
+        assert "Note added via update" in content
 
 
 class TestCLINotesErrorHandling:
