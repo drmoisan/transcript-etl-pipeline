@@ -71,7 +71,7 @@ class QCRunner:
         "run",
         "pytest",
         "--color=no",
-        "--cov=src/lexile_corpus_tuner",
+        "--cov=src/transcript_etl_pipeline",
         "--cov-report=xml",
         "--cov-report=term-missing",
     ]
@@ -485,7 +485,7 @@ class QCRunner:
                 "poetry",
                 "run",
                 "pytest",
-                "--cov=src/lexile_corpus_tuner",
+                "--cov=src/transcript_etl_pipeline",
                 "--cov=scripts/dev_tools",
                 "--cov-report=term-missing",
             ]

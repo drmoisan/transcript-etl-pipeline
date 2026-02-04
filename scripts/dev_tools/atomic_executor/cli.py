@@ -1410,7 +1410,7 @@ def _run_preflight_qc_with_capture(
                     "run",
                     "pytest",
                     "--color=no",
-                    "--cov=src/lexile_corpus_tuner",
+                    "--cov=src/transcript_etl_pipeline",
                     "--cov=scripts/dev_tools",
                     "--cov-report=term-missing",
                 ],
@@ -1668,7 +1668,7 @@ def _build_preflight_qc_fix_prompt(
                 "   - `poetry run black .`",
                 "   - `poetry run ruff check`",
                 "   - `poetry run pyright`",
-                "   - `poetry run pytest --cov=src/lexile_corpus_tuner "
+                "   - `poetry run pytest --cov=src/transcript_etl_pipeline "
                 "--cov=scripts/dev_tools --cov-report=term-missing`",
             ]
         )
