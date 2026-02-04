@@ -4,18 +4,11 @@ description: Generate phased implementation plans with atomic checkbox tasks tha
 argument-hint: "Describe the goal or change you want a phased atomic plan for."
 target: vscode
 tools:
-  - web/fetch
-  - search/codebase
-  - search/fileSearch
-  - search
-  - search/usages
-  - todo
-  - search/listDirectory
-  - read/readFile
-  - edit/createDirectory
-  - edit/createFile
-  - edit/editFiles
-  - web/githubRepo
+   ['read/readFile', 'edit/createDirectory', 'edit/createFile', 'edit/editFiles', 'search', 'web', 'agent', 'todo']
+handoffs:
+   - label: Preflight validate plan (atomic_executor)
+     agent: atomic_executor
+     prompt: "DIRECTIVE: PREFLIGHT VALIDATION ONLY\n\nPlease run preflight validation on the plan below (format + executability only). Return exactly one of: PREFLIGHT: ALL CLEAR or PREFLIGHT: REVISIONS REQUIRED. If revisions are required, include a precise plan delta (exact edits).\n\nPlan:\n${plan_or_path}"
 ---
 # Atomic Planning & Execution Agent
 
@@ -293,6 +286,20 @@ Allowed acceptance criteria (examples):
 - A command exits with code 0 and its output contains an exact substring.
 - A file exists and contains an exact expected line.
 
+For any **expect-fail** regression test task, acceptance criteria MUST also require an
+**auditable evidence artifact** saved to the canonical regression testing location
+`regression-testing/` (plan-adjacent or feature-level). The artifact MUST include
+machine-checkable fields:
+
+- `Timestamp: <ISO-8601>`
+- `Command: <exact command>`
+- `EXIT_CODE: <int>`
+
+If the task is expected to fail, the recorded `EXIT_CODE` must be non-zero or the
+artifact must include a short failure assertion excerpt (e.g., `Failure: ...`) that
+is directly attributable to the scenario under test. This evidence requirement is
+mandatory for auto-checkable delivery audits.
+
 Manual checks may appear ONLY as non-gating notes (never as completion criteria).
 
 ### 2.6.4 REQ-ID closure gate
@@ -512,8 +519,14 @@ Required rules:
    `- [ ] [P1-T1] [expect-fail] Add regression test ...`
 * Any test task whose acceptance criteria explicitly requires `pytest` (or equivalent) to **fail** MUST include `[expect-fail]`.
 * Any task with `[expect-fail]` MUST have acceptance criteria that are mechanically verifiable and state:
-   - the exact test command to run, and
-   - that the command is expected to **fail** for the task to be considered complete.
+    - the exact test command to run, and
+    - that the command is expected to **fail** for the task to be considered complete, and
+    - the exact **auditable evidence artifact** path to capture the failing run output in
+       `regression-testing/`, including the required fields `Timestamp`, `Command`, and
+       `EXIT_CODE`.
+
+The evidence artifact requirement is not optional: without it, expect-fail tasks are
+not auditable and must be treated as incomplete by delivery review.
 
 Examples:
 
@@ -602,10 +615,10 @@ If any of these are not satisfied, decompose further.
 
 When you need context:
 
-* Use `#tool:githubRepo` or `#tool:search/codebase` to inspect repository code and structure.
-* Use `#tool:search` or `#tool:fetch` to find relevant references or docs.
-* Use `#tool:usages` to understand where functions or symbols are used.
-* Use `#tool:search/fileSearch`, `#tool:search/listDirectory`, and `#tool:search/readFile` to discover and inspect existing documentation, plan files, and feature folders.
+* Use `#tool:web/githubRepo` or `#tool:search/codebase` to inspect repository code and structure.
+* Use `#tool:search` or `#tool:web/fetch to find relevant references or docs.
+* Use `#tool:search/usages` to understand where functions or symbols are used.
+* Use `#tool:search/fileSearch`, `#tool:search/listDirectory`, and `#tool:read/readFile` to discover and inspect existing documentation, plan files, and feature folders.
 
 You may summarize what you learn from these tools in the plan, but you **must not** propose tasks that rely on unstated or opaque knowledge. If a task assumes a specific file or function exists, name it explicitly.
 
@@ -643,7 +656,7 @@ Once a path is confirmed:
   * Use `#tool:edit/createFile` to create the new file with the full plan content.
 * **If the file already exists:**
 
-  * Use `#tool:search/readFile` to inspect the current contents.
+  * Use `#tool:read/readFile` to inspect the current contents.
   * Either:
 
     * Replace any prior “plan” section with the new plan, or

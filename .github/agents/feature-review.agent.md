@@ -104,6 +104,10 @@ Constraints:
 - For multi-feature epics, store the epic-wide baseline at the epic root `baseline/`.
 - For multi-version features, keep a feature-level baseline in the feature root `baseline/`, and store version-specific baselines in a `baseline/` folder next to each version plan.
 
+## 1c) Regression evidence location (canonical)
+- Store regression test evidence (fail-before and pass-after artifacts) in `<FEATURE>/regression-testing/`.
+- If a rollup is needed, store epic-level regression evidence in `<EPIC>/regression-testing/`.
+
 ## 2) No silent fixes
 - Do not “clean up” code during review.
 - If format/lint/type failures exist, document them and include exact fix guidance in remediation inputs.
