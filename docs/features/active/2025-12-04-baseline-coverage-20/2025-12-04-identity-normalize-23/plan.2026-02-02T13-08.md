@@ -154,13 +154,13 @@ Atomic, deterministic execution plan to raise combined coverage for `src/transcr
   - Acceptance: Issue #23 comment includes the exact coverage table values and the command `poetry run pytest --cov=src/transcript_etl_pipeline --cov-report=term-missing`
 
 ### Phase 5 — QA Toolchain
-- [ ] [P5-T1] Run formatting step `poetry run black .` and restart the toolchain from P5-T1 if any files change or the command fails
+- [x] [P5-T1] Run formatting step `poetry run black .` and restart the toolchain from P5-T1 if any files change or the command fails
   - Acceptance: Command exits with code 0 and produces no file changes
-- [ ] [P5-T2] Run linting step `poetry run ruff check` and restart the toolchain from P5-T1 if the command fails
+- [x] [P5-T2] Run linting step `poetry run ruff check` and restart the toolchain from P5-T1 if the command fails
   - Acceptance: Command exits with code 0
-- [ ] [P5-T3] Run type-check step `poetry run pyright` and restart the toolchain from P5-T1 if the command fails
+- [x] [P5-T3] Run type-check step `poetry run pyright` and restart the toolchain from P5-T1 if the command fails
   - Acceptance: Command exits with code 0
-- [ ] [P5-T4] Run testing step `poetry run pytest` and restart the toolchain from P5-T1 if the command fails
+- [x] [P5-T4] Run testing step `poetry run pytest` and restart the toolchain from P5-T1 if the command fails
   - Acceptance: Command exits with code 0
 
 ## Test Plan

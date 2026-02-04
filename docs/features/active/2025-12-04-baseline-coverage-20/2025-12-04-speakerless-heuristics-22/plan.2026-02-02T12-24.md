@@ -106,7 +106,7 @@ version: "0.2"
   - Acceptance: `powershell -Command "Select-String -Path tests/transform/test_speaker_helpers.py -Pattern 'distinct speakers'"` returns a match and the test asserts `len(set(...)) == 3` for the three self-identified indices.
 
 ### Phase 3 — Coverage Evidence and Issue Updates
-- [ ] [P3-T1] TASK-9 Run `poetry run pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-report=html` followed by `poetry run coverage report --include=src/transcript_etl_pipeline/transform/speakerless.py,src/transcript_etl_pipeline/transform/speaker_helpers.py --fail-under=70` and capture the output in the task notes (REQ-2).
+- [x] [P3-T1] TASK-9 Run `poetry run pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-report=html` followed by `poetry run coverage report --include=src/transcript_etl_pipeline/transform/speakerless.py,src/transcript_etl_pipeline/transform/speaker_helpers.py --fail-under=70` and capture the output in the task notes (REQ-2).
   - Acceptance: The `coverage report --fail-under=70` command exits with code 0.
 - [ ] [P3-T2] TASK-10 Update Issue #22 with coverage evidence and links to tests/PRs (REQ-4).
   - Acceptance: `gh issue view 22 --json body -q ".body"` output contains a PR URL matching `https://github.com/drmoisan/transcript-etl-pipeline/pull/` and mentions `coverage report --fail-under=70`.
@@ -114,13 +114,13 @@ version: "0.2"
   - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-speakerless-heuristics-22/22-speakerless-heuristics.md -Pattern 'Edge cases|Surprises'"` returns a match.
 
 ### Phase 4 — QA (Python Toolchain)
-- [ ] [P4-T1] TASK-12 Run `poetry run black .` and confirm the formatter exits with code 0; if it modifies files or fails, fix issues and restart from [P4-T1].
+- [x] [P4-T1] TASK-12 Run `poetry run black .` and confirm the formatter exits with code 0; if it modifies files or fails, fix issues and restart from [P4-T1].
   - Acceptance: Command exits with code 0 on a pass where no files are modified.
-- [ ] [P4-T2] TASK-13 Run `poetry run ruff check` and confirm the linter exits with code 0; if it fails, fix issues and restart from [P4-T1].
+- [x] [P4-T2] TASK-13 Run `poetry run ruff check` and confirm the linter exits with code 0; if it fails, fix issues and restart from [P4-T1].
   - Acceptance: Command exits with code 0.
-- [ ] [P4-T3] TASK-14 Run `poetry run pyright` and confirm type checking exits with code 0; if it fails, fix issues and restart from [P4-T1].
+- [x] [P4-T3] TASK-14 Run `poetry run pyright` and confirm type checking exits with code 0; if it fails, fix issues and restart from [P4-T1].
   - Acceptance: Command exits with code 0.
-- [ ] [P4-T4] TASK-15 Run `poetry run pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-report=html` and confirm tests exit with code 0; if it fails, fix issues and restart from [P4-T1].
+- [x] [P4-T4] TASK-15 Run `poetry run pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-report=html` and confirm tests exit with code 0; if it fails, fix issues and restart from [P4-T1].
   - Acceptance: Command exits with code 0.
 
 ## Test Plan

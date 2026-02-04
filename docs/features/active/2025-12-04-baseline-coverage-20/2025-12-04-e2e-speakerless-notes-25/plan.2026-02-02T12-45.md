@@ -104,15 +104,15 @@ version: "0.2"
   - Acceptance: `Select-String -Path tests/integration/test_cli_e2e_speakerless.py -Pattern 'generic_meeting_docx'` returns a match and the test asserts transcript section count > 0.
 - [x] [P1-T4] TASK-4 Add `TestCLISpeakerless3SpeakersDOCX.test_team_standup_docx` using `TEAM_STANDUP_3SPEAKER` with `--num-speakers 3` and asserts `_save_document` called once and includes multiple sections.
   - Acceptance: `Select-String -Path tests/integration/test_cli_e2e_speakerless.py -Pattern 'team_standup_docx'` returns a match and the test asserts captured section count >= 2.
-- [ ] [P1-T5] TASK-5 Add `TestCLISpeakerless4SpeakersDOCX.test_panel_discussion_docx` using `PANEL_DISCUSSION_4SPEAKER` with `--num-speakers 4` and asserts `_save_document` receives a document with at least 4 speaker labels.
+- [x] [P1-T5] TASK-5 Add `TestCLISpeakerless4SpeakersDOCX.test_panel_discussion_docx` using `PANEL_DISCUSSION_4SPEAKER` with `--num-speakers 4` and asserts `_save_document` receives a document with at least 4 speaker labels.
   - Acceptance: `Select-String -Path tests/integration/test_cli_e2e_speakerless.py -Pattern 'panel_discussion_docx'` returns a match and the test asserts distinct speaker labels count >= 4.
 - [x] [P1-T6] TASK-6 Add `TestCLISpeakerlessMarkdown.test_spacex_md` using `SPACEX_DISCUSSION` with `--format md` and assert `_save_document` called with `output_format == "md"`.
   - Acceptance: `Select-String -Path tests/integration/test_cli_e2e_speakerless.py -Pattern 'spacex_md'` returns a match and the test asserts `output_format == "md"`.
-- [ ] [P1-T7] TASK-7 Add `TestCLISpeakerlessMarkdown.test_generic_meeting_md` using `GENERIC_MEETING_3SPEAKER` with `--format md` and assert `_save_document` called once.
+- [x] [P1-T7] TASK-7 Add `TestCLISpeakerlessMarkdown.test_generic_meeting_md` using `GENERIC_MEETING_3SPEAKER` with `--format md` and assert `_save_document` called once.
   - Acceptance: `Select-String -Path tests/integration/test_cli_e2e_speakerless.py -Pattern 'generic_meeting_md'` returns a match and the test asserts `_save_document` call count == 1.
-- [ ] [P1-T8] TASK-8 Add `TestCLISpeakerlessRTF.test_spacex_rtf` using `SPACEX_DISCUSSION` with `--format rtf` and assert `_save_document` called with `output_format == "rtf"`.
+- [x] [P1-T8] TASK-8 Add `TestCLISpeakerlessRTF.test_spacex_rtf` using `SPACEX_DISCUSSION` with `--format rtf` and assert `_save_document` called with `output_format == "rtf"`.
   - Acceptance: `Select-String -Path tests/integration/test_cli_e2e_speakerless.py -Pattern 'spacex_rtf'` returns a match and the test asserts `output_format == "rtf"`.
-- [ ] [P1-T9] TASK-9 Add `TestCLISpeakerlessRTF.test_team_standup_rtf` using `TEAM_STANDUP_3SPEAKER` with `--format rtf` and assert `_save_document` called once.
+- [x] [P1-T9] TASK-9 Add `TestCLISpeakerlessRTF.test_team_standup_rtf` using `TEAM_STANDUP_3SPEAKER` with `--format rtf` and assert `_save_document` called once.
   - Acceptance: `Select-String -Path tests/integration/test_cli_e2e_speakerless.py -Pattern 'team_standup_rtf'` returns a match and the test asserts `_save_document` call count == 1.
 - [x] [P1-T10] TASK-10 Add `TestCLISpeakerlessAutoDetect.test_auto_detect_no_num_speakers` that runs with `--source file` and no `--num-speakers` flag and asserts `_save_document` called with a document containing speaker labels.
   - Acceptance: `Select-String -Path tests/integration/test_cli_e2e_speakerless.py -Pattern 'auto_detect_no_num_speakers'` returns a match and the test asserts `"Speaker"` in captured document text.
@@ -130,17 +130,17 @@ version: "0.2"
   - Acceptance: `Select-String -Path tests/integration/test_cli_e2e_notes.py -Pattern 'TestCLIUpdateModeNotes'` returns a match and each test asserts the notes section count matches the action.
 - [x] [P2-T5] TASK-16 Add `TestCLIUpdateModeTranscript` with `add-transcript` and `replace-transcript` tests that monkeypatch `read_document` and assert transcript sections are merged or replaced as expected.
   - Acceptance: `Select-String -Path tests/integration/test_cli_e2e_notes.py -Pattern 'TestCLIUpdateModeTranscript'` returns a match and each test asserts transcript section count matches the action.
-- [ ] [P2-T6] TASK-17 Add `TestCLIUpdateModeDOCX.test_docx_reader_path` that uses a committed fixture path (e.g., `tests/fixtures/sample.docx`) for `--update-file` and asserts `read_document` is invoked and `_save_document` called.
+- [x] [P2-T6] TASK-17 Add `TestCLIUpdateModeDOCX.test_docx_reader_path` that uses a committed fixture path (e.g., `tests/fixtures/sample.docx`) for `--update-file` and asserts `read_document` is invoked and `_save_document` called.
   - Acceptance: `Select-String -Path tests/integration/test_cli_e2e_notes.py -Pattern 'docx_reader_path'` returns a match and the test asserts `read_document` was called.
 - [x] [P2-T7] TASK-18 Add `TestCLINotesErrorHandling` with `test_notes_missing_file_returns_error` and `test_invalid_update_args_returns_error` asserting `main` returns non-zero exit codes.
   - Acceptance: `Select-String -Path tests/integration/test_cli_e2e_notes.py -Pattern 'NotesErrorHandling'` returns a match and each test asserts `exit_code != 0`.
 
 ### Phase 3 — Coverage Evidence and Issue Updates
-- [ ] [P3-T1] TASK-19 Run `poetry run pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-report=html` and record coverage for `src/transcript_etl_pipeline/cli.py`, `src/transcript_etl_pipeline/document/reader.py`, `src/transcript_etl_pipeline/extract/from_file.py`, and `src/transcript_etl_pipeline/transform/notes.py` (REQ-2).
+- [x] [P3-T1] TASK-19 Run `poetry run pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-report=html` and record coverage for `src/transcript_etl_pipeline/cli.py`, `src/transcript_etl_pipeline/document/reader.py`, `src/transcript_etl_pipeline/extract/from_file.py`, and `src/transcript_etl_pipeline/transform/notes.py` (REQ-2).
   - Acceptance: `coverage.xml` exists and `Select-String -Path coverage.xml -Pattern 'cli.py|reader.py|from_file.py|notes.py'` returns matches.
 - [x] [P3-T2] TASK-20 Update Issue #25 with PR/test links and scenario notes (REQ-4).
   - Acceptance: `gh issue view 25 --json body -q ".body"` output contains a PR URL matching `https://github.com/drmoisan/transcript-etl-pipeline/pull/` and mentions "speakerless" and "notes".
-- [ ] [P3-T3] TASK-21 Update `docs/features/active/2025-12-04-e2e-speakerless-notes-25/25-e2e-speakerless-notes.prompt.md` with any edge cases or runtime/env notes (REQ-3).
+- [x] [P3-T3] TASK-21 Update `docs/features/active/2025-12-04-e2e-speakerless-notes-25/25-e2e-speakerless-notes.prompt.md` with any edge cases or runtime/env notes (REQ-3).
   - Acceptance: `Select-String -Path docs/features/active/2025-12-04-e2e-speakerless-notes-25/25-e2e-speakerless-notes.prompt.md -Pattern 'Runtime|Environment|Edge cases'` returns a match.
 
 ### Phase 4 — QA (Python Toolchain)

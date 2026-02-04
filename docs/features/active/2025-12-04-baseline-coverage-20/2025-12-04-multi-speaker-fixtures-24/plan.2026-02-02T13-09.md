@@ -59,7 +59,7 @@ REQ-005 | Document fixture location and usage in `docs/features/active/2025-12-0
 - [x] [TASK-P3-T1] Update `docs/features/active/2025-12-04-multi-speaker-fixtures-24/issue.md` to document fixture locations, usage, and test suite location
   - Acceptance: Issue doc includes explicit paths to `tests/fixtures/multi_speaker.py` and `tests/transform/test_multi_speaker_regression.py`
   - Evidence (status_updater, 2026-02-03T17-30): `issue.md` updated with fixture and regression test paths in Sync Summary.
-- [ ] [TASK-P3-T2] Update `docs/features/active/2025-12-04-multi-speaker-fixtures-24/24-multi-speaker-fixtures.prompt.md` with final test counts and results once tests pass
+- [x] [TASK-P3-T2] Update `docs/features/active/2025-12-04-multi-speaker-fixtures-24/24-multi-speaker-fixtures.prompt.md` with final test counts and results once tests pass
   - Acceptance: Prompt doc includes test result summary and xfail list
 
 ## Test Plan

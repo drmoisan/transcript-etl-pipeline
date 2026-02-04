@@ -103,13 +103,13 @@ version: "0.2"
   - Acceptance: `Select-String -Path docs/features/active/2025-12-04-notes-regressions-26/26-notes-regressions.prompt.md -Pattern 'Edge cases|Outcomes'` returns a match.
 
 ### Phase 3 — QA (Python Toolchain)
-- [ ] [P3-T1] Run `poetry run black .` and confirm the formatter exits with code 0; if it modifies files or fails, fix issues and restart from [P3-T1].
+- [x] [P3-T1] Run `poetry run black .` and confirm the formatter exits with code 0; if it modifies files or fails, fix issues and restart from [P3-T1].
   - Acceptance: Command exits with code 0 on a pass where no files are modified.
-- [ ] [P3-T2] Run `poetry run ruff check` and confirm the linter exits with code 0; if it fails, fix issues and restart from [P3-T1].
+- [x] [P3-T2] Run `poetry run ruff check` and confirm the linter exits with code 0; if it fails, fix issues and restart from [P3-T1].
   - Acceptance: Command exits with code 0.
-- [ ] [P3-T3] Run `poetry run pyright` and confirm type checking exits with code 0; if it fails, fix issues and restart from [P3-T1].
+- [x] [P3-T3] Run `poetry run pyright` and confirm type checking exits with code 0; if it fails, fix issues and restart from [P3-T1].
   - Acceptance: Command exits with code 0.
-- [ ] [P3-T4] Run `poetry run pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-report=html` and confirm tests exit with code 0; if it fails, fix issues and restart from [P3-T1].
+- [x] [P3-T4] Run `poetry run pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-report=html` and confirm tests exit with code 0; if it fails, fix issues and restart from [P3-T1].
   - Acceptance: Command exits with code 0.
 
 ## Test Plan
