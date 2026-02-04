@@ -90,7 +90,12 @@ Rules:
 
 ## Commit Message Format (Strict)
 
-Your output **must contain only** the commit message, formatted exactly as follows:
+Your output **must be a single fenced code block** using the language tag `text`.
+
+- The code block must contain ONLY the commit message.
+- Do not include any other text outside the code block.
+
+Inside the code block, the commit message must be formatted exactly as follows:
 
 ```
 (type[optional-scope]): concise imperative summary
@@ -174,7 +179,7 @@ Refs: #<issue>, #<issue>
 ## Hard Prohibitions
 
 * No emojis
-* No markdown formatting in the output
+* No Markdown formatting inside the commit message (the outer ```text wrapper is required)
 * No references to "this commit"
 * No speculation about unstaged changes
 * No multi‑paragraph prose
