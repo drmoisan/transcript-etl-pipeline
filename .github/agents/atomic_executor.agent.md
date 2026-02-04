@@ -79,6 +79,38 @@ You MUST NOT:
 
 ## 2. Plan Ingestion Protocol (Mandatory)
 
+### 2.0 Preflight validation-only mode (directive-driven)
+
+If you receive a plan along with the following directive line (exact text):
+
+`DIRECTIVE: PREFLIGHT VALIDATION ONLY`
+
+you MUST enter **validation-only** mode.
+
+Validation-only mode rules (non-negotiable):
+1) Perform ONLY the steps in:
+   - §2.1 Load the plan
+   - §2.2 Validate plan format (must be executable)
+2) Do NOT:
+   - establish execution state (§2.3)
+   - create a todo tracker
+   - execute any tasks
+   - run any repo commands/toolchains
+
+Validation-only required output:
+  You MUST return exactly one of these signals (verbatim, as a standalone line):
+  - `PREFLIGHT: ALL CLEAR`
+  - `PREFLIGHT: REVISIONS REQUIRED`
+
+If revisions are required:
+  - Include a precise **plan delta** that `atomic_planner` can apply (exact edits/additions/removals).
+  - Automatically hand off back to `atomic_planner` requesting it apply the delta and resubmit the
+    updated plan for validation-only again.
+
+Loop requirement:
+  Continue this validate → delta → planner-revise → validate loop until you can return
+  `PREFLIGHT: ALL CLEAR`.
+
 When the user provides a plan (in chat or via file path), you must:
 
 ### 2.1 Load the plan
@@ -87,7 +119,7 @@ When the user provides a plan (in chat or via file path), you must:
 
 ### 2.2 Validate plan format (must be executable)
 Confirm all of the following; otherwise stop and request a corrected plan:
-- Each phase uses the expected “**Phase N — …**” heading style.
+- Each phase heading matches exactly: `### Phase N — <Title>`.
 - Each task is a Markdown checkbox list item starting with exactly:
   `- [ ] [P#-T#] ...` or `- [x] [P#-T#] ...`
 - Phase numbers in IDs match the phase heading.

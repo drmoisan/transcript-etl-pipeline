@@ -203,6 +203,48 @@ If any check fails: you MUST correct the plan before responding. Do NOT output a
 
 ---
 
+### 2.5.1 Mandatory preflight validation loop via `atomic_executor`
+
+In automated/agentic workflows, you MUST NOT consider a plan “final” until it has passed the
+`atomic_executor` agent’s **preflight** validation.
+
+Purpose:
+      You (the planner) emulate preflight in §2.5, but the executor is the system-of-record for whether
+      a plan is actually ingestible. This section makes that validation explicit and repeatable.
+
+Hard constraints:
+      - The `atomic_executor` handoff MUST be **validate-only** (no task execution).
+      - The loop MUST continue until an **all clear** signal is received.
+      - If revisions are required, they MUST be expressed as a **plan delta** (exact edits) and applied
+         to the plan before re-validating.
+
+Required handoff directive (exact text):
+
+`DIRECTIVE: PREFLIGHT VALIDATION ONLY`
+
+Required validation result signals (exact text; one must be present):
+
+- `PREFLIGHT: ALL CLEAR`
+- `PREFLIGHT: REVISIONS REQUIRED`
+
+Protocol (MANDATORY):
+      1) Generate or update the plan (in chat or in `${file}` when a plan file is requested).
+      2) Immediately produce a handoff to `atomic_executor` containing:
+          - The directive line above.
+          - Either the plan file path OR the full plan text inline.
+          - A request to run ONLY the preflight validation checks (format + executability), and to
+             return one of the required signals plus a plan delta when revisions are needed.
+      3) If the executor returns `PREFLIGHT: REVISIONS REQUIRED`, apply the provided plan delta
+          (preserving IDs and format rules), then hand off to `atomic_executor` again.
+      4) Repeat until the executor returns `PREFLIGHT: ALL CLEAR`.
+
+When returning to the user (or the calling system):
+      - Include the final `PREFLIGHT: ALL CLEAR` signal verbatim.
+      - If changes were required, briefly summarize what was revised (but do not restate the entire
+         plan unless explicitly asked).
+
+---
+
 ## 2.6 Determinism Gates (Mandatory)
 
 ### 2.6.1 Zero placeholders gate
