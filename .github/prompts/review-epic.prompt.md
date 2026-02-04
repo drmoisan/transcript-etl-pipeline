@@ -33,6 +33,53 @@ From the epic root folder contents:
    - Verify each acceptance criterion against code/tests and capture evidence
    - Reconcile unchecked plan items against delivered code/tests (auto-check if delivered)
 
+## Canonical evidence discovery + auto-check gates (hard requirements)
+
+### Canonical evidence discovery order (must be explicit)
+
+When discovering evidence artifacts for delivery verification or auto-checking tasks, use this discovery order and treat it as canonical:
+
+1) `<FEATURE>/remediation-baseline/`
+2) `<FEATURE>/baseline/`
+3) `<EPIC>/remediation-baseline/` (optional rollup artifacts)
+4) `<EPIC>/baseline/` (optional rollup artifacts)
+
+If evidence is found elsewhere:
+
+- Treat it as **found but non-canonical**.
+- Require a remediation task to copy/move the artifact into the first applicable canonical location.
+
+### Auto-check eligibility rule (hard gate)
+
+Only check (auto-check) a plan item if the evidence artifact contains **all** required fields:
+
+- `Timestamp: <ISO-8601>`
+- `Command: <exact command>`
+- `EXIT_CODE: <int>`
+
+For fail-before expectations, the evidence must include either:
+
+- `EXIT_CODE != 0`, OR
+- an explicit “Fail-before Exception Dossier” section (see below).
+
+This prevents placeholder text from incorrectly satisfying grep-based checks.
+
+### Reconcile feature plan/spec DoD (not only epic remediation plan)
+
+When remediation delivers a gap, update:
+
+- the checkbox(es) in the corresponding feature’s latest `plan.*.md`, and
+- the relevant `spec.md` Definition-of-Done (DoD) checklist items.
+
+Epic-level remediation plan checkmarks are not sufficient.
+
+### Carry-forward logic for remediation plans (plan-of-record)
+
+If `<EPIC>/remediation-plan.*.md` exists, treat the latest as the plan-of-record:
+
+- Update it in-place; do not generate a fresh unchecked plan unless explicitly starting over.
+- If a new remediation plan is generated anyway, copy completion state forward by matching stable task IDs (`[P#-T#]`).
+
 ## Evidence provenance and freshness rules (blocking metrics)
 
 Apply these requirements to any **numeric/metric claim** (coverage, pass rates, counts, etc.) used in audits or blocking decisions:
@@ -83,6 +130,58 @@ All filenames must include a timestamp in ISO-8601 format `yyyy-MM-ddTHH-mm` (e.
    - Concrete, enumerated fix list with “done” criteria and exact doc locations
 
 5. A **completed** `remediation-plan.<timestamp>.md` created by automatically invoking `atomic_planner`
+
+## Issue updates must be mirrored locally (bidirectional discipline)
+
+For any task that claims “issue updated,” require a local mirror artifact (always), even if GitHub CLI/auth is unavailable:
+
+- `<FEATURE>/issue-updates/issue-<N>.<timestamp>.md` containing:
+   - Timestamp
+   - The exact text intended/posted
+   - `PostedAs: body` or `PostedAs: comment` (preferred), or `PostedAs: unknown`
+   - If posted as a comment: the GitHub URL to the comment
+   - If posted as an issue body update: the GitHub URL to the issue plus an `IssueUpdatedAt: <ISO-8601>` snapshot
+   - If not posted: a `POSTING BLOCKED` header and the reason
+
+Additionally, if `PostedAs: body`, you must mirror the same update into the local `issue.md` in the feature’s current documentation scope (current version folder if present; otherwise feature root). The intent is that `issue.md` remains an authoritative local mirror of the current GitHub issue body.
+
+Completion criteria for “issue updated”:
+
+- ✅ local mirror file exists (always)
+- ✅ local feature `issue.md` is updated to match the new issue body text when `PostedAs: body` (even if remote posting is blocked)
+- ✅ Remote verification exists when GH access is available, via either:
+  - a comment permalink (when `PostedAs: comment`), or
+  - an issue body snapshot (`IssueUpdatedAt` + captured body text) (when `PostedAs: body`)
+- If GH access is unavailable: mark the task **Blocked** (not Met), but the local mirror must still exist.
+
+Verification rule:
+
+1) Search for local mirror first (deterministic).
+2) Only attempt remote verification if tooling/auth is available.
+3) Never fail solely because remote checks cannot run; report “Not verified due to tooling,” and require the local mirror.
+
+## Gap → remediation mapping (no drops)
+
+Every **Not Met** / **Partially Met** acceptance criterion must:
+
+- produce at least one remediation input entry, and
+- each entry must map 1:1 to a remediation-plan task with explicit “done” evidence.
+
+No gaps may be dropped.
+
+## Fail-before Exception Dossier (when failing run is impossible)
+
+Some fail-before requirements are structurally impossible when remediation is “add tests that didn’t exist.” In those cases, a Fail-before Exception Dossier is acceptable evidence.
+
+Required contents (machine-checkable):
+
+- Baseline commit SHA
+- Command output proving absence (e.g., `git grep <test_name>` returns no matches)
+- “Why failing run is impossible” (1–3 sentences)
+- “Alternative proof” (coverage delta, or absence-of-test proof)
+- Timestamp + exact command(s) + exit code(s)
+
+With this dossier, the reviewer may mark the AC as Met (Exception accepted) or Partially Met (Exception recorded), instead of repeatedly flagging an un-remediable fail-before gap.
 
 ### Conditional deliverables (pre-execution only)
 
