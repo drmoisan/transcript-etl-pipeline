@@ -8,7 +8,7 @@ tools:
 handoffs:
   - label: Create remediation plan (atomic_planner)
     agent: atomic_planner
-    prompt: "You are atomic_planner. Create an atomic remediation plan ONLY (no implementation) to address the findings in `remediation-inputs.<timestamp>.md`, and WRITE the plan to the explicit file path provided in the prompt as `<EPIC_FOLDER>/remediation-plan.<timestamp>.md`.\n\nRequirements:\n- Preserve atomic planner conventions (phases, [P#-T#] task IDs, checkboxes, verifiable acceptance criteria).\n- Separate discovery/research from implementation tasks.\n- Include Phase 0 tasks for: reading applicable repo policies, confirming epic scope/docs, and defining success criteria.\n- If baseline capture is required, store artifacts in `<EPIC_FOLDER>/baseline/`.\n- Include a final QA phase: doc structure checks -> lint (if available) -> link checks (if available).\n- Use ONLY the explicit output path supplied (no path confirmation questions)."
+    prompt: "You are atomic_planner. Create an atomic remediation plan ONLY (no implementation) to address the findings in `remediation-inputs.<timestamp>.md`, and WRITE the plan to the explicit file path provided in the prompt as `<EPIC_FOLDER>/remediation-plan.<timestamp>.md`.\n\nRequirements:\n- Preserve atomic planner conventions (phases, [P#-T#] task IDs, checkboxes, verifiable acceptance criteria).\n- Separate discovery/research from implementation tasks.\n- Include Phase 0 tasks for: reading applicable repo policies, confirming epic scope/docs, and defining success criteria.\n- If baseline capture is required, store artifacts in `<EPIC_FOLDER>/evidence/baseline/`.\n- Include a final QA phase: doc structure checks -> lint (if available) -> link checks (if available).\n- Use ONLY the explicit output path supplied (no path confirmation questions)."
     send: true
 ---
 
@@ -62,12 +62,14 @@ Constraints:
 
 When discovering evidence artifacts for delivery verification or auto-checking tasks, use this discovery order and treat it as canonical:
 
-1) `<FEATURE>/regression-testing/`
-2) `<FEATURE>/remediation-baseline/`
-3) `<FEATURE>/baseline/`
-4) `<EPIC>/regression-testing/` (optional rollup)
-5) `<EPIC>/remediation-baseline/` (optional rollup)
-6) `<EPIC>/baseline/` (optional rollup)
+1) `<FEATURE>/evidence/regression-testing/`
+2) `<FEATURE>/evidence/qa-gates/`
+3) `<FEATURE>/evidence/remediation-baseline/`
+4) `<FEATURE>/evidence/baseline/`
+5) `<EPIC>/evidence/regression-testing/` (optional rollup)
+6) `<EPIC>/evidence/qa-gates/` (optional rollup)
+7) `<EPIC>/evidence/remediation-baseline/` (optional rollup)
+8) `<EPIC>/evidence/baseline/` (optional rollup)
 
 If evidence is found elsewhere:
 - Record it as **found but non-canonical**.
@@ -81,7 +83,7 @@ Only treat an artifact as eligible evidence for **auto-checking** a plan item if
 - `Command: <exact command>`
 - `EXIT_CODE: <int>`
 
-Additionally, if the evidence is intended to satisfy **fail-before** expectations, it must be stored under `regression-testing/` and include either:
+Additionally, if the evidence is intended to satisfy **fail-before** expectations, it must be stored under `evidence/regression-testing/` and include either:
 
 - `EXIT_CODE != 0` (from a recorded command), OR
 - an explicit **Fail-before Exception Dossier** section (see below).
@@ -200,13 +202,13 @@ Apply these requirements to any **numeric/metric claim** (coverage, pass rates, 
   - Otherwise, phrase it as **“needs verification”** rather than **“fails.”**
 
 ## 7) Baseline capture location (canonical)
-- For multi-feature epics, store the epic-level baseline in `<EPIC_FOLDER>/baseline/`.
-- For multi-version features within the epic, store the feature-level baseline in the feature root `baseline/`, and store version-specific baselines in a `baseline/` folder next to each version plan.
+- For multi-feature epics, store the epic-level baseline in `<EPIC_FOLDER>/evidence/baseline/`.
+- For multi-version features within the epic, store the feature-level baseline in the feature root `evidence/baseline/`, and store version-specific baselines in an `evidence/baseline/` folder next to each version plan.
 
 If remediation evidence is collected specifically for remediation tasks, prefer:
 
-- `<FEATURE>/remediation-baseline/` for feature-specific evidence
-- `<EPIC_FOLDER>/remediation-baseline/` for epic rollup evidence
+- `<FEATURE>/evidence/remediation-baseline/` for feature-specific evidence
+- `<EPIC_FOLDER>/evidence/remediation-baseline/` for epic rollup evidence
 
 # Execution plan (phased, deterministic)
 
@@ -373,7 +375,7 @@ This is a hard requirement: do not drop gaps due to ambiguity—record them as U
 
 ### Fail-before Exception Dossier (acceptable evidence type)
 
-When a strict fail-before run is structurally impossible (e.g., remediation is “add tests that didn’t exist”), a **Fail-before Exception Dossier** is acceptable evidence and must be stored under `regression-testing/`.
+When a strict fail-before run is structurally impossible (e.g., remediation is “add tests that didn’t exist”), a **Fail-before Exception Dossier** is acceptable evidence and must be stored under `evidence/regression-testing/`.
 
 Required contents (must be machine-checkable and stored as an evidence artifact in a canonical evidence location):
 

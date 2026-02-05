@@ -100,13 +100,15 @@ Constraints:
 - If the pr_context artifacts are missing or stale, re-generate them (see Phase A).
 
 ## 1b) Baseline capture location (canonical)
-- Store baseline artifacts in a `baseline/` folder next to the plan file.
-- For multi-feature epics, store the epic-wide baseline at the epic root `baseline/`.
-- For multi-version features, keep a feature-level baseline in the feature root `baseline/`, and store version-specific baselines in a `baseline/` folder next to each version plan.
+- Store baseline artifacts in an `evidence/baseline/` folder next to the plan file.
+- For multi-feature epics, store the epic-wide baseline at the epic root `evidence/baseline/`.
+- For multi-version features, keep a feature-level baseline in the feature root `evidence/baseline/`, and store version-specific baselines in an `evidence/baseline/` folder next to each version plan.
 
 ## 1c) Regression evidence location (canonical)
-- Store regression test evidence (fail-before and pass-after artifacts) in `<FEATURE>/regression-testing/`.
-- If a rollup is needed, store epic-level regression evidence in `<EPIC>/regression-testing/`.
+- Store regression test evidence (fail-before and pass-after artifacts) in `<FEATURE>/evidence/regression-testing/`.
+- Store other QA gate evidence in `<FEATURE>/evidence/qa-gates/`.
+- If a rollup is needed, store epic-level regression evidence in `<EPIC>/evidence/regression-testing/`.
+- If a rollup is needed, store epic-level QA gate evidence in `<EPIC>/evidence/qa-gates/`.
 
 ## 2) No silent fixes
 - Do not “clean up” code during review.

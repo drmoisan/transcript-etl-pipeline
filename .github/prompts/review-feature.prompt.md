@@ -19,9 +19,9 @@ Write outputs to the **active feature folder** determined by the agent. If no ac
 
 ### Baseline capture location (canonical)
 
-- Store baseline artifacts in a `baseline/` folder next to the plan file.
-- For multi-feature epics, store the epic-wide baseline at the epic root `baseline/`.
-- For multi-version features, keep a feature-level baseline in the feature root `baseline/`, and store version-specific baselines in a `baseline/` folder next to each version plan.
+- Store baseline artifacts in an `evidence/baseline/` folder next to the plan file.
+- For multi-feature epics, store the epic-wide baseline at the epic root `evidence/baseline/`.
+- For multi-version features, keep a feature-level baseline in the feature root `evidence/baseline/`, and store version-specific baselines in an `evidence/baseline/` folder next to each version plan.
 
 ### Required deliverables
 

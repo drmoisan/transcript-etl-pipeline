@@ -39,10 +39,14 @@ From the epic root folder contents:
 
 When discovering evidence artifacts for delivery verification or auto-checking tasks, use this discovery order and treat it as canonical:
 
-1) `<FEATURE>/remediation-baseline/`
-2) `<FEATURE>/baseline/`
-3) `<EPIC>/remediation-baseline/` (optional rollup artifacts)
-4) `<EPIC>/baseline/` (optional rollup artifacts)
+1) `<FEATURE>/evidence/regression-testing/`
+2) `<FEATURE>/evidence/qa-gates/`
+3) `<FEATURE>/evidence/remediation-baseline/`
+4) `<FEATURE>/evidence/baseline/`
+5) `<EPIC>/evidence/regression-testing/` (optional rollup artifacts)
+6) `<EPIC>/evidence/qa-gates/` (optional rollup artifacts)
+7) `<EPIC>/evidence/remediation-baseline/` (optional rollup artifacts)
+8) `<EPIC>/evidence/baseline/` (optional rollup artifacts)
 
 If evidence is found elsewhere:
 

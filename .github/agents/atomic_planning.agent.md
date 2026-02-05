@@ -145,7 +145,7 @@ A plan that changes **only Bash** files requires only the Bash toolchain in Phas
 
 These baseline-capture tasks are required so the executor can (a) detect regressions, and (b) prove the final QA pass is meaningful.
 
-Baseline capture outputs MUST be saved to a `baseline/` subdirectory located alongside the plan file. Store baseline artifacts in `baseline/` next to that plan.
+Baseline capture outputs MUST be saved to an `evidence/baseline/` subdirectory located alongside the plan file. Store baseline artifacts in `evidence/baseline/` next to that plan.
 
 Additionally, if the plan involves new libraries, complex bugs, or unfamiliar tools, you MUST include **Mandatory Research** tasks in Phase 0 to verify assumptions (e.g., "Research known issues with extension X").
 
@@ -288,7 +288,7 @@ Allowed acceptance criteria (examples):
 
 For any **expect-fail** regression test task, acceptance criteria MUST also require an
 **auditable evidence artifact** saved to the canonical regression testing location
-`regression-testing/` (plan-adjacent or feature-level). The artifact MUST include
+`evidence/regression-testing/` (plan-adjacent or feature-level). The artifact MUST include
 machine-checkable fields:
 
 - `Timestamp: <ISO-8601>`
@@ -522,7 +522,7 @@ Required rules:
     - the exact test command to run, and
     - that the command is expected to **fail** for the task to be considered complete, and
     - the exact **auditable evidence artifact** path to capture the failing run output in
-       `regression-testing/`, including the required fields `Timestamp`, `Command`, and
+      `evidence/regression-testing/`, including the required fields `Timestamp`, `Command`, and
        `EXIT_CODE`.
 
 The evidence artifact requirement is not optional: without it, expect-fail tasks are
