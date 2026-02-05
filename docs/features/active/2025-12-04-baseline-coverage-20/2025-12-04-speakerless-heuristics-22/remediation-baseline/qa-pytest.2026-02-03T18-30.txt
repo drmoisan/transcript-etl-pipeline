@@ -204,3 +204,9 @@ XFAIL tests/transform/test_multi_speaker_regression.py::TestIdentityAwareAssignm
 XFAIL tests/transform/test_multi_speaker_regression.py::TestSpaceXDiscussionRegression::test_expected_speaker_rotation_pattern - Perfect A/B/C rotation in natural conversation is algorithmically challenging. Current implementation uses heuristics that may not achieve perfect rotation.
 XFAIL tests/transform/test_multi_speaker_regression.py::TestTeamStandupRegression::test_addressing_team_members - Addressing constraints for team members by name requires the algorithm to recognize that 'Sarah, you're next' comes from a different speaker than Sarah. This is a known gap in the current implementation.
 ================= 1744 passed, 5 xfailed, 18 warnings in 4.87s =================
+
+---
+EvidenceSchemaAddendum:
+Timestamp: 2026-02-04T23:32:49Z
+Command: poetry run pytest
+EXIT_CODE: 0

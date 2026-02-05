@@ -35,3 +35,9 @@ tests/transform/test_notes.py::TestHeadingAndBulletHelpers::test_parse_markdown_
 tests/transform/test_notes.py::TestHeadingAndBulletHelpers::test_parse_markdown_strips_whitespace PASSED [100%]
 
 ============================== 27 passed in 0.17s ==============================
+
+---
+EvidenceSchemaAddendum:
+Timestamp: 2026-02-04T23:58:32Z
+Command: poetry run pytest
+EXIT_CODE: 0

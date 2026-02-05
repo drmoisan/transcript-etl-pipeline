@@ -36,3 +36,9 @@ TOTAL                                                        551     34    94%
 Required test coverage of 70% reached. Total coverage: 93.83%
 
 ============================= 125 passed in 0.59s ==============================
+
+---
+EvidenceSchemaAddendum:
+Timestamp: 2026-02-05T00:04:59Z
+Command: poetry run pytest tests/formatters tests/document --cov=src/transcript_etl_pipeline/formatters --cov=src/transcript_etl_pipeline/document --cov-report=term-missing --cov-fail-under=70
+EXIT_CODE: 0

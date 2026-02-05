@@ -120,11 +120,8 @@ tests/transform/test_speakers.py: 17 warnings
   /workspaces/transcript-etl-pipeline/src/transcript_etl_pipeline/transform/speakers.py:24: DeprecationWarning: _extract_names_from_dialogue is deprecated; use extract_person_names_from_text instead.
     return dialogue_names_deprecated._extract_names_from_dialogue(  # pyright: ignore[reportPrivateUsage]
 
--- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
 
----------- coverage: platform linux, python 3.13.9-final-0 -----------
 Name                                                                 Stmts   Miss  Cover   Missing
---------------------------------------------------------------------------------------------------
 scripts/dev_tools/__init__.py                                            0      0   100%
 scripts/dev_tools/atomic_executor/__init__.py                            6      0   100%
 scripts/dev_tools/atomic_executor/cli.py                               920    299    68%   102-107, 351, 385, 420, 428-429, 440, 488-489, 502, 513-514, 566, 588, 616-628, 654, 747, 825, 833, 837-838, 895-898, 906-910, 968, 978, 992-993, 1036, 1047-1050, 1070-1072, 1095-1103, 1158, 1177-1187, 1211-1222, 1297, 1306-1307, 1325, 1359-1363, 1373-1377, 1439, 1472-1474, 1492, 1532-1533, 1551, 1569-1631, 1685, 1764-1908, 1945-2080, 2179, 2181, 2210-2211, 2243-2244, 2275-2283, 2287, 2342-2355, 2432, 2503, 2507-2509, 2556, 2563-2564, 2618, 2628-2633
@@ -193,7 +190,6 @@ src/transcript_etl_pipeline/transform/speaker_helpers.py               371     3
 src/transcript_etl_pipeline/transform/speakerless.py                   144      6    96%   82, 219, 226, 268, 287, 327
 src/transcript_etl_pipeline/transform/speakers.py                      417     28    93%   32, 93, 585, 629-630, 671, 676, 684, 850-851, 882-883, 952-977, 980-983, 989
 src/transcript_etl_pipeline/ui.py                                      202     13    94%   23-29, 86, 412, 419-425
---------------------------------------------------------------------------------------------------
 TOTAL                                                                 8405   1174    86%
 
 Required test coverage of 15.0% reached. Total coverage: 86.03%
@@ -204,3 +200,8 @@ XFAIL tests/transform/test_multi_speaker_regression.py::TestIdentityAwareAssignm
 XFAIL tests/transform/test_multi_speaker_regression.py::TestSpaceXDiscussionRegression::test_expected_speaker_rotation_pattern - Perfect A/B/C rotation in natural conversation is algorithmically challenging. Current implementation uses heuristics that may not achieve perfect rotation.
 XFAIL tests/transform/test_multi_speaker_regression.py::TestTeamStandupRegression::test_addressing_team_members - Addressing constraints for team members by name requires the algorithm to recognize that 'Sarah, you're next' comes from a different speaker than Sarah. This is a known gap in the current implementation.
 ================= 1749 passed, 5 xfailed, 18 warnings in 4.90s =================
+---
+EvidenceSchemaAddendum:
+Timestamp: 2026-02-04T23:55:19Z
+Command: poetry run pytest --cov=src/transcript_etl_pipeline --cov=scripts/dev_tools --cov-report=term-missing
+EXIT_CODE: 0

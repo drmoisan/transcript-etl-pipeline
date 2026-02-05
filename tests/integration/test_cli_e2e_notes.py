@@ -46,7 +46,7 @@ def noop(*_args: object, **_kwargs: object) -> None:
 
 def _document_text(document: Document) -> str:
     text_parts: list[str] = []
-    for section in document.sections:  # type: ignore[attr-defined]
+    for section in document.sections:
         for paragraph in section.paragraphs:
             if paragraph.label is not None:
                 text_parts.append(paragraph.label.text)

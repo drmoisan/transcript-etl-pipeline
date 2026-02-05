@@ -14,3 +14,9 @@ src/transcript_etl_pipeline/transform/speakers.py:12
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
 ======================== 37 passed, 1 warning in 0.18s =========================
+
+---
+EvidenceSchemaAddendum:
+Timestamp: 2026-02-04T23:30:38Z
+Command: poetry run pytest tests/transform/test_enhance.py
+EXIT_CODE: 0

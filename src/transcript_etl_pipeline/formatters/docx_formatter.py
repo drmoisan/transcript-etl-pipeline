@@ -143,7 +143,7 @@ def _apply_spacing(docx_paragraph: Any, spacing: SpacingRule) -> None:
         spacing: The spacing rule to apply
     """
     # Set line spacing to 1.0 (single spacing)
-    docx_paragraph.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE  # type: ignore[attr-defined]
+    docx_paragraph.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
 
     # Set before spacing
     if spacing.before_pt > 0:

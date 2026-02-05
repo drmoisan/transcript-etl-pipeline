@@ -24,3 +24,9 @@ TOTAL                                                        515     37    93%
 Required test coverage of 15.0% reached. Total coverage: 92.82%
 
 ============================= 155 passed in 0.34s ==============================
+
+---
+EvidenceSchemaAddendum:
+Timestamp: 2026-02-04T23:31:13Z
+Command: python -m poetry run pytest tests/transform/test_speakerless.py tests/transform/test_speaker_helpers.py --cov=transcript_etl_pipeline.transform.speakerless --cov=transcript_etl_pipeline.transform.speaker_helpers --cov-report=term
+EXIT_CODE: 0

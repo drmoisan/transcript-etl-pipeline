@@ -26,7 +26,14 @@ Coverage for `transform/notes.py` was present but these specific edge case scena
 - Baseline commit: `3ab288535f1eecea32a940806044ce63afa63f9a`
 - Baseline coverage: See `baseline/pytest_cov.txt`
 - No GitHub Actions workflow run available showing explicit test failures (tests did not exist)
+- Authoritative fail-before proof: `fail-before-exception-dossier.2026-02-04T16-53.md`
 
 ## Artifact Location
 
 File: `docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-notes-regressions-26/remediation-baseline/fail-before.2026-02-03T18-30.md`
+
+---
+EvidenceSchemaAddendum:
+Timestamp: 2026-02-04T23:57:40Z
+Command: documentation-only
+EXIT_CODE: 0

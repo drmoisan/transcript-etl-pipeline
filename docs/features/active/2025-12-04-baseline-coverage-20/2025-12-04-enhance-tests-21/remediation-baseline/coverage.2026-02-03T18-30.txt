@@ -26,3 +26,9 @@ TOTAL                                                 13      0   100%
 
 Required test coverage of 15.0% reached. Total coverage: 100.00%
 ======================== 37 passed, 1 warning in 0.26s =========================
+
+---
+EvidenceSchemaAddendum:
+Timestamp: 2026-02-04T23:29:45Z
+Command: python -m poetry run pytest tests/transform/test_enhance.py --cov=transcript_etl_pipeline.transform.enhance --cov-report=term
+EXIT_CODE: 0

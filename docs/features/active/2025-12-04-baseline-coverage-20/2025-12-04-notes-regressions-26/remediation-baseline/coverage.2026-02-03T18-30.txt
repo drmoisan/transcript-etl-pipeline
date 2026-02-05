@@ -47,3 +47,9 @@ TOTAL                                                                 2766   255
 FAIL Required test coverage of 15.0% not reached. Total coverage: 7.70%
 
 ============================== 27 passed in 0.33s ==============================
+
+---
+EvidenceSchemaAddendum:
+Timestamp: 2026-02-04T23:56:48Z
+Command: poetry run pytest --cov=src/transcript_etl_pipeline --cov=scripts/dev_tools --cov-report=term-missing
+EXIT_CODE: 1

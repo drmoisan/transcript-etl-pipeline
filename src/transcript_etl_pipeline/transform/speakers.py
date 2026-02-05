@@ -7,7 +7,7 @@ Dan Moisan and provide UI fallback for unresolved speakers.
 import logging
 import re
 from collections.abc import Iterable
-from typing import Protocol
+from typing import Any, Protocol, cast
 
 from transcript_etl_pipeline.transform import dialogue_names_deprecated
 from transcript_etl_pipeline.transform.name import Name
@@ -835,9 +835,11 @@ def _ensure_nltk_data() -> None:
 
     import nltk  # type: ignore[import-untyped]
 
+    nltk_module = cast(Any, nltk)
+
     def resource_available(resource_path: str) -> bool:
         try:
-            nltk.data.find(resource_path)  # type: ignore[attr-defined]
+            nltk_module.data.find(resource_path)
             return True
         except LookupError:
             return False
@@ -845,7 +847,7 @@ def _ensure_nltk_data() -> None:
     def download_package(package_name: str, resource_path: str) -> bool:
         logger.info(f"Downloading NLTK package: {package_name}")
         with contextlib.suppress(Exception):
-            nltk.download(package_name, quiet=True)  # type: ignore[attr-defined]
+            nltk_module.download(package_name, quiet=True)
             if resource_available(resource_path):
                 logger.info(f"Successfully downloaded NLTK package: {package_name}")
                 return True

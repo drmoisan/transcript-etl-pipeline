@@ -1,3 +1,130 @@
+Timestamp: 2026-02-05T02:59:58Z
+Command: poetry run pytest --cov=src/transcript_etl_pipeline --cov=scripts/dev_tools --cov-report=term-missing
+============================= test session starts ==============================
+platform linux -- Python 3.13.9, pytest-8.4.2, pluggy-1.6.0
+rootdir: /workspaces/transcript-etl-pipeline
+configfile: pytest.ini
+testpaths: tests
+plugins: cov-5.0.0
+collected 1754 items
+
+tests/dev_tools/atomic_executor/test_cli.py ............................ [  1%]
+........................                                                 [  2%]
+tests/dev_tools/atomic_executor/test_copilot_backoff.py ...              [  3%]
+tests/dev_tools/atomic_executor/test_copilot_rate_limiter.py ..          [  3%]
+tests/dev_tools/atomic_executor/test_copilot_throttling_classifier.py .. [  3%]
+..........                                                               [  3%]
+tests/dev_tools/atomic_executor/test_executor_throttle_bounded_retries.py . [  3%]
+                                                                         [  3%]
+tests/dev_tools/atomic_executor/test_executor_throttle_ordering.py .     [  4%]
+tests/dev_tools/atomic_executor/test_executor_throttle_retry_regression.py . [  4%]
+                                                                         [  4%]
+tests/dev_tools/atomic_executor/test_feature_resolver.py ............... [  4%]
+                                                                         [  4%]
+tests/dev_tools/atomic_executor/test_plan_discovery.py .........         [  5%]
+tests/dev_tools/atomic_executor/test_plan_parser.py .................... [  6%]
+.................                                                        [  7%]
+tests/dev_tools/atomic_executor/test_prompt_builder.py ................. [  8%]
+.                                                                        [  8%]
+tests/dev_tools/atomic_executor/test_pytest_expectations.py ............ [  9%]
+.                                                                        [  9%]
+tests/dev_tools/atomic_executor/test_qc_runner.py ...................... [ 10%]
+..                                                                       [ 10%]
+tests/dev_tools/atomic_executor/test_unicode_integration.py ..           [ 10%]
+tests/dev_tools/test_atomic_executor_cli.py ..............               [ 11%]
+tests/dev_tools/test_clean_devcontainer.py ....                          [ 11%]
+tests/dev_tools/test_collect_commit_context.py ......................... [ 13%]
+                                                                         [ 13%]
+tests/dev_tools/test_collect_pr_context.py ............................. [ 14%]
+..                                                                       [ 15%]
+tests/dev_tools/test_copy_research_to_issue.py ..........                [ 15%]
+tests/dev_tools/test_feature_docs.py ................................    [ 17%]
+tests/dev_tools/test_fix_all.py .............................            [ 19%]
+tests/dev_tools/test_format_json.py .....................                [ 20%]
+tests/dev_tools/test_git.py .......................                      [ 21%]
+tests/dev_tools/test_github.py ......................................... [ 23%]
+..                                                                       [ 24%]
+tests/dev_tools/test_json_config.py ...............                      [ 24%]
+tests/dev_tools/test_markdown_label_formatter.py ....................... [ 26%]
+.......                                                                  [ 26%]
+tests/dev_tools/test_new_active_feature_folder.py ...................... [ 27%]
+..............                                                           [ 28%]
+tests/dev_tools/test_new_active_feature_folder_bug_template_preserved.py . [ 28%]
+                                                                         [ 28%]
+tests/dev_tools/test_new_potential_bug_entry.py .............            [ 29%]
+tests/dev_tools/test_plan_progress_report.py ..............              [ 30%]
+tests/dev_tools/test_potential_to_issue.py .................             [ 31%]
+tests/dev_tools/test_pr_context_integration.py ....                      [ 31%]
+tests/dev_tools/test_render.py ......................................... [ 33%]
+.................                                                        [ 34%]
+tests/dev_tools/test_render_helpers.py ............................      [ 36%]
+tests/dev_tools/test_resolve_execute_plan_prompt.py .................... [ 37%]
+.......................                                                  [ 38%]
+tests/dev_tools/test_resolve_file_prompt.py .............                [ 39%]
+tests/dev_tools/test_resolve_hard_lock_prompt.py ................        [ 40%]
+tests/dev_tools/test_shell_qc.py ............................            [ 42%]
+tests/dev_tools/test_validate_json.py ...........................        [ 43%]
+tests/devtools/test_debug_callgraph.py ................................. [ 45%]
+                                                                         [ 45%]
+tests/document/test_formatting_rules.py ................                 [ 46%]
+tests/document/test_model.py ................                            [ 47%]
+tests/document/test_model_merge.py ....................                  [ 48%]
+tests/document/test_parser_unit.py ...................                   [ 49%]
+tests/document/test_reader.py ..............................             [ 51%]
+tests/extract/test_from_clipboard.py ...................                 [ 52%]
+tests/extract/test_from_file.py ...................                      [ 53%]
+tests/formatters/test_docx_formatter.py .....                            [ 53%]
+tests/formatters/test_md_formatter.py ...                                [ 53%]
+tests/formatters/test_notes_formatting.py ...........                    [ 54%]
+tests/formatters/test_rtf_formatter.py .....                             [ 54%]
+tests/integration/test_3speaker_spacex_discussion.py .x                  [ 54%]
+tests/integration/test_cli_e2e_notes.py .............                    [ 55%]
+tests/integration/test_cli_e2e_speakerless.py ............               [ 56%]
+tests/integration/test_end_to_end_docx.py ....                           [ 56%]
+tests/integration/test_end_to_end_md.py .....                            [ 56%]
+tests/integration/test_end_to_end_notes.py ...........                   [ 57%]
+tests/integration/test_end_to_end_rtf.py ....                            [ 57%]
+tests/integration/test_end_to_end_speakerless.py ........                [ 58%]
+tests/integration/test_parser.py .........                               [ 58%]
+tests/integration/test_speakerless_integration.py ................       [ 59%]
+tests/test_cli_unit.py .......                                           [ 59%]
+tests/test_config_unit.py ......                                         [ 60%]
+tests/test_logging_config_unit.py ...                                    [ 60%]
+tests/test_main_entrypoint.py .                                          [ 60%]
+tests/test_ui.py ................................................        [ 63%]
+tests/test_ui_unit.py .....                                              [ 63%]
+tests/transform/test_enhance.py .....................................    [ 65%]
+tests/transform/test_identity_aware_grouping.py .................        [ 66%]
+tests/transform/test_identity_constraints.py ........................... [ 68%]
+.................                                                        [ 69%]
+tests/transform/test_multi_speaker_regression.py ....................... [ 70%]
+..........xx....x.x...                                                   [ 71%]
+tests/transform/test_name.py ........................................... [ 74%]
+...                                                                      [ 74%]
+tests/transform/test_normalize.py ....................................   [ 76%]
+tests/transform/test_notes.py ...........................                [ 77%]
+tests/transform/test_paragraphs.py ..................................... [ 80%]
+....................                                                     [ 81%]
+tests/transform/test_speaker_helpers.py ................................ [ 83%]
+..................................................................       [ 86%]
+tests/transform/test_speakerless.py .................................... [ 88%]
+.....................                                                    [ 90%]
+tests/transform/test_speakers.py ....................................... [ 92%]
+........................................................................ [ 96%]
+................................................................         [100%]
+
+=============================== warnings summary ===============================
+src/transcript_etl_pipeline/transform/speakers.py:12
+  /workspaces/transcript-etl-pipeline/src/transcript_etl_pipeline/transform/speakers.py:12: DeprecationWarning: dialogue_names_deprecated is deprecated; use extract_person_names_from_text instead.
+    from transcript_etl_pipeline.transform import dialogue_names_deprecated
+
+tests/transform/test_speakers.py: 17 warnings
+  /workspaces/transcript-etl-pipeline/src/transcript_etl_pipeline/transform/speakers.py:24: DeprecationWarning: _extract_names_from_dialogue is deprecated; use extract_person_names_from_text instead.
+    return dialogue_names_deprecated._extract_names_from_dialogue(  # pyright: ignore[reportPrivateUsage]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+
+---------- coverage: platform linux, python 3.13.9-final-0 -----------
 Name                                                                 Stmts   Miss  Cover   Missing
 --------------------------------------------------------------------------------------------------
 scripts/dev_tools/__init__.py                                            0      0   100%
@@ -64,24 +191,19 @@ src/transcript_etl_pipeline/transform/name.py                           79      
 src/transcript_etl_pipeline/transform/normalize.py                      47      0   100%
 src/transcript_etl_pipeline/transform/notes.py                          78      1    99%   281
 src/transcript_etl_pipeline/transform/paragraphs.py                    161      8    95%   207, 214-216, 220, 241, 300-301
-src/transcript_etl_pipeline/transform/speaker_helpers.py               371     30    92%   136-149, 230, 256-258, 595-608, 618, 785, 951-960
+src/transcript_etl_pipeline/transform/speaker_helpers.py               372     30    92%   138-151, 232, 258-260, 597-610, 620, 787, 953-962
 src/transcript_etl_pipeline/transform/speakerless.py                   144      6    96%   82, 219, 226, 268, 287, 327
-src/transcript_etl_pipeline/transform/speakers.py                      417     28    93%   32, 93, 585, 629-630, 671, 676, 684, 850-851, 882-883, 952-977, 980-983, 989
+src/transcript_etl_pipeline/transform/speakers.py                      418     28    93%   32, 93, 585, 629-630, 671, 676, 684, 852-853, 884-885, 954-979, 982-985, 991
 src/transcript_etl_pipeline/ui.py                                      202     13    94%   23-29, 86, 412, 419-425
 --------------------------------------------------------------------------------------------------
-TOTAL                                                                 8405   1174    86%
+TOTAL                                                                 8407   1174    86%
 
-Required test coverage of 15.0% reached. Total coverage: 86.03%
+Required test coverage of 15.0% reached. Total coverage: 86.04%
 =========================== short test summary info ============================
 XFAIL tests/integration/test_3speaker_spacex_discussion.py::TestThreeSpeakerSpaceXDiscussion::test_three_speaker_detection_and_assignment - Complex 3-speaker detection requires algorithmic improvements. See docs/3speaker-spacex-test-analysis.md for detailed failure analysis.
 XFAIL tests/transform/test_multi_speaker_regression.py::TestIdentityAwareAssignment::test_generic_meeting_identity_constraints - Identity constraint ordering: first speaker identification may not map to Speaker A due to sentence tokenization and change detection order. This is a known gap in the current algorithm.
 XFAIL tests/transform/test_multi_speaker_regression.py::TestIdentityAwareAssignment::test_generic_meeting_addressing_constraints - Addresses-other constraint enforcement may not work when speaker identity is established mid-conversation. This is a known gap.
 XFAIL tests/transform/test_multi_speaker_regression.py::TestSpaceXDiscussionRegression::test_expected_speaker_rotation_pattern - Perfect A/B/C rotation in natural conversation is algorithmically challenging. Current implementation uses heuristics that may not achieve perfect rotation.
 XFAIL tests/transform/test_multi_speaker_regression.py::TestTeamStandupRegression::test_addressing_team_members - Addressing constraints for team members by name requires the algorithm to recognize that 'Sarah, you're next' comes from a different speaker than Sarah. This is a known gap in the current implementation.
-1749 passed, 5 xfailed, 18 warnings in 5.35s
-
----
-EvidenceSchemaAddendum:
-Timestamp: 2026-02-04T23:51:19Z
-Command: poetry run pytest --cov=src/transcript_etl_pipeline --cov=scripts/dev_tools --cov-report=term-missing
+================= 1749 passed, 5 xfailed, 18 warnings in 5.98s =================
 EXIT_CODE: 0

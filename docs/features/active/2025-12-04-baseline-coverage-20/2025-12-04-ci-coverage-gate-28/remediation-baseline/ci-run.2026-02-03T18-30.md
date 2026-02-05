@@ -57,3 +57,10 @@ Once ci.yml is implemented, validate:
 - Issue: https://github.com/drmoisan/transcript-etl-pipeline/issues/28
 - Spec: docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-ci-coverage-gate-28/spec.md
 - Current workflows: https://github.com/drmoisan/transcript-etl-pipeline/actions
+
+---
+EvidenceSchemaAddendum:
+Timestamp: 2026-02-05T02:54:58Z
+Command: documentation-only
+EXIT_CODE: 0
+Superseded by: ci-run.2026-02-04T16-53.md
