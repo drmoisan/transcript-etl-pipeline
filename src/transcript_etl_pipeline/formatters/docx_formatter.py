@@ -66,14 +66,35 @@ def format_to_docx(doc: Document, output_path: str) -> None:
         doc: The transcript document to format
         output_path: Path where the DOCX file should be saved
     """
-    docx_doc = DocxDocument()  # type: ignore[no-untyped-call]
-
-    # Process all sections
-    for section in doc.sections:
-        _format_section(docx_doc, section)
+    docx_doc = build_docx_document(doc)
 
     # Save the document
     docx_doc.save(output_path)  # type: ignore[no-untyped-call]
+
+
+def build_docx_document(doc: Document) -> DocxDocType:
+    """Build an in-memory DOCX document from a transcript document.
+
+    Purpose:
+        Provide a filesystem-free way to render formatted DOCX output,
+        enabling deterministic tests without temporary files.
+
+    Args:
+        doc (Document): The transcript document to format.
+
+    Returns:
+        DocxDocType: The in-memory python-docx Document object.
+
+    Side Effects:
+        None. This function does not perform any I/O.
+    """
+    docx_doc = DocxDocument()  # type: ignore[no-untyped-call]
+
+    # Render each section into the DOCX document to mirror formatter behavior.
+    for section in doc.sections:
+        _format_section(docx_doc, section)
+
+    return docx_doc
 
 
 def _format_section(docx_doc: Any, section: DocumentSection) -> None:
