@@ -108,7 +108,7 @@ version: "0.2"
 ### Phase 3 — Coverage Evidence and Issue Updates
 - [x] [P3-T1] TASK-9 Run `poetry run pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-report=html` followed by `poetry run coverage report --include=src/transcript_etl_pipeline/transform/speakerless.py,src/transcript_etl_pipeline/transform/speaker_helpers.py --fail-under=70` and capture the output in the task notes (REQ-2).
   - Acceptance: The `coverage report --fail-under=70` command exits with code 0.
-- [ ] [P3-T2] TASK-10 Update Issue #22 with coverage evidence and links to tests/PRs (REQ-4).
+- [x] [P3-T2] TASK-10 Update Issue #22 with coverage evidence and links to tests/PRs (REQ-4).
   - Acceptance: `gh issue view 22 --json body -q ".body"` output contains a PR URL matching `https://github.com/drmoisan/transcript-etl-pipeline/pull/` and mentions `coverage report --fail-under=70`.
 - [x] [P3-T3] TASK-11 Update `docs/features/active/2025-12-04-speakerless-heuristics-22/22-speakerless-heuristics.md` with any edge cases or surprises discovered during test authoring.
   - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-speakerless-heuristics-22/22-speakerless-heuristics.md -Pattern 'Edge cases|Surprises'"` returns a match.
