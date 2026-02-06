@@ -18,3 +18,4 @@ build/
 artifacts/*
 src/transcript_etl_pipeline.egg-info/
 .agent_logs
+coverage.xml
