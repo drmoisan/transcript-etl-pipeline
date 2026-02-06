@@ -88,6 +88,12 @@ version: "0.2"
   - Acceptance: `powershell -Command "Select-String -Path .github/workflows/ci.yml -Pattern 'coverage-html-report'"` returns a match and `powershell -Command "Select-String -Path .github/workflows/ci.yml -Pattern 'coverage-xml-report'"` returns a match.
 - [x] [P2-T4] Add a `Generate coverage summary` step in `.github/workflows/ci.yml` (after artifact uploads, around lines 92–96) that appends a Markdown report to `$GITHUB_STEP_SUMMARY` using `poetry run coverage report --format=markdown` (REQ-2).
   - Acceptance: `powershell -Command "Select-String -Path .github/workflows/ci.yml -Pattern 'Generate coverage summary'"` returns a match and the step includes `coverage report --format=markdown`.
+- [x] [P2-T5] Update coverage artifact names in `.github/workflows/ci.yml` to include the matrix Python version to avoid name collisions in matrix runs.
+  - Acceptance: `powershell -Command "Select-String -Path .github/workflows/ci.yml -Pattern 'coverage-html-report-\${{ matrix.python-version }}'"` returns a match and `powershell -Command "Select-String -Path .github/workflows/ci.yml -Pattern 'coverage-xml-report-\${{ matrix.python-version }}'"` returns a match.
+- [x] [P2-T6] Update the build verification step in `.github/workflows/ci.yml` to call the installed `transcript-etl` console script instead of `transcript-etl-pipeline`.
+  - Acceptance: `powershell -Command "Select-String -Path .github/workflows/ci.yml -Pattern 'transcript-etl --help'"` returns a match.
+- [x] [P2-T7] Ensure a `LICENSE` file exists at repo root so documentation validation passes.
+  - Acceptance: `powershell -Command "Test-Path LICENSE"` exits with code 0.
 
 ### Phase 3 — Documentation and Issue Updates
 - [ ] [P3-T1] Update `docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-ci-coverage-gate-28/28-ci-coverage-gate.md` to include the final `fail_under = 15` setting and the threshold ratchet plan table exactly as specified in the Implementation Notes section (REQ-4).
