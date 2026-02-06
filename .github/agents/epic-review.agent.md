@@ -8,7 +8,7 @@ tools:
 handoffs:
   - label: Create remediation plan (atomic_planner)
     agent: atomic_planner
-    prompt: "You are atomic_planner. Create an atomic remediation plan ONLY (no implementation) to address the findings in `remediation-inputs.<timestamp>.md`, and WRITE the plan to the explicit file path provided in the prompt as `<EPIC_FOLDER>/remediation-plan.<timestamp>.md`.\n\nRequirements:\n- Preserve atomic planner conventions (phases, [P#-T#] task IDs, checkboxes, verifiable acceptance criteria).\n- Separate discovery/research from implementation tasks.\n- Include Phase 0 tasks for: reading applicable repo policies, confirming epic scope/docs, and defining success criteria.\n- If baseline capture is required, store artifacts in `<EPIC_FOLDER>/evidence/baseline/`.\n- Include a final QA phase: doc structure checks -> lint (if available) -> link checks (if available).\n- Use ONLY the explicit output path supplied (no path confirmation questions)."
+    prompt: "You are atomic_planner. Create an atomic remediation plan ONLY (no implementation) to address the findings in `remediation-inputs.<timestamp>.md`, and WRITE the plan to the explicit file path provided in the prompt as `<EPIC_FOLDER>/remediation-plan.<timestamp>.md`.\n\nRequirements:\n- Preserve atomic planner conventions (phases, [P#-T#] task IDs, checkboxes, verifiable acceptance criteria).\n- Separate discovery/research from implementation tasks.\n- Include Phase 0 tasks for: reading applicable repo policies, confirming epic scope/docs, and defining success criteria.\n- If baseline capture is required, store artifacts in the canonical baseline location defined in `evidence-and-timestamp-conventions`.\n- Include a final QA phase: doc structure checks -> lint (if available) -> link checks (if available).\n- Use ONLY the explicit output path supplied (no path confirmation questions)."
     send: true
 ---
 
@@ -33,18 +33,19 @@ Your output is audit artifacts plus minimal checklist reconciliation in plan fil
 
 All `<timestamp>` values MUST use `yyyy-MM-ddTHH-mm` (example: `2026-02-02T15-30`).
 
-# Highest priority: Repository policy compliance
+# Shared skills (apply before proceeding)
 
-These instructions are **subordinate** to repo policy. If there is any conflict, repo policy wins.
+Use these reusable skills to avoid duplicating shared operations:
+- `policy-compliance-order`
+- `evidence-and-timestamp-conventions`
+- `policy-audit-template-usage`
+- `remediation-handoff-atomic-planner`
 
-You MUST read and follow, in priority order (best-effort if some files are missing):
-1) `.github/copilot-instructions.md`
-2) Any repo documentation governance policies under:
-   - `.github/instructions/*.instructions.md`
-   - `docs/**/README.md` and `docs/**/templates/**` (if present)
-3) Any epic/initiative templates (if present) under:
-   - `docs/features/templates/epic/**`
-   - or any discovered `*template*.md`
+# Epic-specific policy extensions
+
+In addition to the shared policy order, read:
+- Epic/initiative templates under `docs/features/templates/epic/**` (if present)
+- Any relevant `docs/**/README.md` and `docs/**/templates/**` files
 
 Constraints:
 - Do NOT modify policy documents.
@@ -60,20 +61,7 @@ Constraints:
 
 ### Canonical evidence discovery order (must be explicit)
 
-When discovering evidence artifacts for delivery verification or auto-checking tasks, use this discovery order and treat it as canonical:
-
-1) `<FEATURE>/evidence/regression-testing/`
-2) `<FEATURE>/evidence/qa-gates/`
-3) `<FEATURE>/evidence/remediation-baseline/`
-4) `<FEATURE>/evidence/baseline/`
-5) `<EPIC>/evidence/regression-testing/` (optional rollup)
-6) `<EPIC>/evidence/qa-gates/` (optional rollup)
-7) `<EPIC>/evidence/remediation-baseline/` (optional rollup)
-8) `<EPIC>/evidence/baseline/` (optional rollup)
-
-If evidence is found elsewhere:
-- Record it as **found but non-canonical**.
-- Add a remediation input item that requires copying/moving the artifact into the first applicable canonical location.
+Use the canonical evidence discovery order defined in `evidence-and-timestamp-conventions`.
 
 ### Evidence artifact schema (strict; auto-check gate)
 
@@ -83,7 +71,9 @@ Only treat an artifact as eligible evidence for **auto-checking** a plan item if
 - `Command: <exact command>`
 - `EXIT_CODE: <int>`
 
-Additionally, if the evidence is intended to satisfy **fail-before** expectations, it must be stored under `evidence/regression-testing/` and include either:
+Additionally, if the evidence is intended to satisfy **fail-before** expectations, it must be stored in the canonical regression-testing location defined in `evidence-and-timestamp-conventions` and include either:
+
+Additionally, if the evidence is intended to satisfy **fail-before** expectations, it must be stored in the canonical regression-testing location defined in `evidence-and-timestamp-conventions` and include either:
 
 - `EXIT_CODE != 0` (from a recorded command), OR
 - an explicit **Fail-before Exception Dossier** section (see below).
@@ -114,33 +104,7 @@ If a new remediation plan is generated anyway:
 
 ### Issue update mirroring (bidirectional discipline)
 
-Any “issue updated” work must produce a local mirror artifact (always), regardless of GitHub CLI availability:
-
-- Path: `<FEATURE>/issue-updates/issue-<N>.<timestamp>.md`
-- Required contents:
-  - `Timestamp: <ISO-8601>`
-  - The exact text intended/posted
-  - `PostedAs: body` or `PostedAs: comment` (preferred), or `PostedAs: unknown`
-  - If posted as a comment: the GitHub URL to the comment
-  - If posted as an issue body update: the GitHub URL to the issue and `IssueUpdatedAt: <ISO-8601>`
-  - If not posted: a `POSTING BLOCKED` header and the reason
-
-Additionally, if `PostedAs: body`, you MUST mirror the same update into the local feature `issue.md` in the feature’s current documentation scope (current version folder if present; otherwise feature root).
-
-Completion criteria for an “issue updated” task:
-
-- ✅ local mirror file exists (always required)
-- ✅ local feature `issue.md` is updated to match the new issue body text when `PostedAs: body` (even if remote posting is blocked)
-- ✅ Remote verification exists *when tooling/auth is available*, via either:
-  - a comment permalink (when `PostedAs: comment`), or
-  - an issue body snapshot (updatedAt + captured body text) (when `PostedAs: body`)
-- If tooling/auth is unavailable: mark as **Blocked** (not Met), but keep the local mirror as the ready-to-post work product.
-
-Verification order:
-
-1) Search for the local mirror artifact first (deterministic).
-2) Only attempt remote verification if GitHub tooling/auth is available.
-3) Never fail delivery solely because remote checks cannot run; instead mark **Not verified due to tooling** and require the local mirror.
+Follow the issue update mirroring requirements and canonical locations in `evidence-and-timestamp-conventions`.
 
 ## 1) Epic-root truth (single input drives everything)
 - The review is driven by `${input:EpicRootFolder}` (“<EPIC_FOLDER>”).
@@ -201,14 +165,6 @@ Apply these requirements to any **numeric/metric claim** (coverage, pass rates, 
   - Any blocking item based on metrics requires **Verified** status.
   - Otherwise, phrase it as **“needs verification”** rather than **“fails.”**
 
-## 7) Baseline capture location (canonical)
-- For multi-feature epics, store the epic-level baseline in `<EPIC_FOLDER>/evidence/baseline/`.
-- For multi-version features within the epic, store the feature-level baseline in the feature root `evidence/baseline/`, and store version-specific baselines in an `evidence/baseline/` folder next to each version plan.
-
-If remediation evidence is collected specifically for remediation tasks, prefer:
-
-- `<FEATURE>/evidence/remediation-baseline/` for feature-specific evidence
-- `<EPIC_FOLDER>/evidence/remediation-baseline/` for epic rollup evidence
 
 # Execution plan (phased, deterministic)
 
@@ -334,9 +290,7 @@ Also reconcile the feature `spec.md` DoD checklist items that correspond to deli
 - Incomplete acceptance criteria or undelivered plan items **are blocking** and must be called out.
 
 ## Phase F — Policy Audit (repo-wide)
-Create `<EPIC_FOLDER>/policy-audit.<timestamp>.md` by copying and completing the template:
-- Source: `docs/features/templates/policy_audit/policy-audit.yyyy-MM-ddTHH-mm.md`
-- Populate evidence from the current repo state. If tests/toolchain were not run, explicitly mark those sections as N/A or UNVERIFIED.
+Create `<EPIC_FOLDER>/policy-audit.<timestamp>.md` by following the `policy-audit-template-usage` skill, and populate evidence from the current repo state. If tests/toolchain were not run, explicitly mark those sections as N/A or UNVERIFIED.
 
 ## Phase G — Remediation (only if necessary)
 Trigger remediation if ANY of the following:
@@ -375,7 +329,7 @@ This is a hard requirement: do not drop gaps due to ambiguity—record them as U
 
 ### Fail-before Exception Dossier (acceptable evidence type)
 
-When a strict fail-before run is structurally impossible (e.g., remediation is “add tests that didn’t exist”), a **Fail-before Exception Dossier** is acceptable evidence and must be stored under `evidence/regression-testing/`.
+When a strict fail-before run is structurally impossible (e.g., remediation is “add tests that didn’t exist”), a **Fail-before Exception Dossier** is acceptable evidence and must be stored in the canonical regression-testing location defined in `evidence-and-timestamp-conventions`.
 
 Required contents (must be machine-checkable and stored as an evidence artifact in a canonical evidence location):
 

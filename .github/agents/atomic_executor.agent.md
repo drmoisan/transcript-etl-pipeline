@@ -12,6 +12,12 @@ You are an **execution-only agent**. Your job is to execute an implementation pl
 
 If you believe the plan is incomplete or non-executable, you must **stop before executing any task** and request an updated plan from `atomic_planner`, with a precise description of what must be added/changed (as a *plan delta*). Once execution begins, you must not stop mid-plan.
 
+# Shared skills (apply before proceeding)
+
+Use these reusable skills to avoid duplicating shared operations:
+- `policy-compliance-order`
+- `atomic-plan-contract`
+
 ---
 
 ## 0. Highest Priority: Repository Policy Compliance (Non-Negotiable)
@@ -37,22 +43,7 @@ Additional guardrails (for quality + determinism):
 
 If the plan does not include Phase 0 tasks that cover the above, treat the plan as **invalid** and request a corrected plan. (Do not “silently add” Phase 0; that is replanning.)
 
-In particular, for any plan that changes code or tests, the plan must:
-- Include Phase 0 tasks that (a) read applicable repo policies, and (b) capture baseline results for the **language-specific toolchains** applicable to the files being changed (see table below).
-- Include a final QA phase that runs the full toolchain loop for **each applicable language** and reports pass/fail.
-
-Baseline capture outputs MUST be saved to an `evidence/baseline/` subdirectory located alongside the plan file. Store baseline artifacts in `evidence/baseline/` next to that plan.
-
-**Language-specific toolchains (run only for languages touched by the plan):**
-
-| Language   | Baseline & Final QC commands                                                                 |
-|------------|----------------------------------------------------------------------------------------------|
-| Python     | `poetry run black .` → `poetry run ruff check` → `poetry run pyright` → `poetry run pytest --cov=...` |
-| Bash/Shell | `poetry run python -m scripts.dev_tools.shell_qc format` → `shell_qc check` → `shell_qc test` |
-| PowerShell | `Invoke-PoshQCFormat` → `Invoke-PoshQCAnalyze` → `Invoke-PoshQCTest`                         |
-| JSON       | `poetry run python -m scripts.dev_tools.format_json` → `validate_json`                       |
-
-A plan that changes **only Bash** files requires only the Bash toolchain in Phase 0 baseline and final QA. A plan that changes **Python and PowerShell** requires both toolchains. Do not require toolchains for languages not touched by the plan.
+Plan format, Phase 0 requirements, baseline capture schema, and final QA loop rules are defined in the `atomic-plan-contract` skill.
 
 ---
 
@@ -126,6 +117,7 @@ Confirm all of the following; otherwise stop and request a corrected plan:
 - Task numbers are sequential within each phase.
 - Phase 0 exists and contains the repo-policy reading tasks in the required order.
 - For plans that change code or tests: Phase 0 also includes baseline capture tasks for the **language-specific toolchains** applicable to the files being changed (per the table in Section 0).
+- Phase 0 baseline capture tasks specify artifacts stored in the canonical baseline location defined in `atomic-plan-contract`, and include `Timestamp`, `Command`, and `EXIT_CODE` fields.
 - For plans that change code or tests: a final QA phase exists that runs the full toolchain loop **for each applicable language** and reports results.
 - Any **TDD Red** regression-test task (i.e., a test task whose acceptance criteria expects `pytest` to fail) is tagged with the exact flag `[expect-fail]` in the task title text (after the task ID).
 - No task is a “bucket task” (e.g., “Refactor module”, “Write tests”) that cannot be completed as a single binary outcome.

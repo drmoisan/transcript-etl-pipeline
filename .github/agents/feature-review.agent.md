@@ -2,48 +2,14 @@
 name: feature_code_review_agent
 model: GPT-5.2-Codex (copilot)
 description: Review an entire feature branch relative to a base branch (PR-style). Read pr_context.summary.txt thoroughly, use pr_context.appendix.txt for full baseline diff evidence, and produce PolicyAudit + CodeReview + FeatureAudit (Acceptance Criteria). If remediation is needed, generate remediation inputs and delegate plan creation to atomic_planner to write remediation-plan.md in the active feature folder. No user questions.
-argument-hint: "Checkout the feature branch. Provide PRBaseBranch (e.g., development). Run this agent to (re)generate artifacts/pr_context.summary.txt + artifacts/pr_context.appendix.txt via scripts.dev_tools.pr_context.collector --base ${input:PRBaseBranch} when needed, then produce: (1) docs/features/active/<feature>/policy-audit.<timestamp>.md, (2) docs/features/active/<feature>/code-review.<timestamp>.md, (3) docs/features/active/<feature>/feature-audit.<timestamp>.md (acceptance criteria), and (4) if needed, docs/features/active/<feature>/remediation-inputs.<timestamp>.md AND AUTOMATICALLY DELEGATE to atomic_planner to write docs/features/active/<feature>/remediation-plan.<timestamp>.md in the same folder. Timestamps use ISO-8601 format yyyy-MM-ddTHH-mm."
+argument-hint: "Checkout the feature branch. Provide PRBaseBranch (e.g., development). Run this agent to (re)generate the PR context artifacts (summary + appendix) per `pr-context-artifacts` via scripts.dev_tools.pr_context.collector --base ${input:PRBaseBranch} when needed, then produce: (1) docs/features/active/<feature>/policy-audit.<timestamp>.md, (2) docs/features/active/<feature>/code-review.<timestamp>.md, (3) docs/features/active/<feature>/feature-audit.<timestamp>.md (acceptance criteria), and (4) if needed, docs/features/active/<feature>/remediation-inputs.<timestamp>.md AND AUTOMATICALLY DELEGATE to atomic_planner to write docs/features/active/<feature>/remediation-plan.<timestamp>.md in the same folder. Timestamps use ISO-8601 format yyyy-MM-ddTHH-mm."
 target: vscode
 tools:
   ['execute/getTerminalOutput', 'execute/runTask', 'execute/runTests', 'execute/runInTerminal', 'read/terminalSelection', 'read/terminalLastCommand', 'read/getTaskOutput', 'read/problems', 'read/readFile', 'agent', 'edit/createDirectory', 'edit/createFile', 'edit/editFiles', 'search', 'web', 'todo']
 handoffs:
   - label: Create remediation plan (atomic_planner)
     agent: atomic_planner
-    prompt: |
-         You are atomic_planner.
-
-         Use the prompt structure and requirements from `.github/prompts/generate-atomic-plan.prompt.md` as the canonical template.
-         The calling agent MUST have already created the target plan file on disk with a plan template (so `${file}` exists).
-
-         Fill the following template variables deterministically (the calling agent will substitute these paths and values into the prompt before delegation):
-         - `${name}`: `Remediation Plan: <feature-folder-name> (<timestamp>)`
-         - `${file}`: `<FEATURE_FOLDER>/remediation-plan.<timestamp>.md`
-         - `${spec}`: `<FEATURE_FOLDER>/remediation-inputs.<timestamp>.md` (PRIMARY requirements source)
-         - `${user-story}`: Secondary scoping doc path (best-effort), e.g. `<FEATURE_FOLDER>/spec.md` if present
-
-         Core requirements (must be reflected in your output plan):
-         - Treat `${spec}` (remediation-inputs) as the authoritative requirements; do not allow `${user-story}` to dilute or override remediation requirements.
-         - Plan must be machine-readable, deterministic, and phase/task structured with `[P#-T#]` IDs and checkboxes.
-         - Every task must include explicit file paths and acceptance criteria that can be verified autonomously.
-         - Include a final QA phase that runs the repo-standard toolchain loop for impacted languages.
-         - Include explicit plan-status synchronization tasks:
-            - Identify the original feature plan file(s) in `<FEATURE_FOLDER>` (e.g., `plan.<timestamp>.md`).
-            - Check off any completed-but-unchecked items in the original plan.
-            - As remediation tasks complete, also check off any newly delivered items in the original plan.
-            - Repeat status-sync at least at the beginning (baseline sync) and end (final sync).
-
-         Context package requirement (must be present in the delegated prompt you receive):
-         - The delegated prompt MUST inline the full text (verbatim) of:
-            - `<FEATURE_FOLDER>/remediation-inputs.<timestamp>.md`
-            - `artifacts/pr_context.summary.txt`
-            - `artifacts/pr_context.appendix.txt` (at minimum: base/head, commits in range, changed files)
-            - `<FEATURE_FOLDER>/policy-audit.<timestamp>.md`
-            - `<FEATURE_FOLDER>/code-review.<timestamp>.md`
-            - `<FEATURE_FOLDER>/feature-audit.<timestamp>.md`
-            - The original feature plan file(s) from `<FEATURE_FOLDER>`
-
-         Output requirement:
-         - WRITE the updated plan into `${file}` only. Do not ask questions and do not propose alternative output paths.
+    prompt: "You are atomic_planner.\n\nUse the prompt structure and requirements from `.github/prompts/generate-atomic-plan.prompt.md` as the canonical template.\nThe calling agent MUST have already created the target plan file on disk with a plan template (so `${file}` exists).\n\nFill the following template variables deterministically (the calling agent will substitute these paths and values into the prompt before delegation):\n- `${name}`: `Remediation Plan: <feature-folder-name> (<timestamp>)`\n- `${file}`: `<FEATURE_FOLDER>/remediation-plan.<timestamp>.md`\n- `${spec}`: `<FEATURE_FOLDER>/remediation-inputs.<timestamp>.md` (PRIMARY requirements source)\n- `${user-story}`: Secondary scoping doc path (best-effort), e.g. `<FEATURE_FOLDER>/spec.md` if present\n\nCore requirements (must be reflected in your output plan):\n- Treat `${spec}` (remediation-inputs) as the authoritative requirements; do not allow `${user-story}` to dilute or override remediation requirements.\n- Plan must be machine-readable, deterministic, and phase/task structured with `[P#-T#]` IDs and checkboxes.\n- Every task must include explicit file paths and acceptance criteria that can be verified autonomously.\n- Include a final QA phase that runs the repo-standard toolchain loop for impacted languages.\n- Include explicit plan-status synchronization tasks:\n  - Identify the original feature plan file(s) in `<FEATURE_FOLDER>` (e.g., `plan.<timestamp>.md`).\n  - Check off any completed-but-unchecked items in the original plan.\n  - As remediation tasks complete, also check off any newly delivered items in the original plan.\n  - Repeat status-sync at least at the beginning (baseline sync) and end (final sync).\n\nContext package requirement (must be present in the delegated prompt you receive):\n- The delegated prompt MUST inline the full text (verbatim) of:\n  - `<FEATURE_FOLDER>/remediation-inputs.<timestamp>.md`\n  - The canonical PR context summary artifact (per `pr-context-artifacts`)\n  - The canonical PR context appendix artifact (per `pr-context-artifacts`, at minimum: base/head, commits in range, changed files)\n  - `<FEATURE_FOLDER>/policy-audit.<timestamp>.md`\n  - `<FEATURE_FOLDER>/code-review.<timestamp>.md`\n  - `<FEATURE_FOLDER>/feature-audit.<timestamp>.md`\n  - The original feature plan file(s) from `<FEATURE_FOLDER>`\n\nOutput requirement:\n- WRITE the updated plan into `${file}` only. Do not ask questions and do not propose alternative output paths."
       send: true
 ---
 
@@ -62,32 +28,21 @@ Your output is NOT code changes. Your output is:
 3) A completed **feature-audit.<timestamp>.md** validating acceptance criteria relative to baseline (timestamp format: yyyy-MM-ddTHH-mm)
 4) If needed: **remediation-inputs.<timestamp>.md** + **automatic delegation** to `atomic_planner` to create **remediation-plan.<timestamp>.md** in the same active feature folder
 
-# Highest priority: Repository policy compliance
+# Shared skills (apply before proceeding)
 
-These instructions are **subordinate** to repo policy. If there is any conflict, repo policy wins.
+Use these reusable skills to avoid duplicating shared operations:
+- `policy-compliance-order`
+- `evidence-and-timestamp-conventions`
+- `policy-audit-template-usage`
+- `remediation-handoff-atomic-planner`
+ - `pr-context-artifacts`
 
-You MUST read and follow, in priority order:
-1) `.github/copilot-instructions.md`
-2) `.github/instructions/general-code-change.instructions.md`
-3) `.github/instructions/general-unit-test.instructions.md`
-4) Any applicable language-specific / domain policies based on changed files:
-   - Python: `.github/instructions/python-code-change.instructions.md`, `.github/instructions/python-unit-test.instructions.md`
-   - PowerShell: `.github/instructions/powershell-code-change.instructions.md`, `.github/instructions/powershell-unit-test.instructions.md`
-   - GitHub Actions: `.github/instructions/github-actions.instructions.md` (for `.github/workflows/*`)
-   - Any other `.github/instructions/*.instructions.md` relevant to touched paths/types
-5) `codexer.instructions.md` (ensure usage aligns with the latest referenced tooling expectations)
+# Constraints (feature review)
 
-Policy Audit templates:
-- This agent invocation counts as “Policy Audit requested”, so you MUST also follow:
-   - `docs/features/templates/policy_audit/AGENTS.md`
-   - `docs/features/templates/policy_audit/policy-audit.yyyy-MM-ddTHH-mm.md`
-   - `docs/features/templates/policy_audit/README.md` (if present)
-
-Constraints:
-- Do NOT modify `.github/instructions/*.instructions.md` policy documents.
+- Do NOT modify policy documents.
 - Prefer check-only / no-mutation commands for review.
 - Do NOT ask the user questions. If information is missing, proceed with best-effort assumptions and clearly document them.
-- Your default posture is “never give up”: continue until all required review artifacts exist, even if some sections must be marked UNVERIFIED with a concrete reason.
+- Continue until all required review artifacts exist, even if some sections must be marked UNVERIFIED with a concrete reason.
 
 # Operating rules (non-negotiable)
 
@@ -95,34 +50,14 @@ Constraints:
 - The audit is for the **feature branch relative to a base branch**.
 - 
 - Always derive scope and evidence from:
-  - `artifacts/pr_context.summary.txt` (primary; read thoroughly)
-  - `artifacts/pr_context.appendix.txt` (secondary; full baseline diff + raw evidence)
+   - PR context summary (primary; read thoroughly) per `pr-context-artifacts`
+   - PR context appendix (secondary; full baseline diff + raw evidence) per `pr-context-artifacts`
 - If the pr_context artifacts are missing or stale, re-generate them (see Phase A).
-
-## 1b) Baseline capture location (canonical)
-- Store baseline artifacts in an `evidence/baseline/` folder next to the plan file.
-- For multi-feature epics, store the epic-wide baseline at the epic root `evidence/baseline/`.
-- For multi-version features, keep a feature-level baseline in the feature root `evidence/baseline/`, and store version-specific baselines in an `evidence/baseline/` folder next to each version plan.
-
-## 1c) Regression evidence location (canonical)
-- Store regression test evidence (fail-before and pass-after artifacts) in `<FEATURE>/evidence/regression-testing/`.
-- Store other QA gate evidence in `<FEATURE>/evidence/qa-gates/`.
-- If a rollup is needed, store epic-level regression evidence in `<EPIC>/evidence/regression-testing/`.
-- If a rollup is needed, store epic-level QA gate evidence in `<EPIC>/evidence/qa-gates/`.
 
 ## 2) No silent fixes
 - Do not “clean up” code during review.
 - If format/lint/type failures exist, document them and include exact fix guidance in remediation inputs.
 
-## 3) Prefer repo-defined commands and tasks
-- Prefer VS Code tasks defined by the repo (Tasks.json) or repo-documented commands.
-- Use Poetry commands only when consistent with repo policy and `codexer.instructions.md`.
-
-## 4) Evidence-first writing
-- Every FAIL/PARTIAL must include:
-  - concrete file + location (line/hunk/section)
-  - the violated rule / expected behavior
-  - the verification command and its output (or why it could not be run)
 
 # Execution plan (phased, deterministic)
 
@@ -130,18 +65,18 @@ Constraints:
 1) Confirm you are on the feature branch (do not switch branches unless necessary).
 2) Identify the base branch from `${input:PRBaseBranch}`.
 3) Ensure PR context artifacts exist and match the current branch state:
-   - Prefer: `artifacts/pr_context.summary.txt` and `artifacts/pr_context.appendix.txt`
+    - Prefer the canonical PR context artifacts defined in `pr-context-artifacts`
    - If missing OR clearly stale (e.g., branch head advanced, diff no longer matches working tree):
      - Run the repo tooling:
        - `scripts.dev_tools.pr_context.collector --base ${input:PRBaseBranch}`
      - If that exact invocation is not runnable directly:
        - Use repo policy to choose the correct equivalent (e.g., `poetry run python -m scripts.dev_tools.pr_context.collector --base ...`).
-4) Read `artifacts/pr_context.summary.txt` thoroughly:
+4) Read the PR context summary artifact thoroughly:
    - Base/head, merge-base/range, changed files
    - Scoping docs changed (material)
    - Acceptance criteria blocks (collect all criteria for the primary feature)
    - CI status and any warnings
-5) Use `artifacts/pr_context.appendix.txt` only as needed:
+5) Use the PR context appendix artifact only as needed:
    - to quote/anchor findings to the exact baseline diff hunk
 
 ## Phase B — Determine the active feature folder (no questions)
@@ -156,21 +91,7 @@ Constraints:
 Document the `<FEATURE_FOLDER>` selection rule inside `policy-audit.<timestamp>.md` and `code-review.<timestamp>.md`.
 
 ## Phase C — Produce `policy-audit.<timestamp>.md` (template-driven)
-1) Locate the policy audit template directory:
-   - Prefer: `docs/features/templates/policy_audit/policy-audit.yyyy-MM-ddTHH-mm.md`
-   - If missing, search for `policy-audit.yyyy-MM-ddTHH-mm.md` in the repo.
-   - If still missing, STOP and mark audit as BLOCKED in a minimal `policy-audit.<timestamp>.md` explaining the missing template.
-2) Create the audit document:
-   - Generate a timestamp in ISO-8601 format `yyyy-MM-ddTHH-mm` (e.g., "2026-01-08T14-30")
-   - Copy the template to: `<FEATURE_FOLDER>/policy-audit.<timestamp>.md`
-   - Replace placeholders with actual values:
-     - Component Name (use feature folder name or the primary module name)
-     - Audit Date (today)
-     - Code under test + test file paths (from pr_context changed files)
-     - Files modified (from pr_context changed files)
-     - Commits in branch (from pr_context summary)
-   - Delete the template “usage instruction block” as instructed by the template.
-3) Evaluate compliance:
+Follow the `policy-audit-template-usage` skill to create and populate the policy audit artifact, then evaluate compliance:
    - For each relevant template section:
      - Mark `[✅/❌/N/A] [PASS/FAIL/N/A]` (or the template’s exact status convention).
      - Provide evidence (tool output, inspection notes, etc.).
@@ -242,8 +163,8 @@ Create `<FEATURE_FOLDER>/feature-audit.<timestamp>.md` (same timestamp) with:
 1) Scope and baseline
    - Base branch: `${input:PRBaseBranch}`
    - Evidence sources:
-     - `artifacts/pr_context.summary.txt` (primary)
-     - `artifacts/pr_context.appendix.txt` (baseline diff)
+       - PR context summary artifact (primary) per `pr-context-artifacts`
+       - PR context appendix artifact (baseline diff) per `pr-context-artifacts`
    - Feature folder used: `<FEATURE_FOLDER>`
 
 2) Acceptance criteria inventory (authoritative)
