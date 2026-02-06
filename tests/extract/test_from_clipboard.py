@@ -1,5 +1,7 @@
 """Tests for clipboard extraction."""
 
+from collections.abc import Callable
+from types import ModuleType
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -11,14 +13,68 @@ from transcript_etl_pipeline.extract.from_clipboard import (
 )
 
 
+class _TkinterStub(ModuleType):
+    """Typed tkinter stub module for tests.
+
+    Purpose:
+        Provide a minimal, typed module that emulates the tkinter surface used
+        by clipboard tests without requiring the real tkinter installation.
+
+    Usage:
+        Instantiate with the module name and assign a MagicMock to Tk, then
+        patch sys.modules with the instance during tests.
+
+    Flow:
+        The test creates the stub, assigns Tk, and patches sys.modules so
+        runtime imports resolve to this module.
+
+    Invariants / Constraints:
+        Tk must be set to a callable mock that returns a Tk root mock.
+
+    Side Effects:
+        None. Callers control sys.modules patching and teardown.
+
+    Attributes:
+        Tk (Callable[..., MagicMock]): Mock constructor for Tk root objects.
+    """
+
+    Tk: Callable[..., MagicMock]
+
+
+def _create_tkinter_stub(tk_class: MagicMock) -> ModuleType:
+    """Create a minimal tkinter stub module for tests.
+
+    Purpose:
+        Provide a synthetic tkinter module so tests can patch Tk usage even
+        when tkinter is not installed in the runtime environment.
+
+    Args:
+        tk_class (MagicMock): Mock class to expose as tkinter.Tk.
+
+    Returns:
+        ModuleType: A stub module with a Tk attribute.
+
+    Raises:
+        None: This helper does not raise exceptions.
+
+    Side Effects:
+        None: The caller controls sys.modules patching.
+    """
+    stub = _TkinterStub("tkinter")
+    stub.__dict__["Tk"] = tk_class
+    return stub
+
+
 class TestGetClipboardContentTk:
     """Tests for the tkinter clipboard wrapper function."""
 
     def test_get_clipboard_success(self) -> None:
         """Test successful clipboard retrieval with tkinter."""
+        mock_tk_class = MagicMock()
+        tkinter_stub = _create_tkinter_stub(mock_tk_class)
         with (
             patch("transcript_etl_pipeline.extract.from_clipboard._tkinter_available", True),
-            patch("tkinter.Tk") as mock_tk_class,
+            patch.dict("sys.modules", {"tkinter": tkinter_stub}),
         ):
             mock_root = MagicMock()
             mock_tk_class.return_value = mock_root
@@ -39,9 +95,11 @@ class TestGetClipboardContentTk:
 
     def test_clipboard_empty_raises_error(self) -> None:
         """Test that empty clipboard raises ClipboardError."""
+        mock_tk_class = MagicMock()
+        tkinter_stub = _create_tkinter_stub(mock_tk_class)
         with (
             patch("transcript_etl_pipeline.extract.from_clipboard._tkinter_available", True),
-            patch("tkinter.Tk") as mock_tk_class,
+            patch.dict("sys.modules", {"tkinter": tkinter_stub}),
         ):
             mock_root = MagicMock()
             mock_tk_class.return_value = mock_root
@@ -53,9 +111,11 @@ class TestGetClipboardContentTk:
 
     def test_clipboard_whitespace_only_raises_error(self) -> None:
         """Test that whitespace-only clipboard raises ClipboardError."""
+        mock_tk_class = MagicMock()
+        tkinter_stub = _create_tkinter_stub(mock_tk_class)
         with (
             patch("transcript_etl_pipeline.extract.from_clipboard._tkinter_available", True),
-            patch("tkinter.Tk") as mock_tk_class,
+            patch.dict("sys.modules", {"tkinter": tkinter_stub}),
         ):
             mock_root = MagicMock()
             mock_tk_class.return_value = mock_root
@@ -67,9 +127,11 @@ class TestGetClipboardContentTk:
 
     def test_tcl_error_wrapped_in_clipboard_error(self) -> None:
         """Test that TclError is wrapped in ClipboardError."""
+        mock_tk_class = MagicMock()
+        tkinter_stub = _create_tkinter_stub(mock_tk_class)
         with (
             patch("transcript_etl_pipeline.extract.from_clipboard._tkinter_available", True),
-            patch("tkinter.Tk") as mock_tk_class,
+            patch.dict("sys.modules", {"tkinter": tkinter_stub}),
         ):
             mock_root = MagicMock()
             mock_tk_class.return_value = mock_root
@@ -86,9 +148,11 @@ class TestGetClipboardContentTk:
 
     def test_generic_exception_wrapped(self) -> None:
         """Test that generic exceptions are wrapped in ClipboardError."""
+        mock_tk_class = MagicMock()
+        tkinter_stub = _create_tkinter_stub(mock_tk_class)
         with (
             patch("transcript_etl_pipeline.extract.from_clipboard._tkinter_available", True),
-            patch("tkinter.Tk") as mock_tk_class,
+            patch.dict("sys.modules", {"tkinter": tkinter_stub}),
         ):
             mock_root = MagicMock()
             mock_tk_class.return_value = mock_root
@@ -100,9 +164,11 @@ class TestGetClipboardContentTk:
 
     def test_root_destroyed_even_on_error(self) -> None:
         """Test that Tk root is destroyed even when an error occurs."""
+        mock_tk_class = MagicMock()
+        tkinter_stub = _create_tkinter_stub(mock_tk_class)
         with (
             patch("transcript_etl_pipeline.extract.from_clipboard._tkinter_available", True),
-            patch("tkinter.Tk") as mock_tk_class,
+            patch.dict("sys.modules", {"tkinter": tkinter_stub}),
         ):
             mock_root = MagicMock()
             mock_tk_class.return_value = mock_root
