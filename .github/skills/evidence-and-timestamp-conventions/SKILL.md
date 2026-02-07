@@ -28,6 +28,17 @@ Example: `2026-02-06T14-30`.
 
 Epic rollups may mirror these under the epic root when needed.
 
+## Feature Scope (Versioned Features)
+
+In this repo, a feature may be single-version (docs at feature root) or multi-version
+(`v1/`, `v2/`, etc.). When a feature is versioned, treat evidence discovery as applying
+to the **selected current version scope**, but also search the feature root canonical
+evidence folders as a fallback.
+
+Practical rule:
+- Prefer evidence under `<FEATURE>/<CURRENT_VERSION>/evidence/...` when it exists.
+- Also search `<FEATURE>/evidence/...` before concluding evidence is missing.
+
 ## Canonical Evidence Discovery Order
 
 When locating evidence artifacts for audits or plan reconciliation, use this order:
@@ -49,6 +60,19 @@ Rule:
 
 If evidence or issue-update mirrors are found elsewhere, record it as non-canonical and include a remediation step to move/copy it into the first applicable canonical location.
 
+### Fail-before Requirements (Deterministic Check)
+
+When an acceptance criterion (AC) or plan item requires **fail-before / pass-after** evidence:
+
+- First, search for a failing run artifact in `<FEATURE>/evidence/regression-testing/`.
+- If no failing run exists (or it is structurally impossible), search for a **fail-before exception dossier**.
+
+Minimum required search pattern:
+- `fail-before-exception.*.md` (preferred name prefix)
+
+Only after checking both (failing run OR exception dossier) may you write a negative claim like
+"no fail-before evidence exists".
+
 ## Evidence Artifact Schema (Machine-Checkable)
 
 When evidence artifacts are used for automated checking or plan reconciliation, include:
@@ -61,6 +85,22 @@ If a fail-before run is required but impossible, include a short exception dossi
 - An alternative proof section (e.g., absence-of-test proof)
 
 Fail-before exception dossiers should be stored under `evidence/regression-testing/`.
+
+Preferred filename for fail-before exception dossiers:
+- `fail-before-exception.<timestamp>.md`
+
+If an exception dossier is present and schema-valid, it counts as satisfying the
+"fail-before" requirement for audit/plan reconciliation purposes.
+
+## Negative Evidence Claims (Absence Must Be Auditable)
+
+If you claim evidence is missing (e.g., "no exception dossier recorded"), you MUST also record:
+
+- `SearchScope:` the exact folder(s) searched (include both current-version scope and feature root when applicable)
+- `SearchPatterns:` the filename patterns used (e.g., `fail-before-exception.*.md`)
+- `SearchResult:` what was found (paths) or `none`
+
+This prevents false negatives caused by searching the wrong scope or using incomplete patterns.
 
 ## Evidence-First Audit Writing
 
