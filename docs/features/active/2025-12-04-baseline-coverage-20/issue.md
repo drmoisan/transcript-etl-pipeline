@@ -8,7 +8,7 @@
 
 - Issue: #20
 - Issue URL: https://github.com/drmoisan/transcript-etl-pipeline/issues/20
-- Last Updated: 2025-12-04
+- Last Updated: 2026-02-06
 
 ## Problem / Why
 
@@ -50,3 +50,37 @@ Establish a baseline automated test/coverage initiative that prioritizes core lo
 - **Status:** In progress; acceptance criteria not fully evidenced.
 - **Evidence highlights:** Core feature docs and plans exist under `docs/features/active/2025-12-04-baseline-coverage-20/` for #21–#28.
 - **Open gaps:** Coverage >= 80% not evidenced; CI coverage gate documentation and run evidence pending; multiple feature issue updates remain outstanding.
+
+### Sync Summary Update (as of 2026-02-06T16-44)
+
+- **Status:** Delivered (tests/coverage/CI); documentation reconciliation in progress.
+
+- **Authoritative final QA evidence (recorded 2026-02-03T18-30):**
+	- Evidence file: `baseline/final-qa.2026-02-03T18-30/pytest.final.2026-02-03T18-30.txt`
+	- Coverage: `Required test coverage of 15.0% reached. Total coverage: 86.03%`
+	- Tests: `1749 passed, 5 xfailed`
+
+- **CI coverage gate evidence:**
+	- Evidence file: `2025-12-04-ci-coverage-gate-28/evidence/qa-gates/ci-run.2026-02-06T01-41.md`
+
+- **GitHub issue updated:**
+	- Issue: https://github.com/drmoisan/transcript-etl-pipeline/issues/20
+	- GitHub Sync Summary updated to include final QA coverage + xfail inventory (see the issue body).
+
+### Sync Summary Update (as of 2026-02-06T21-09)
+
+- **Status:** Delivered (tests/coverage/CI) — audit-quality documentation alignment improved.
+
+- **No new QA run performed since the 2026-02-03T18-30 final QA.** This update is documentation + conventions only.
+
+- **Fail-before evidence accounting corrected (Issue #21):**
+	- The epic feature delivery inventory now reflects #21 AC1 as **Met (exception recorded)** based on a schema-compliant dossier:
+		- `2025-12-04-enhance-tests-21/evidence/regression-testing/fail-before-exception.2026-02-05T13-05.md`
+
+- **Evidence conventions strengthened to prevent false negative claims:**
+	- `evidence-and-timestamp-conventions` now requires deterministic search for `fail-before-exception.*.md` before stating “no fail-before evidence exists,” and requires recording `SearchScope` / `SearchPatterns` / `SearchResult` for any negative evidence claim.
+	- Repo path: `.github/skills/evidence-and-timestamp-conventions/SKILL.md`
+
+- **GitHub issue updated + mirrored:**
+	- Issue: https://github.com/drmoisan/transcript-etl-pipeline/issues/20
+	- Local mirror evidence: `evidence/issue-updates/issue-20.2026-02-06T21-09.md`

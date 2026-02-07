@@ -1,5 +1,9 @@
 Timestamp: 2026-02-05T16:10:00Z
 Command: poetry run pytest tests/transform/test_notes.py --cov=transcript_etl_pipeline.transform.notes --cov-report=term-missing
+EXIT_CODE: 0
+
+Timestamp: 2026-02-05T16:10:00Z
+Command: poetry run pytest tests/transform/test_notes.py --cov=transcript_etl_pipeline.transform.notes --cov-report=term-missing
 
 ============================= test session starts ==============================
 platform win32 -- Python 3.13.7, pytest-8.4.2, pluggy-1.6.0

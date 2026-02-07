@@ -1,3 +1,7 @@
+Timestamp: 2026-02-05T02:54:58Z
+Command: documentation-only
+EXIT_CODE: 0
+
 # CI Run Evidence for Issue #28
 
 **Date:** 2026-02-03T18:30 (captured)

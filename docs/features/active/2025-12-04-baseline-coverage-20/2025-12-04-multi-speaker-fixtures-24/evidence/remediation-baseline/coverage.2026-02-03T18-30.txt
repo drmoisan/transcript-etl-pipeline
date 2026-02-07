@@ -1,3 +1,7 @@
+Timestamp: 2026-02-04T23:51:19Z
+Command: poetry run pytest --cov=src/transcript_etl_pipeline --cov=scripts/dev_tools --cov-report=term-missing
+EXIT_CODE: 0
+
 Name                                                                 Stmts   Miss  Cover   Missing
 --------------------------------------------------------------------------------------------------
 scripts/dev_tools/__init__.py                                            0      0   100%

@@ -1,3 +1,7 @@
+Timestamp: 2026-02-04T23:56:48Z
+Command: poetry run pytest --cov=src/transcript_etl_pipeline --cov=scripts/dev_tools --cov-report=term-missing
+EXIT_CODE: 1
+
 ============================= test session starts ==============================
 platform linux -- Python 3.13.9, pytest-8.4.2, pluggy-1.6.0
 rootdir: /workspaces/transcript-etl-pipeline

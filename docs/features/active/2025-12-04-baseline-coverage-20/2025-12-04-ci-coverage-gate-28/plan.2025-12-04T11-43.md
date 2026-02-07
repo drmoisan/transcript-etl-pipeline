@@ -98,7 +98,7 @@ version: "0.2"
 ### Phase 3 — Documentation and Issue Updates
 - [ ] [P3-T1] Update `docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-ci-coverage-gate-28/28-ci-coverage-gate.md` to include the final `fail_under = 15` setting and the threshold ratchet plan table exactly as specified in the Implementation Notes section (REQ-4).
   - Acceptance: `powershell -Command "Select-String -Path docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-ci-coverage-gate-28/28-ci-coverage-gate.md -Pattern 'fail_under = 15'"` returns a match and the table includes the row `Initial | 15% | Current baseline (~16%)`.
-- [ ] [P3-T2] Update GitHub Issue #28 with the PR link, the CI configuration summary, and a note confirming the coverage gate fails when coverage drops below 15% (REQ-4).
+- [x] [P3-T2] Update GitHub Issue #28 with the PR link, the CI configuration summary, and a note confirming the coverage gate fails when coverage drops below 15% (REQ-4).
   - Acceptance: `gh issue view 28 --json body -q ".body"` output contains `fail_under = 15` and a PR URL matching `https://github.com/drmoisan/transcript-etl-pipeline/pull/`.
 
 ### Phase 4 — QA (Python Toolchain)

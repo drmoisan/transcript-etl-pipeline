@@ -68,7 +68,7 @@ Requirements (REQ-):
 ### Phase 4 — Coverage Verification and Evidence
 - [x] [P4-T1] TASK-ENH-040 Run coverage for the module with `poetry run pytest tests/transform/test_enhance.py --cov=src/transcript_etl_pipeline/transform/enhance.py --cov-report=term`
   - Acceptance: Coverage report shows `src/transcript_etl_pipeline/transform/enhance.py` coverage >= 70%
-- [ ] [P4-T2] TASK-ENH-041 Update issue #21 with the coverage report snippet and list of added tests from `tests/transform/test_enhance.py`
+- [x] [P4-T2] TASK-ENH-041 Update issue #21 with the coverage report snippet and list of added tests from `tests/transform/test_enhance.py`
   - Acceptance: Issue #21 contains the coverage snippet and test list in a comment or description update
 
 ### Phase 5 — Full Toolchain Pass
