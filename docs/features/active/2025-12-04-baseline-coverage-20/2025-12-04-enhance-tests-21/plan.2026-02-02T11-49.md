@@ -58,7 +58,7 @@ Requirements (REQ-):
 ### Phase 2 — Normalization Interaction Characterization Tests
 - [x] [P2-T1] TASK-ENH-020 Add normalization interaction tests to `tests/transform/test_enhance.py` with the exact names: `test_unix_line_endings_handled`, `test_mixed_line_endings_handled`, `test_whitespace_only_text_handled`, `test_single_line_no_labels`, `test_trailing_whitespace_preserved`, `test_empty_lines_between_speakers`, `test_very_long_speakerless_text`
   - Acceptance: `tests/transform/test_enhance.py` contains seven new test functions with the exact names and assertions that lock current behavior via `enhance_text`
-- [ ] [P2-T2] TASK-ENH-021 Run targeted tests with `poetry run pytest tests/transform/test_enhance.py -k "line_endings_handled or whitespace_only_text_handled or single_line_no_labels or trailing_whitespace_preserved or empty_lines_between_speakers or very_long_speakerless_text"`
+- [x] [P2-T2] TASK-ENH-021 Run targeted tests with `poetry run pytest tests/transform/test_enhance.py -k "line_endings_handled or whitespace_only_text_handled or single_line_no_labels or trailing_whitespace_preserved or empty_lines_between_speakers or very_long_speakerless_text"`
   - Acceptance: Command exits with code 0
 
 ### Phase 3 — Speakerless Edge Case Characterization Tests
