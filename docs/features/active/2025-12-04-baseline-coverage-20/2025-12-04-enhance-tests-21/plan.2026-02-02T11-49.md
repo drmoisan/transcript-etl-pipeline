@@ -4,19 +4,21 @@ issue: "21"
 parent: "none"
 owner: "drmoisan"
 last_updated: "2026-02-02T23:44:20Z"
-status: "Planned"
-status_color: "blue"
-version: "0.1"
+status: "Completed"
+status_color: "green"
+version: "1.0"
 ---
 
 # 2025-12-04-enhance-tests - Plan
 
-- **Issue:** #21
-- **Parent (optional):** none
+![Status: Completed](https://img.shields.io/badge/status-Completed-green)
+
+- **Issue:** [#21](https://github.com/drmoisan/transcript-etl-pipeline/issues/21)
+- **Parent (optional):** [#20](https://github.com/drmoisan/transcript-etl-pipeline/issues/20)
 - **Owner:** drmoisan
 - **Last Updated:** 2026-02-02T23:44:20Z
-- **Status:** Planned
-- **Version:** 0.1
+- **Status:** Completed
+- **Version:** 1.0
 
 Status Badge: 🟦 Planned
 

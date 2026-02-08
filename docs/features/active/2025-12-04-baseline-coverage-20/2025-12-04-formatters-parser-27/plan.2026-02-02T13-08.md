@@ -4,21 +4,21 @@ issue: "27"
 parent: "none"
 owner: "drmoisan"
 last_updated: "2026-02-02"
-status: "Planned"
-status_color: "blue"
-version: "0.2"
+status: "Completed"
+status_color: "green"
+version: "1.0"
 ---
 
 # 2025-12-04-formatters-parser - Plan
 
-![Status: Planned](https://img.shields.io/badge/status-Planned-blue)
+![Status: Completed](https://img.shields.io/badge/status-Completed-green)
 
 - **Issue:** [#27](https://github.com/drmoisan/transcript-etl-pipeline/issues/27)
-- **Parent (optional):** none
+- **Parent (optional):** [#20](https://github.com/drmoisan/transcript-etl-pipeline/issues/20)
 - **Owner:** drmoisan
 - **Last Updated:** 2026-02-02T23:44:20Z
-- **Status:** Planned
-- **Version:** 0.2
+- **Status:** Completed
+- **Version:** 1.0
 
 ## Required References
 

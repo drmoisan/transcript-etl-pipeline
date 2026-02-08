@@ -1,13 +1,13 @@
 # 2025-12-04-multi-speaker-fixtures - Plan
 
 - **Issue:** #24
-- **Parent (optional):** none
+- **Parent (optional):** [#20](https://github.com/drmoisan/transcript-etl-pipeline/issues/20)
 - **Owner:** drmoisan
 - **Last Updated:** 2026-02-02T23:44:20Z
-- **Status:** Planned
+- **Status:** Completed
 - **Version:** 1.0
 
-![Status](https://img.shields.io/badge/status-Planned-blue)
+![Status: Completed](https://img.shields.io/badge/status-Completed-green)
 
 ## Required References
 

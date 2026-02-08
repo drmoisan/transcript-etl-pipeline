@@ -1,13 +1,13 @@
 # 2025-12-04-identity-normalize - Plan
 
 - **Issue:** #23
-- **Parent (optional):** none
+- **Parent (optional):** [#20](https://github.com/drmoisan/transcript-etl-pipeline/issues/20)
 - **Owner:** drmoisan
 - **Last Updated:** 2026-02-02T23:44:20Z
-- **Status:** Planned
-- **Version:** 0.2
+- **Status:** Completed
+- **Version:** 1.0
 
-![Status](https://img.shields.io/badge/status-Planned-blue)
+![Status: Completed](https://img.shields.io/badge/status-Completed-green)
 
 Atomic, deterministic execution plan to raise combined coverage for `src/transcript_etl_pipeline/transform/identity_constraints.py` and `src/transcript_etl_pipeline/transform/normalize.py` to at least ~75% using focused unit tests.
 
