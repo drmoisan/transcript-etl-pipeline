@@ -8,7 +8,7 @@
 
 - Issue: #20
 - Issue URL: https://github.com/drmoisan/transcript-etl-pipeline/issues/20
-- Last Updated: 2026-02-06
+- Last Updated: 2026-02-07
 
 ## Problem / Why
 
@@ -100,3 +100,9 @@ Establish a baseline automated test/coverage initiative that prioritizes core lo
 - **GitHub issue updated + mirrored:**
 	- Issue: https://github.com/drmoisan/transcript-etl-pipeline/issues/20
 	- Local mirror evidence: `evidence/issue-updates/issue-20.2026-02-06T21-31.md`
+
+## Enforcement Evidence
+
+- Evidence file: `evidence/qa-gates/pr-merge-enforcement.2026-02-07T21-06-44.md`
+- Result: Branch protection is **not enabled** on the default branch (HTTP 404 from branch protection API).
+- Enforcement mechanism: **Policy-only** (no branch protection gate recorded).

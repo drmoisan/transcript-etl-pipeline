@@ -66,25 +66,25 @@ version: "0.2"
 ## Implementation Plan (Atomic Tasks)
 
 ### Phase 0 — Context & Inputs
-- [ ] [P0-T1] Read `.github/copilot-instructions.md` to establish baseline agent rules.
+- [x] [P0-T1] Read `.github/copilot-instructions.md` to establish baseline agent rules.
   - Acceptance: `powershell -Command "Test-Path .github/copilot-instructions.md"` exits with code 0.
-- [ ] [P0-T2] Read `.github/instructions/general-code-change.instructions.md` to confirm workflow requirements.
+- [x] [P0-T2] Read `.github/instructions/general-code-change.instructions.md` to confirm workflow requirements.
   - Acceptance: `powershell -Command "Test-Path .github/instructions/general-code-change.instructions.md"` exits with code 0.
-- [ ] [P0-T3] Read `.github/instructions/general-unit-test.instructions.md` to confirm unit-test policy.
+- [x] [P0-T3] Read `.github/instructions/general-unit-test.instructions.md` to confirm unit-test policy.
   - Acceptance: `powershell -Command "Test-Path .github/instructions/general-unit-test.instructions.md"` exits with code 0.
-- [ ] [P0-T4] Read `.github/instructions/python-code-change.instructions.md` for Python rules.
+- [x] [P0-T4] Read `.github/instructions/python-code-change.instructions.md` for Python rules.
   - Acceptance: `powershell -Command "Test-Path .github/instructions/python-code-change.instructions.md"` exits with code 0.
-- [ ] [P0-T5] Read `.github/instructions/python-unit-test.instructions.md` for Pytest rules.
+- [x] [P0-T5] Read `.github/instructions/python-unit-test.instructions.md` for Pytest rules.
   - Acceptance: `powershell -Command "Test-Path .github/instructions/python-unit-test.instructions.md"` exits with code 0.
-- [ ] [P0-T6] Read `docs/features/active/2025-12-04-formatters-parser-27/27-formatters-parser.prompt.md` for scope and acceptance criteria.
+- [x] [P0-T6] Read `docs/features/active/2025-12-04-formatters-parser-27/27-formatters-parser.prompt.md` for scope and acceptance criteria.
   - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-formatters-parser-27/27-formatters-parser.prompt.md"` exits with code 0.
-- [ ] [P0-T7] Capture baseline formatter output with `poetry run black .` from repo root.
+- [x] [P0-T7] Capture baseline formatter output with `poetry run black .` from repo root.
   - Acceptance: Command exits with code 0.
-- [ ] [P0-T8] Capture baseline lint output with `poetry run ruff check` from repo root.
+- [x] [P0-T8] Capture baseline lint output with `poetry run ruff check` from repo root.
   - Acceptance: Command exits with code 0.
-- [ ] [P0-T9] Capture baseline type-check output with `poetry run pyright` from repo root.
+- [x] [P0-T9] Capture baseline type-check output with `poetry run pyright` from repo root.
   - Acceptance: Command exits with code 0.
-- [ ] [P0-T10] Capture baseline test output with `poetry run pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-report=html`.
+- [x] [P0-T10] Capture baseline test output with `poetry run pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-report=html`.
   - Acceptance: Command exits with code 0.
 
 ### Phase 1 — DOCX Formatter Tests (`tests/formatters/test_docx_formatter.py`)

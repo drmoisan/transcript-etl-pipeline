@@ -76,29 +76,29 @@ Atomic, deterministic execution plan to raise combined coverage for `src/transcr
 | TASK-038 | P5-T4 |
 
 ### Phase 0 — Context & Inputs
-- [ ] [P0-T1] Read `.github/copilot-instructions.md` to confirm global agent requirements
+- [x] [P0-T1] Read `.github/copilot-instructions.md` to confirm global agent requirements
   - Acceptance: A note is added to `docs/features/active/2025-12-04-identity-normalize-23/coverage-map.md` stating the file was read with an ISO-8601 timestamp
-- [ ] [P0-T2] Read `.github/instructions/general-code-change.instructions.md` to confirm workflow and toolchain order
+- [x] [P0-T2] Read `.github/instructions/general-code-change.instructions.md` to confirm workflow and toolchain order
   - Acceptance: `docs/features/active/2025-12-04-identity-normalize-23/coverage-map.md` includes a timestamped entry confirming review
-- [ ] [P0-T3] Read `.github/instructions/general-unit-test.instructions.md` to confirm unit test constraints
+- [x] [P0-T3] Read `.github/instructions/general-unit-test.instructions.md` to confirm unit test constraints
   - Acceptance: `docs/features/active/2025-12-04-identity-normalize-23/coverage-map.md` includes a timestamped entry confirming review
-- [ ] [P0-T4] Read `.github/instructions/python-code-change.instructions.md` to confirm Python-specific rules
+- [x] [P0-T4] Read `.github/instructions/python-code-change.instructions.md` to confirm Python-specific rules
   - Acceptance: `docs/features/active/2025-12-04-identity-normalize-23/coverage-map.md` includes a timestamped entry confirming review
-- [ ] [P0-T5] Read `.github/instructions/python-unit-test.instructions.md` to confirm Pytest structure and naming
+- [x] [P0-T5] Read `.github/instructions/python-unit-test.instructions.md` to confirm Pytest structure and naming
   - Acceptance: `docs/features/active/2025-12-04-identity-normalize-23/coverage-map.md` includes a timestamped entry confirming review
-- [ ] [P0-T6] Capture baseline formatting output with `poetry run black .`
+- [x] [P0-T6] Capture baseline formatting output with `poetry run black .`
   - Acceptance: Command exits with code 0 and output is saved to `artifacts/plan_23_baseline_black.txt`
-- [ ] [P0-T7] Capture baseline lint output with `poetry run ruff check`
+- [x] [P0-T7] Capture baseline lint output with `poetry run ruff check`
   - Acceptance: Command exits with code 0 and output is saved to `artifacts/plan_23_baseline_ruff.txt`
-- [ ] [P0-T8] Capture baseline type-check output with `poetry run pyright`
+- [x] [P0-T8] Capture baseline type-check output with `poetry run pyright`
   - Acceptance: Command exits with code 0 and output is saved to `artifacts/plan_23_baseline_pyright.txt`
-- [ ] [P0-T9] Capture baseline test output with `poetry run pytest --cov=src/transcript_etl_pipeline --cov-report=term-missing`
+- [x] [P0-T9] Capture baseline test output with `poetry run pytest --cov=src/transcript_etl_pipeline --cov-report=term-missing`
   - Acceptance: Command exits with code 0 and output is saved to `artifacts/plan_23_baseline_pytest.txt`
 
 ### Phase 1 — Coverage Mapping
-- [ ] [P1-T1] Create `docs/features/active/2025-12-04-identity-normalize-23/coverage-map.md` documenting branches in `src/transcript_etl_pipeline/transform/identity_constraints.py` by listing each `detect_self_identification`, `detect_addresses_to_person`, and `extract_identity_constraints` branch condition verbatim
+- [x] [P1-T1] Create `docs/features/active/2025-12-04-identity-normalize-23/coverage-map.md` documenting branches in `src/transcript_etl_pipeline/transform/identity_constraints.py` by listing each `detect_self_identification`, `detect_addresses_to_person`, and `extract_identity_constraints` branch condition verbatim
   - Acceptance: File exists and contains a section titled `identity_constraints.py` with bullet points quoting each branch condition from the module
-- [ ] [P1-T2] Add a `normalize.py` section to `docs/features/active/2025-12-04-identity-normalize-23/coverage-map.md` listing branches in `_normalize_line_endings`, `_clean_whitespace`, `_is_label`, `_normalize_labels`, and `normalize_text`
+- [x] [P1-T2] Add a `normalize.py` section to `docs/features/active/2025-12-04-identity-normalize-23/coverage-map.md` listing branches in `_normalize_line_endings`, `_clean_whitespace`, `_is_label`, `_normalize_labels`, and `normalize_text`
   - Acceptance: File includes a `normalize.py` section with bullet points quoting each branch condition from the module
 
 ### Phase 2 — Identity Constraints Tests

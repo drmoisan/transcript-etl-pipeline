@@ -86,14 +86,18 @@ version: "0.2"
   - Acceptance: `powershell -Command "Test-Path .github/instructions/python-unit-test.instructions.md"` exits with code 0.
 - [x] [P0-T6] Read `docs/features/active/2025-12-04-e2e-speakerless-notes-25/25-e2e-speakerless-notes.prompt.md` for scope and acceptance criteria.
   - Acceptance: `powershell -Command "Test-Path docs/features/active/2025-12-04-e2e-speakerless-notes-25/25-e2e-speakerless-notes.prompt.md"` exits with code 0.
-- [ ] [P0-T7] Capture baseline formatter output with `poetry run black .` from repo root.
-  - Acceptance: Command exits with code 0.
-- [ ] [P0-T8] Capture baseline lint output with `poetry run ruff check` from repo root.
-  - Acceptance: Command exits with code 0.
-- [ ] [P0-T9] Capture baseline type-check output with `poetry run pyright` from repo root.
-  - Acceptance: Command exits with code 0.
-- [ ] [P0-T10] Capture baseline test output with `poetry run pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-report=html`.
-  - Acceptance: Command exits with code 0.
+- [x] [P0-T7] Capture baseline formatter output with `poetry run black .` from repo root.
+  - Acceptance: Command exits with code 0, and an evidence artifact exists at `evidence/baseline/black.<yyyy-MM-ddTHH-mm>.md` containing `Timestamp:`, `Command: poetry run black .`, and `EXIT_CODE: 0`.
+  - Acceptance: `powershell -Command "Get-ChildItem evidence/baseline/black.*.md | Select-String -Pattern 'Timestamp:|Command: poetry run black \.|EXIT_CODE: 0'"` returns matches.
+- [x] [P0-T8] Capture baseline lint output with `poetry run ruff check` from repo root.
+  - Acceptance: Command exits with code 0, and an evidence artifact exists at `evidence/baseline/ruff-check.<yyyy-MM-ddTHH-mm>.md` containing `Timestamp:`, `Command: poetry run ruff check`, and `EXIT_CODE: 0`.
+  - Acceptance: `powershell -Command "Get-ChildItem evidence/baseline/ruff-check.*.md | Select-String -Pattern 'Timestamp:|Command: poetry run ruff check|EXIT_CODE: 0'"` returns matches.
+- [x] [P0-T9] Capture baseline type-check output with `poetry run pyright` from repo root.
+  - Acceptance: Command exits with code 0, and an evidence artifact exists at `evidence/baseline/pyright.<yyyy-MM-ddTHH-mm>.md` containing `Timestamp:`, `Command: poetry run pyright`, and `EXIT_CODE: 0`.
+  - Acceptance: `powershell -Command "Get-ChildItem evidence/baseline/pyright.*.md | Select-String -Pattern 'Timestamp:|Command: poetry run pyright|EXIT_CODE: 0'"` returns matches.
+- [x] [P0-T10] Capture baseline test output with `poetry run pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-report=html`.
+  - Acceptance: Command exits with code 0, and an evidence artifact exists at `evidence/baseline/pytest.<yyyy-MM-ddTHH-mm>.md` containing `Timestamp:`, `Command: poetry run pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-report=html`, and `EXIT_CODE: 0`.
+  - Acceptance: `powershell -Command "Get-ChildItem evidence/baseline/pytest.*.md | Select-String -Pattern 'Timestamp:|Command: poetry run pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-report=html|EXIT_CODE: 0'"` returns matches.
 
 ### Phase 1 — Speakerless CLI E2E Tests (`tests/integration/test_cli_e2e_speakerless.py`)
 - [x] [P1-T1] TASK-1 Create `tests/integration/test_cli_e2e_speakerless.py` with shared fixtures: `SPACEX_DISCUSSION`, `GENERIC_MEETING_3SPEAKER`, `TEAM_STANDUP_3SPEAKER`, `PANEL_DISCUSSION_4SPEAKER`, and a helper `run_cli(args: list[str]) -> int` that calls `transcript_etl_pipeline.cli.main` while monkeypatching `setup_logging`, `config.save_last_output_folder`, and `_save_document` to avoid filesystem writes (REQ-1, REQ-3).
@@ -144,14 +148,18 @@ version: "0.2"
   - Acceptance: `Select-String -Path docs/features/active/2025-12-04-e2e-speakerless-notes-25/25-e2e-speakerless-notes.prompt.md -Pattern 'Runtime|Environment|Edge cases'` returns a match.
 
 ### Phase 4 — QA (Python Toolchain)
-- [ ] [P4-T1] Run `poetry run black .` and confirm the formatter exits with code 0; if it modifies files or fails, fix issues and restart from [P4-T1].
-  - Acceptance: Command exits with code 0 on a pass where no files are modified.
-- [ ] [P4-T2] Run `poetry run ruff check` and confirm the linter exits with code 0; if it fails, fix issues and restart from [P4-T1].
-  - Acceptance: Command exits with code 0.
-- [ ] [P4-T3] Run `poetry run pyright` and confirm type checking exits with code 0; if it fails, fix issues and restart from [P4-T1].
-  - Acceptance: Command exits with code 0.
-- [ ] [P4-T4] Run `poetry run pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-report=html` and confirm tests exit with code 0; if it fails, fix issues and restart from [P4-T1].
-  - Acceptance: Command exits with code 0.
+- [x] [P4-T1] Run `poetry run black .` and confirm the formatter exits with code 0; if it modifies files or fails, fix issues and restart from [P4-T1].
+  - Acceptance: Command exits with code 0 on a pass where no files are modified, and an evidence artifact exists at `evidence/qa-gates/black.<yyyy-MM-ddTHH-mm>.md` containing `Timestamp:`, `Command: poetry run black .`, and `EXIT_CODE: 0`.
+  - Acceptance: `powershell -Command "Get-ChildItem evidence/qa-gates/black.*.md | Select-String -Pattern 'Timestamp:|Command: poetry run black \.|EXIT_CODE: 0'"` returns matches.
+- [x] [P4-T2] Run `poetry run ruff check` and confirm the linter exits with code 0; if it fails, fix issues and restart from [P4-T1].
+  - Acceptance: Command exits with code 0, and an evidence artifact exists at `evidence/qa-gates/ruff-check.<yyyy-MM-ddTHH-mm>.md` containing `Timestamp:`, `Command: poetry run ruff check`, and `EXIT_CODE: 0`.
+  - Acceptance: `powershell -Command "Get-ChildItem evidence/qa-gates/ruff-check.*.md | Select-String -Pattern 'Timestamp:|Command: poetry run ruff check|EXIT_CODE: 0'"` returns matches.
+- [x] [P4-T3] Run `poetry run pyright` and confirm type checking exits with code 0; if it fails, fix issues and restart from [P4-T1].
+  - Acceptance: Command exits with code 0, and an evidence artifact exists at `evidence/qa-gates/pyright.<yyyy-MM-ddTHH-mm>.md` containing `Timestamp:`, `Command: poetry run pyright`, and `EXIT_CODE: 0`.
+  - Acceptance: `powershell -Command "Get-ChildItem evidence/qa-gates/pyright.*.md | Select-String -Pattern 'Timestamp:|Command: poetry run pyright|EXIT_CODE: 0'"` returns matches.
+- [x] [P4-T4] Run `poetry run pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-report=html` and confirm tests exit with code 0; if it fails, fix issues and restart from [P4-T1].
+  - Acceptance: Command exits with code 0, and an evidence artifact exists at `evidence/qa-gates/pytest.<yyyy-MM-ddTHH-mm>.md` containing `Timestamp:`, `Command: poetry run pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-report=html`, and `EXIT_CODE: 0`.
+  - Acceptance: `powershell -Command "Get-ChildItem evidence/qa-gates/pytest.*.md | Select-String -Pattern 'Timestamp:|Command: poetry run pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-report=html|EXIT_CODE: 0'"` returns matches.
 
 ## Test Plan
 

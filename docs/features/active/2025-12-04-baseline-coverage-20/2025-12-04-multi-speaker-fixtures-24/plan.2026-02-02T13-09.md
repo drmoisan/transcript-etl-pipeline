@@ -34,7 +34,7 @@ REQ-004 | Keep fixtures deterministic and synthetic with no sensitive data | Sou
 REQ-005 | Document fixture location and usage in `docs/features/active/2025-12-04-multi-speaker-fixtures-24/issue.md` | Source: 24-multi-speaker-fixtures.prompt.md | Validation: Issue doc includes links/notes
 
 ### Phase 0: Compliance & Context
-- [ ] [TASK-P0-T1] Confirm alignment with repo policies by reading `.github/instructions/general-code-change.instructions.md`, `.github/instructions/python-code-change.instructions.md`, `.github/instructions/general-unit-test.instructions.md`, and `.github/instructions/python-unit-test.instructions.md` before touching code
+- [x] [TASK-P0-T1] Confirm alignment with repo policies by reading `.github/instructions/general-code-change.instructions.md`, `.github/instructions/python-code-change.instructions.md`, `.github/instructions/general-unit-test.instructions.md`, and `.github/instructions/python-unit-test.instructions.md` before touching code
   - Acceptance: Development log contains policy review timestamp prior to Phase 1 commits
 
 ### Phase 1: Fixture Module Creation

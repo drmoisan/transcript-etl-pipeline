@@ -6,7 +6,7 @@
 
 - Issue: #24
 - Issue URL: [https://github.com/drmoisan/transcript-etl-pipeline/issues/24](https://github.com/drmoisan/transcript-etl-pipeline/issues/24)
-- Last Updated: 2025-12-04
+- Last Updated: 2026-02-06
 
 ## Problem / Why
 
@@ -44,4 +44,13 @@ Add reusable multi-speaker fixtures and regression tests that validate expected 
 - **Status:** Partially delivered; acceptance criteria not fully evidenced.
 - **Evidence highlights:** Shared fixtures in `tests/fixtures/multi_speaker.py`; regression suite in `tests/transform/test_multi_speaker_regression.py`.
 - **Open gaps:** Issue update and QA toolchain evidence not recorded.
+
+## XFAIL Issue Mapping (multi-speaker regression)
+
+The following xfail tests in `tests/transform/test_multi_speaker_regression.py` are tracked as dedicated bug issues:
+
+- `TestIdentityAwareAssignment.test_generic_meeting_identity_constraints` → #45 (identity-constraint-ordering)
+- `TestIdentityAwareAssignment.test_generic_meeting_addressing_constraints` → #46 (addressing-constraints-generic-meeting)
+- `TestSpaceXDiscussionRegression.test_expected_speaker_rotation_pattern` → #47 (spacex-rotation-pattern)
+- `TestTeamStandupRegression.test_addressing_team_members` → #48 (team-standup-addressing-constraints)
 

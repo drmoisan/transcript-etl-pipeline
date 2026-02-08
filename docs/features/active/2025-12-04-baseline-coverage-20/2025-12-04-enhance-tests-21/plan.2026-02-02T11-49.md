@@ -42,15 +42,15 @@ Requirements (REQ-):
 | REQ-ENH-005 | Run full toolchain (Black → Ruff → Pyright → Pytest) after changes. | repo policy |
 
 ### Phase 0 — Compliance & Context
-- [ ] [P0-T1] TASK-ENH-001 Record policy review timestamp in this plan file under “Open Questions / Notes” as `Policy Review Timestamp: <ISO-8601>`
+- [x] [P0-T1] TASK-ENH-001 Record policy review timestamp in this plan file under “Open Questions / Notes” as `Policy Review Timestamp: <ISO-8601>`
   - Acceptance: `Open Questions / Notes` includes a line starting with `Policy Review Timestamp:` and a valid ISO-8601 timestamp
-- [ ] [P0-T2] TASK-ENH-002 Capture baseline coverage for `src/transcript_etl_pipeline/transform/enhance.py` using `poetry run pytest tests/transform/test_enhance.py --cov=src/transcript_etl_pipeline/transform/enhance.py --cov-report=term` and append the output under “Open Questions / Notes” as a fenced code block
+- [x] [P0-T2] TASK-ENH-002 Capture baseline coverage for `src/transcript_etl_pipeline/transform/enhance.py` using `poetry run pytest tests/transform/test_enhance.py --cov=src/transcript_etl_pipeline/transform/enhance.py --cov-report=term` and append the output under “Open Questions / Notes” as a fenced code block
   - Acceptance: `Open Questions / Notes` contains a fenced code block labeled `Baseline Coverage Output` with the exact command output
 
 ### Phase 1 — Identity Constraints Characterization Tests
 - [x] [P1-T1] TASK-ENH-010 Add identity-constraint characterization tests to `tests/transform/test_enhance.py` with the exact names: `test_self_identification_with_two_speakers_uses_alternation`, `test_addresses_other_constraint_with_three_speakers`, `test_multiple_self_identifications_needs_more_changes`, `test_self_identifications_with_strong_change_signals`
   - Acceptance: `tests/transform/test_enhance.py` contains four new test functions with the exact names and assertions that lock current behavior via `enhance_text`
-- [ ] [P1-T2] TASK-ENH-011 Run targeted tests with `poetry run pytest tests/transform/test_enhance.py -k "self_identification_with_two_speakers_uses_alternation or addresses_other_constraint_with_three_speakers or multiple_self_identifications_needs_more_changes or self_identifications_with_strong_change_signals"`
+- [x] [P1-T2] TASK-ENH-011 Run targeted tests with `poetry run pytest tests/transform/test_enhance.py -k "self_identification_with_two_speakers_uses_alternation or addresses_other_constraint_with_three_speakers or multiple_self_identifications_needs_more_changes or self_identifications_with_strong_change_signals"`
   - Acceptance: Command exits with code 0
 
 ### Phase 2 — Normalization Interaction Characterization Tests
@@ -62,7 +62,7 @@ Requirements (REQ-):
 ### Phase 3 — Speakerless Edge Case Characterization Tests
 - [x] [P3-T1] TASK-ENH-030 Add speakerless edge-case tests to `tests/transform/test_enhance.py` with the exact names: `test_single_sentence_speakerless`, `test_question_answer_pattern_speakerless`, `test_pronoun_shift_detection`, `test_greeting_triggers_speaker_change`, `test_thank_you_pattern_speaker_change`, `test_acknowledgment_triggers_speaker_change`, `test_num_speakers_one`, `test_num_speakers_four`, `test_labeled_with_speakerless_content`, `test_metadata_then_speakerless_dialogue`
   - Acceptance: `tests/transform/test_enhance.py` contains ten new test functions with the exact names and assertions that lock current behavior via `enhance_text`
-- [ ] [P3-T2] TASK-ENH-031 Run targeted tests with `poetry run pytest tests/transform/test_enhance.py -k "speakerless or question_answer_pattern or pronoun_shift_detection or greeting_triggers_speaker_change or thank_you_pattern_speaker_change or acknowledgment_triggers_speaker_change or num_speakers_one or num_speakers_four or labeled_with_speakerless_content or metadata_then_speakerless_dialogue"`
+- [x] [P3-T2] TASK-ENH-031 Run targeted tests with `poetry run pytest tests/transform/test_enhance.py -k "speakerless or question_answer_pattern or pronoun_shift_detection or greeting_triggers_speaker_change or thank_you_pattern_speaker_change or acknowledgment_triggers_speaker_change or num_speakers_one or num_speakers_four or labeled_with_speakerless_content or metadata_then_speakerless_dialogue"`
   - Acceptance: Command exits with code 0
 
 ### Phase 4 — Coverage Verification and Evidence
