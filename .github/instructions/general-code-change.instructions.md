@@ -17,8 +17,13 @@ Language-specific standards (e.g. for Python) are defined in additional instruct
 ## Before Making Changes
 
 - [ ] Clarify the objective. Begin reasoning from clearly stated assumptions or axioms.
-- [ ] Read existing change plans (e.g., `change-plan.md`).
-- [ ] Document the plan to make changes. If it is part of an existing change plan, make any relevant updates to the plan before executing.
+- [ ] Read existing change plans (e.g., `plan.yyyy-MM-ddTHH-mm.md`) if present.
+- [ ] Document the plan to make changes in existing planning artifacts when available. Do not create new plan files unless the user explicitly requests one.
+
+## QC Execution Preference (Agents)
+
+- When asked to run QC/checks, run the underlying terminal commands directly (e.g., `poetry run black .`).
+- Do **not** invoke VS Code tasks for QC unless the user explicitly requests a task by name.
 
 ---
 
