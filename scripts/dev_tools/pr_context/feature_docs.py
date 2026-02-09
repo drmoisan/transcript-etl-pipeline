@@ -10,6 +10,86 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
 
+_VERSION_DIR_PATTERN = re.compile(r"^v(\d+)$", flags=re.IGNORECASE)
+
+
+def _is_excluded_nested_child(name: str) -> bool:
+    return name == "evidence" or name.startswith("audit-")
+
+
+def _version_number(name: str) -> int | None:
+    match = _VERSION_DIR_PATTERN.match(name)
+    if not match:
+        return None
+    return int(match.group(1))
+
+
+def _select_latest_version_dir(base_dir: Path) -> Path:
+    """Select the latest vN directory under a feature folder.
+
+    If the feature folder contains subdirectories named v1, v2, v3, ...,
+    resolve documentation paths from the numerically highest version folder.
+    Otherwise, return the feature folder itself.
+    """
+
+    best_version: int | None = None
+    best_dir: Path | None = None
+
+    if not base_dir.exists():
+        return base_dir
+
+    for child in sorted(base_dir.iterdir()):
+        if not child.is_dir():
+            continue
+
+        version = _version_number(child.name)
+        if version is None:
+            continue
+
+        if best_version is None or version > best_version:
+            best_version = version
+            best_dir = child
+
+    return best_dir or base_dir
+
+
+def _feature_key_from_active_parts(parts: tuple[str, ...]) -> str | None:
+    """Compute the feature key for docs/features/active paths.
+
+    Supported patterns:
+        1) docs/features/active/<feature>/<filename>
+        2) docs/features/active/<epic>/<feature>/<filename>
+        3) docs/features/active/<epic>/<feature>/vN/<filename>
+
+    The returned key is either <feature> or <epic>/<feature>. Returns None
+    for excluded audit/evidence folders.
+    """
+
+    if len(parts) < 4:
+        raise ValueError("Expected parts to include docs/features/active/<...>")
+
+    # Exclude top-level audit/evidence folders from feature detection.
+    if _is_excluded_nested_child(parts[3]):
+        return None
+
+    # Versioned child folders are treated as part of the epic/feature scope.
+    if len(parts) >= 6 and _version_number(parts[5]) is not None:
+        if _is_excluded_nested_child(parts[4]):
+            return None
+        return f"{parts[3]}/{parts[4]}"
+
+    # Non-versioned epic children become feature scopes unless excluded.
+    if len(parts) >= 5:
+        child = parts[4]
+        if child.endswith(".md") or _version_number(child) is not None:
+            return parts[3]
+        if _is_excluded_nested_child(child):
+            return None
+        return f"{parts[3]}/{child}"
+
+    return parts[3]
+
+
 def parse_section(markdown: str, heading: str) -> str:
     escaped = re.escape(heading)
     pattern = rf"^##\s+{escaped}\s*\r?\n(.*?)(?=^##\s+|\Z)"
@@ -84,13 +164,13 @@ def gather_feature_excerpts(root: Path, changed_files: Iterable[str]) -> list[Fe
     features: set[str] = set()
     for raw in changed_files:
         parts = Path(raw).parts
-        if (
-            len(parts) >= 4
-            and parts[0] == "docs"
-            and parts[1] == "features"
-            and parts[2] == "active"
-        ):
-            features.add(parts[3])
+        if len(parts) < 4:
+            continue
+
+        if parts[0:3] == ("docs", "features", "active"):
+            feature_key = _feature_key_from_active_parts(parts)
+            if feature_key:
+                features.add(feature_key)
 
     excerpts: list[FeatureDocExcerpt] = []
     base_dir = root / "docs" / "features" / "active"
@@ -105,11 +185,18 @@ def gather_feature_excerpts(root: Path, changed_files: Iterable[str]) -> list[Fe
         if active_dir is None:
             continue
 
-        spec_path = active_dir / "spec.md"
-        plan_path = active_dir / "plan.md"
-        user_story_path: Path = active_dir / "user-story.md"
+        resolved_dir = _select_latest_version_dir(active_dir)
+        spec_path = resolved_dir / "spec.md"
+        plan_path = resolved_dir / "plan.md"
+        user_story_path: Path = resolved_dir / "user-story.md"
+
+        promoted_resolved_dir = (
+            _select_latest_version_dir(promoted_feature_dir)
+            if promoted_feature_dir is not None
+            else None
+        )
         promoted_story_path = (
-            promoted_feature_dir / "user-story.md" if promoted_feature_dir is not None else None
+            promoted_resolved_dir / "user-story.md" if promoted_resolved_dir is not None else None
         )
 
         promoted_story_text = _read_text(promoted_story_path) if promoted_story_path else ""

@@ -192,6 +192,67 @@ class TestGatherFeatureExcerpts:
         features = {e.feature for e in excerpts}
         assert features == {"feature-a", "feature-b"}
 
+    def test_gather_feature_excerpts_epic_feature_latest_version(self, tmp_path: Path) -> None:
+        epic_feature_dir = tmp_path / "docs" / "features" / "active" / "epic-one" / "child-feature"
+        (tmp_path / "docs" / "features" / "potential" / "promoted").mkdir(parents=True)
+
+        v1_dir = epic_feature_dir / "v1"
+        v2_dir = epic_feature_dir / "v2"
+        v1_dir.mkdir(parents=True)
+        v2_dir.mkdir(parents=True)
+
+        (v1_dir / "spec.md").write_text("## Overview\nv1 spec", encoding="utf-8")
+        (v1_dir / "plan.md").write_text("## Tasks\n- [x] v1 task", encoding="utf-8")
+        (v1_dir / "user-story.md").write_text("## Problem / Why\nv1 story", encoding="utf-8")
+
+        (v2_dir / "spec.md").write_text("## Overview\nv2 spec", encoding="utf-8")
+        (v2_dir / "plan.md").write_text("## Tasks\n- [x] v2 task", encoding="utf-8")
+        (v2_dir / "user-story.md").write_text("## Problem / Why\nv2 story", encoding="utf-8")
+
+        changed_files = [
+            "docs/features/active/epic-one/child-feature/v1/spec.md",
+            "docs/features/active/epic-one/child-feature/v2/user-story.md",
+        ]
+        excerpts = gather_feature_excerpts(tmp_path, changed_files)
+
+        assert len(excerpts) == 1
+        excerpt = excerpts[0]
+        assert excerpt.feature == "epic-one/child-feature"
+        assert "v2 story" in excerpt.excerpt
+        assert "v2 spec" in excerpt.excerpt
+        normalized_context_files = [path.replace("\\", "/") for path in excerpt.context_files]
+        assert any(path.endswith("/v2/spec.md") for path in normalized_context_files)
+        assert any(path.endswith("/v2/plan.md") for path in normalized_context_files)
+        assert any(path.endswith("/v2/user-story.md") for path in normalized_context_files)
+
+    def test_gather_feature_excerpts_ignores_epic_evidence_folder(self, tmp_path: Path) -> None:
+        epic_dir = tmp_path / "docs" / "features" / "active" / "epic-one"
+        (tmp_path / "docs" / "features" / "potential" / "promoted").mkdir(parents=True)
+
+        # Create an evidence folder under the epic root. This is not a feature folder.
+        evidence_dir = epic_dir / "evidence" / "qa"
+        evidence_dir.mkdir(parents=True)
+        (evidence_dir / "notes.md").write_text("Evidence content", encoding="utf-8")
+
+        changed_files = ["docs/features/active/epic-one/evidence/qa/notes.md"]
+        excerpts = gather_feature_excerpts(tmp_path, changed_files)
+
+        assert all(excerpt.feature != "epic-one/evidence" for excerpt in excerpts)
+
+    def test_gather_feature_excerpts_ignores_epic_audit_folder(self, tmp_path: Path) -> None:
+        epic_dir = tmp_path / "docs" / "features" / "active" / "epic-one"
+        (tmp_path / "docs" / "features" / "potential" / "promoted").mkdir(parents=True)
+
+        # Create an audit folder under the epic root. This is not a feature folder.
+        audit_dir = epic_dir / "audit-2026-02-09T10-00"
+        audit_dir.mkdir(parents=True)
+        (audit_dir / "notes.md").write_text("Audit notes", encoding="utf-8")
+
+        changed_files = ["docs/features/active/epic-one/audit-2026-02-09T10-00/notes.md"]
+        excerpts = gather_feature_excerpts(tmp_path, changed_files)
+
+        assert all(excerpt.feature != "epic-one/audit-2026-02-09T10-00" for excerpt in excerpts)
+
 
 class TestResolveFeatureDir:
     """Tests for _resolve_feature_dir focusing on directory matching loop."""

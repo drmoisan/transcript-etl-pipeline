@@ -81,9 +81,16 @@ class TestExtractFeaturesFromPaths:
             "docs/features/active/feature-a/spec.md",
             "docs/features/active/feature-b/plan.md",
             "docs/features/active/feature-a/user-story.md",
+            "docs/features/active/epic-one/child-feature/spec.md",
         ]
         result = extract_features_from_paths(paths)
-        assert result == {"feature-a", "feature-b"}
+        assert result == {"feature-a", "feature-b", "epic-one/child-feature"}
+
+    def test_ignores_epic_audit_paths(self) -> None:
+        """extract_features_from_paths ignores audit folders under epics."""
+        paths = ["docs/features/active/epic-one/audit-2026-02-09T10-00/notes.md"]
+        result = extract_features_from_paths(paths)
+        assert result == set()
 
     def test_ignores_non_active_paths(self) -> None:
         """extract_features_from_paths only processes active paths."""
