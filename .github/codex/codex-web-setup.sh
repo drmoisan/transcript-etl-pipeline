@@ -2,8 +2,26 @@
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 
-echo "=== lexile-corpus-tuner setup: start ==="
+echo "=== transcript-etl-pipeline setup: start ==="
 echo "Working directory: $(pwd)"
+
+# Prefer an explicit Python interpreter when provided by the workflow.
+# This avoids pip interacting with OS-managed site-packages when the script runs under sudo.
+PYTHON_EXE="${PYTHON_EXE:-}"
+if [ -n "$PYTHON_EXE" ]; then
+  if [ ! -x "$PYTHON_EXE" ]; then
+    echo "ERROR: PYTHON_EXE was provided but is not executable: $PYTHON_EXE" >&2
+    exit 1
+  fi
+
+  python_bin_dir="$(dirname "$PYTHON_EXE")"
+  export PATH="$python_bin_dir:$PATH"
+  echo "Using explicit PYTHON_EXE=$PYTHON_EXE"
+else
+  # Fall back to PATH resolution; on GitHub runners this may be system Python if run under sudo.
+  PYTHON_EXE="python3"
+  echo "PYTHON_EXE not provided; falling back to $PYTHON_EXE from PATH"
+fi
 
 REPO_ROOT="${WORKSPACE_FOLDER:-}"
 if [ -z "$REPO_ROOT" ] || [ ! -d "$REPO_ROOT" ]; then
@@ -49,7 +67,7 @@ if command -v poetry >/dev/null 2>&1; then
   echo "Poetry present ($(poetry --version)); reusing existing installation."
 else
   echo "Poetry not found; installing Poetry 2.2.1 (devcontainer baseline)..."
-  pip install --no-cache-dir "poetry==2.2.1"
+  "$PYTHON_EXE" -m pip install --no-cache-dir "poetry==2.2.1"
 fi
 
 #
@@ -272,4 +290,4 @@ else
   echo "actionlint already installed"
 fi
 
-echo "=== lexile-corpus-tuner setup: done ==="
+echo "=== transcript-etl-pipeline setup: done ==="

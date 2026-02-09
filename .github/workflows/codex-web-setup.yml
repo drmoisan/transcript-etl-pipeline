@@ -28,6 +28,7 @@ jobs:
 
       - name: Set up Python 3.13
         uses: actions/setup-python@v5
+        id: setup-python
         with:
           python-version: "3.13"
 
@@ -35,4 +36,4 @@ jobs:
         run: sudo git config --system --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Run codex-web setup script
-        run: sudo bash .github/codex/codex-web-setup.sh
+        run: sudo PYTHON_EXE='${{ steps.setup-python.outputs.python-path }}' bash .github/codex/codex-web-setup.sh
