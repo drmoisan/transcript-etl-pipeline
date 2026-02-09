@@ -85,6 +85,10 @@ def _feature_key_from_active_parts(parts: tuple[str, ...]) -> str | None:
     if _is_excluded_nested_child(parts[3]):
         return None
 
+    # Ignore top-level files (like README.md) under docs/features/active.
+    if len(parts) == 4 and Path(parts[3]).suffix:
+        return None
+
     # Versioned child folders are treated as part of the epic/feature scope.
     if len(parts) >= 6 and _version_number(parts[5]) is not None:
         if _is_excluded_nested_child(parts[4]):

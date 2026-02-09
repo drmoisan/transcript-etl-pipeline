@@ -97,6 +97,15 @@ class TestExtractIssueReferences:
 
 
 class TestGatherFeatureExcerpts:
+    def test_gather_feature_excerpts_ignores_active_readme(self) -> None:
+        """Ensure top-level active README.md paths are ignored safely."""
+        repo_root = Path(__file__).resolve().parents[2]
+
+        changed_files = ["docs/features/active/README.md"]
+        excerpts = gather_feature_excerpts(repo_root, changed_files)
+
+        assert excerpts == []
+
     def test_gather_feature_excerpts_direct_match(self, tmp_path: Path) -> None:
         feature_dir = tmp_path / "docs" / "features" / "active" / "test-feature"
         feature_dir.mkdir(parents=True)
