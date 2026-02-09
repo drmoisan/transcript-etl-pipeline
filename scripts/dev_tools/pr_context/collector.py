@@ -38,7 +38,11 @@ from .render import (
 )
 from .summary_helpers import (
     append_generation_timestamp,
+    audit_appendix,
     bucket_text,
+    find_audit_documents,
+    format_audit_summaries,
+    summarize_audit_documents,
 )
 from .summary_helpers import (
     issue_appendix as _issue_appendix,
@@ -158,11 +162,22 @@ def collect_and_write(
 
     changed_paths = extract_changed_paths(context_result.text)
     feature_docs = gather_feature_excerpts(resolved_root, changed_paths)
+    audit_documents = find_audit_documents(resolved_root, changed_paths)
+    audit_summaries = summarize_audit_documents(audit_documents, resolved_root)
     additional_context_files = sorted(
-        {path for doc in feature_docs for path in doc.context_files if path}
+        {
+            *(path for doc in feature_docs for path in doc.context_files if path),
+            *(summary.path for summary in audit_summaries),
+        }
     )
     feature_issue_refs = sorted(
         {ref for doc in feature_docs for ref in doc.issue_refs if ref.strip()}
+    )
+    audit_issue_refs = sorted(
+        {ref for summary in audit_summaries for ref in summary.issue_refs if ref.strip()}
+    )
+    audit_delivered_refs = sorted(
+        {ref for summary in audit_summaries for ref in summary.delivered_issue_refs if ref.strip()}
     )
 
     if feature_issue_refs:
@@ -183,7 +198,7 @@ def collect_and_write(
     branch_refs = extract_issue_references(git.branch_name())
     path_refs = extract_issue_references("\n".join(changed_paths))
     if gh_available:
-        for ref in feature_issue_refs:
+        for ref in feature_issue_refs + audit_issue_refs:
             formatted = ref if ref.startswith("#") else f"#{ref}"
             entity = gh.classify_entity(ref.lstrip("#"))
             if entity == "issue":
@@ -208,6 +223,10 @@ def collect_and_write(
         )
         referenced_issues_set.update(
             formatted if formatted.startswith("#") else f"#{formatted}"
+            for formatted in audit_issue_refs
+        )
+        referenced_issues_set.update(
+            formatted if formatted.startswith("#") else f"#{formatted}"
             for formatted in branch_refs + path_refs
         )
 
@@ -227,9 +246,9 @@ def collect_and_write(
     else:
         verified_reason = "(verified from GitHub PR metadata)"
 
-    if referenced_issues:
-        author_asserted = sorted(set(author_asserted + referenced_issues))
-        author_reason = "Detected issue references (classified)"
+    if audit_delivered_refs:
+        author_asserted = sorted(set(author_asserted + audit_delivered_refs))
+        author_reason = "Audit evidence (delivered issues)"
 
     issues_to_fetch = sorted(set(verified + author_asserted + referenced_issues))
     issue_details: list[IssueDetails] = []
@@ -378,6 +397,9 @@ def collect_and_write(
             "",
             close_candidates,
             "",
+            section("Audit evidence (merge readiness)"),
+            format_audit_summaries(audit_summaries),
+            "",
             section("Additional context files"),
             format_list(additional_context_files, "(none)"),
             "",
@@ -434,6 +456,9 @@ def collect_and_write(
     appendix_parts = [
         append_generation_timestamp(),
         context_result.text,
+        "",
+        section("Audit artifacts"),
+        audit_appendix(audit_summaries),
         "",
         section("Issue details"),
         "\n\n".join(issue_sections) if issue_sections else "(none)",

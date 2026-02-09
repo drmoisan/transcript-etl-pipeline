@@ -33,6 +33,9 @@ from scripts.dev_tools.pr_context.summary_helpers import (
     extract_digest_bullets as _extract_digest_bullets,
 )
 from scripts.dev_tools.pr_context.summary_helpers import (
+    find_audit_documents as _find_audit_documents,
+)
+from scripts.dev_tools.pr_context.summary_helpers import (
     is_scoping_doc as _is_scoping_doc,
 )
 from scripts.dev_tools.pr_context.summary_helpers import (
@@ -345,7 +348,7 @@ def test_build_close_candidates_section_renders_lists():
     assert "#1" in section_text and "#2" in section_text and "#3" in section_text
 
 
-def test_build_close_candidates_section_promotes_referenced_issues_to_auto_close():
+def test_build_close_candidates_section_keeps_references_separate():
     section_text = build_close_candidates_section(
         verified=[],
         author_asserted=[],
@@ -355,8 +358,8 @@ def test_build_close_candidates_section_promotes_referenced_issues_to_auto_close
     )
 
     lines = section_text.splitlines()
-    author_index = lines.index("Auto-close issues (author asserted):")
-    assert "- #3" in lines[author_index + 1]
+    referenced_index = lines.index("Referenced issues (detected):")
+    assert "- #3" in lines[referenced_index + 1]
 
 
 def test_issue_digest_truncates_comments():
@@ -508,6 +511,52 @@ def test_is_scoping_doc_identifies_feature_files():
     assert _is_scoping_doc("docs/features/active/feat/user-story.md")
     assert not _is_scoping_doc("docs/features/ideas/idea.md")
     assert not _is_scoping_doc("src/main.py")
+
+
+def test_find_audit_documents_selects_latest_per_scope(tmp_path: Path) -> None:
+    root = tmp_path
+    epic_root = root / "docs" / "features" / "active" / "epic-one"
+    feature_root = epic_root / "feature-two"
+    epic_root.mkdir(parents=True)
+    feature_root.mkdir(parents=True)
+
+    # Create older epic audit group in a dated folder.
+    old_epic_dir = epic_root / "audit-2026-02-02T10-00"
+    old_epic_dir.mkdir()
+    (old_epic_dir / "epic-audit.2026-02-02T10-00.md").write_text("# Old epic audit")
+    (old_epic_dir / "policy-audit.2026-02-02T10-00.md").write_text("# Old policy")
+
+    # Create latest epic audit group at epic root.
+    latest_epic_audit = epic_root / "epic-audit.2026-02-07T23-08.md"
+    latest_epic_policy = epic_root / "policy-audit.2026-02-07T23-08.md"
+    latest_epic_audit.write_text("# Latest epic audit")
+    latest_epic_policy.write_text("# Latest policy audit")
+
+    # Create older feature audit group in a dated folder.
+    old_feature_dir = feature_root / "audit-2026-02-01T09-00"
+    old_feature_dir.mkdir()
+    (old_feature_dir / "feature-audit.2026-02-01T09-00.md").write_text("# Old feature")
+
+    # Create latest feature audit group at feature root.
+    latest_feature_audit = feature_root / "feature-audit.2026-02-06T12-00.md"
+    latest_feature_policy = feature_root / "policy-audit.2026-02-06T12-00.md"
+    latest_feature_audit.write_text("# Latest feature audit")
+    latest_feature_policy.write_text("# Latest feature policy audit")
+
+    changed_paths = [
+        "docs/features/active/epic-one/spec.md",
+        "docs/features/active/epic-one/feature-two/spec.md",
+    ]
+
+    results = _find_audit_documents(root, changed_paths)
+    result_paths = {str(path.relative_to(root)) for path in results}
+
+    assert str(latest_epic_audit.relative_to(root)) in result_paths
+    assert str(latest_epic_policy.relative_to(root)) in result_paths
+    assert str(latest_feature_audit.relative_to(root)) in result_paths
+    assert str(latest_feature_policy.relative_to(root)) in result_paths
+    old_epic_audit = old_epic_dir / "epic-audit.2026-02-02T10-00.md"
+    assert str(old_epic_audit.relative_to(root)) not in result_paths
 
 
 def test_collect_and_write_uses_feature_refs_and_scoping(
@@ -1109,6 +1158,38 @@ def test_collect_and_write_includes_intent_and_additional_context(
         def classify_entity(self, number: str) -> str | None:
             return None
 
+        def issue_details(self, number: str) -> IssueDetails:
+            return IssueDetails(
+                number=f"#{number}",
+                title="Issue",
+                state="open",
+                labels=[],
+                assignees=[],
+                author="alex",
+                created_at="2024-01-01",
+                updated_at="2024-01-02",
+                body="Body",
+                comments=[],
+            )
+
+        def pr_details(self, number: str) -> PullRequestDetails:
+            return PullRequestDetails(
+                number=f"#{number}",
+                title="PR",
+                state="open",
+                author="alex",
+                base_ref="main",
+                head_ref="feature",
+                created_at="2024-01-01",
+                updated_at="2024-01-02",
+                merged_at=None,
+                labels=[],
+                assignees=[],
+                body="PR body",
+                closing_issues=[],
+                files_changed=["file.py"],
+            )
+
         def ci_status(self, head_sha: str) -> tuple[str | None, list[str]]:
             return "success", []
 
@@ -1191,11 +1272,13 @@ def test_collect_and_write_includes_intent_and_additional_context(
 
     assert "PR Intent" in summary_text
     assert "Author-asserted autoclose issues" in summary_text
+    assert "Audit evidence (merge readiness)" in summary_text
     assert "Additional context files" in summary_text
     assert "Feature doc excerpts" in summary_text
     assert "Excerpt" in summary_text
     assert "Feature: 2025-12-18-docs-v3-upgrade" in summary_text
     assert "Context files:" in summary_text
     assert "docs/features/active/2025-12-18-docs-v3-upgrade/user-story.md" in summary_text
+    assert "Audit artifacts" in appendix_text
     assert "Feature doc: 2025-12-18-docs-v3-upgrade" in appendix_text
     assert "Plan verification notes" in appendix_text

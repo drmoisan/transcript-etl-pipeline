@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import re
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
+from .feature_docs import extract_issue_references
 from .models import (
+    AuditDocumentSummary,
     IssueDetails,
     PullRequestDetails,
     format_list,
@@ -16,15 +19,366 @@ from .models import (
 
 UTC: Final[timezone] = timezone.utc  # noqa: UP017 - datetime.UTC unavailable before Python 3.11
 
-if TYPE_CHECKING:
-    from pathlib import Path
+AUDIT_PREFIXES: Final[tuple[str, ...]] = (
+    "epic-audit",
+    "feature-delivery-inventory",
+    "policy-audit",
+    "feature-audit",
+)
 
+AUDIT_TIMESTAMP_PATTERN: Final[re.Pattern[str]] = re.compile(r"(\d{4}-\d{2}-\d{2}T\d{2}-\d{2})")
+
+
+def _matches_audit_filename(filename: str) -> bool:
+    """Check whether a filename matches expected audit artifact prefixes.
+
+    Args:
+        filename (str): File name to evaluate.
+
+    Returns:
+        bool: True if the file name starts with a known audit prefix.
+    """
+
+    lower = filename.lower()
+    # Audit artifacts are named with known prefixes to enable deterministic discovery.
+    return any(lower.startswith(prefix) for prefix in AUDIT_PREFIXES)
+
+
+def _extract_audit_timestamp(path: Path) -> str | None:
+    """Extract the audit timestamp from a path.
+
+    Purpose:
+        Parse ISO-8601 timestamps from audit directory or file names to
+        group related audit artifacts.
+
+    Args:
+        path (Path): Audit artifact path.
+
+    Returns:
+        str | None: Timestamp string if found.
+    """
+
+    # First, prefer timestamps in audit-<timestamp> folder names.
+    for part in path.parts:
+        if part.startswith("audit-"):
+            match = AUDIT_TIMESTAMP_PATTERN.search(part)
+            if match:
+                return match.group(1)
+
+    # Fall back to timestamps embedded in the file name.
+    match = AUDIT_TIMESTAMP_PATTERN.search(path.name)
+    return match.group(1) if match else None
+
+
+def _audit_scope_for_path(path: Path, root: Path) -> Path | None:
+    """Determine the epic or feature scope for an audit artifact.
+
+    Purpose:
+        Identify the scope root so we can select the latest audit group per
+        epic and per feature.
+
+    Args:
+        path (Path): Audit artifact path.
+        root (Path): Repository root for normalization.
+
+    Returns:
+        Path | None: Scope root within docs/features/active.
+    """
+
+    try:
+        rel = path.relative_to(root)
+    except ValueError:
+        return None
+
+    parts = rel.parts
+    if len(parts) < 4:
+        return None
+    if parts[0:3] != ("docs", "features", "active"):
+        return None
+
+    epic_root = Path(*parts[:4])
+    if len(parts) < 5:
+        return epic_root
+
+    next_part = parts[4]
+    # If the audit artifact is under a feature subfolder, treat that as feature scope.
+    if not next_part.startswith("audit-") and not _matches_audit_filename(next_part):
+        return epic_root / next_part
+    return epic_root
+
+
+def _audit_scope_candidates(changed_paths: list[str]) -> list[Path]:
+    """Infer audit scope roots from changed paths.
+
+    Args:
+        changed_paths (list[str]): Changed file paths from PR context.
+
+    Returns:
+        list[Path]: Scope roots derived from changed paths.
+    """
+
+    scopes: set[Path] = set()
+    # Use changed paths to focus audit discovery on touched epics/features.
+    for raw in changed_paths:
+        parts = Path(raw).parts
+        if len(parts) < 4 or parts[0:3] != ("docs", "features", "active"):
+            continue
+        scopes.add(Path(*parts[:4]))
+        if len(parts) >= 5 and not parts[4].endswith(".md"):
+            scopes.add(Path(*parts[:5]))
+    return sorted(scopes)
+
+
+def find_audit_documents(root: Path, changed_paths: list[str]) -> list[Path]:
+    """Locate audit artifacts relevant to the current PR context.
+
+    Purpose:
+        Prefer audit artifacts already changed in the PR, then fall back to
+        scanning active feature folders to find canonical audit evidence.
+
+    Args:
+        root (Path): Repository root.
+        changed_paths (list[str]): Workspace-relative changed file paths.
+
+    Returns:
+        list[Path]: Absolute paths to discovered audit artifacts.
+    """
+
+    audit_root = root / "docs" / "features" / "active"
+    if not audit_root.exists():
+        return []
+
+    scope_candidates = _audit_scope_candidates(changed_paths)
+    if not scope_candidates:
+        # Default to top-level active folders if the PR has no feature changes.
+        scope_candidates = [path for path in audit_root.iterdir() if path.is_dir()]
+
+    audit_candidates: list[Path] = []
+    # Collect audit artifacts under the relevant epic/feature scopes.
+    for scope in scope_candidates:
+        # Normalize scope roots to absolute paths so globbing is anchored to the repo root.
+        scope_root = scope if scope.is_absolute() else root / scope
+        for path in scope_root.rglob("*.md"):
+            if _matches_audit_filename(path.name):
+                audit_candidates.append(path)
+
+    grouped: dict[Path, dict[str, list[Path]]] = {}
+    # Group audits by scope and timestamp so we can select the latest per scope.
+    for path in audit_candidates:
+        timestamp = _extract_audit_timestamp(path)
+        if not timestamp:
+            continue
+        scope = _audit_scope_for_path(path, root)
+        if scope is None:
+            continue
+        grouped.setdefault(scope, {}).setdefault(timestamp, []).append(path)
+
+    selected: list[Path] = []
+    # Keep the latest audit group per scope while preserving all files in that group.
+    for _scope, by_timestamp in grouped.items():
+        latest_timestamp = max(by_timestamp)
+        selected.extend(by_timestamp[latest_timestamp])
+
+    return sorted({path.resolve() for path in selected})
+
+
+def _extract_commands(text: str) -> list[str]:
+    """Extract verification commands captured in audit documentation.
+
+    Args:
+        text (str): Audit document content.
+
+    Returns:
+        list[str]: Unique command strings discovered in the document.
+    """
+
+    commands: list[str] = []
+    # Audit documents capture commands in backticks; filter to toolchain commands.
+    for match in re.findall(r"`([^`]+)`", text):
+        cleaned = match.strip()
+        if not cleaned:
+            continue
+        if any(
+            token in cleaned for token in ("poetry ", "pwsh ", "pytest", "ruff", "pyright", "black")
+        ):
+            commands.append(cleaned)
+    return sorted(set(commands))
+
+
+def _extract_evidence_paths(text: str) -> list[str]:
+    """Extract evidence file paths cited by audit documentation.
+
+    Args:
+        text (str): Audit document content.
+
+    Returns:
+        list[str]: Unique evidence paths referenced in the document.
+    """
+
+    pattern = re.compile(
+        r"(?P<path>(?:docs/features/[^\s)]+|[^\s)]+/evidence/[^\s)]+|evidence/[^\s)]+))"
+    )
+    matches = [match.group("path") for match in pattern.finditer(text)]
+    return sorted({path for path in matches if path})
+
+
+def _extract_delivered_issue_refs(text: str) -> list[str]:
+    """Extract delivered issue references from feature delivery inventories.
+
+    Args:
+        text (str): Feature delivery inventory content.
+
+    Returns:
+        list[str]: Issue references that are marked delivered in summary tables.
+    """
+
+    delivered: list[str] = []
+    # Feature delivery inventories use markdown tables with issue + delivered ratios.
+    for line in text.splitlines():
+        if not line.strip().startswith("|") or "#" not in line:
+            continue
+        issue_match = re.search(r"#\d+", line)
+        ratio_match = re.search(r"(\d+)\s*/\s*(\d+)", line)
+        if not issue_match or not ratio_match:
+            continue
+        delivered_count = int(ratio_match.group(1))
+        total_count = int(ratio_match.group(2))
+        if total_count > 0 and delivered_count == total_count:
+            delivered.append(issue_match.group(0))
+    return sorted(set(delivered))
+
+
+def _filter_audit_issue_refs(issue_refs: list[str]) -> list[str]:
+    """Filter audit issue references to GitHub issue numbers.
+
+    Purpose:
+        Audit documents may include tokens that look like issue IDs but are not
+        GitHub issues (e.g., ISO-8601). Restrict to numeric issue references.
+
+    Args:
+        issue_refs (list[str]): Raw issue references extracted from audit text.
+
+    Returns:
+        list[str]: GitHub issue references in #NNN format.
+    """
+
+    filtered: list[str] = []
+    # Keep only numeric issue references to avoid non-issue tokens.
+    for ref in issue_refs:
+        if re.fullmatch(r"#?\d+", ref):
+            filtered.append(ref if ref.startswith("#") else f"#{ref}")
+    return sorted(set(filtered))
+
+
+def summarize_audit_documents(paths: list[Path], root: Path) -> list[AuditDocumentSummary]:
+    """Build structured summaries for audit artifacts.
+
+    Purpose:
+        Convert audit markdown into structured summaries for PR context output.
+
+    Args:
+        paths (list[Path]): Absolute audit artifact paths.
+        root (Path): Repository root for path normalization.
+
+    Returns:
+        list[AuditDocumentSummary]: Summaries with issue references and evidence.
+    """
+
+    summaries: list[AuditDocumentSummary] = []
+    # Process each audit artifact into a concise summary payload.
+    for path in paths:
+        text = path.read_text(encoding="utf-8")
+        issue_refs = _filter_audit_issue_refs(extract_issue_references(text))
+        delivered_refs = (
+            _extract_delivered_issue_refs(text)
+            if path.name.lower().startswith("feature-delivery-inventory")
+            else []
+        )
+        evidence_paths = _extract_evidence_paths(text)
+        commands = _extract_commands(text)
+        excerpt = truncate_lines(text, 120)
+        summaries.append(
+            AuditDocumentSummary(
+                path=str(path.relative_to(root)),
+                issue_refs=issue_refs,
+                delivered_issue_refs=delivered_refs,
+                evidence_paths=evidence_paths,
+                commands=commands,
+                excerpt=excerpt,
+            )
+        )
+    return summaries
+
+
+def format_audit_summaries(summaries: list[AuditDocumentSummary]) -> str:
+    """Format audit summaries for the PR context summary section.
+
+    Args:
+        summaries (list[AuditDocumentSummary]): Summaries to format.
+
+    Returns:
+        str: Formatted summary block for audit evidence.
+    """
+
+    if not summaries:
+        return "(none)"
+
+    lines: list[str] = []
+    # Emit each audit summary with issue refs, evidence paths, and commands.
+    for summary in summaries:
+        lines.append(f"- {summary.path}")
+        lines.append(
+            f"  Issues: {', '.join(summary.issue_refs) if summary.issue_refs else '(none)'}"
+        )
+        lines.append(
+            "  Delivered issues: "
+            + (
+                ", ".join(summary.delivered_issue_refs)
+                if summary.delivered_issue_refs
+                else "(none)"
+            )
+        )
+        lines.append(
+            "  Evidence paths: "
+            + (", ".join(summary.evidence_paths) if summary.evidence_paths else "(none)")
+        )
+        lines.append(
+            "  Verification commands: "
+            + ("; ".join(summary.commands) if summary.commands else "(none)")
+        )
+    return "\n".join(lines)
+
+
+def audit_appendix(summaries: list[AuditDocumentSummary]) -> str:
+    """Build appendix text containing audit artifact excerpts.
+
+    Args:
+        summaries (list[AuditDocumentSummary]): Audit summaries to include.
+
+    Returns:
+        str: Appendix section with truncated audit artifacts.
+    """
+
+    if not summaries:
+        return "(none)"
+
+    blocks: list[str] = []
+    # Include truncated excerpts so PR authors can cite audit evidence directly.
+    for summary in summaries:
+        blocks.append(section(f"Audit artifact: {summary.path}"))
+        blocks.append(summary.excerpt)
+    return "\n\n".join(blocks)
+
+
+if TYPE_CHECKING:
     from .git import GitClient
 
 __all__ = [
     "append_generation_timestamp",
+    "audit_appendix",
     "bucket_text",
     "extract_digest_bullets",
+    "find_audit_documents",
     "is_scoping_doc",
     "issue_appendix",
     "issue_digest",
@@ -32,9 +386,11 @@ __all__ = [
     "parse_name_status_map",
     "parse_numstat_detailed",
     "parse_section",
+    "format_audit_summaries",
     "pr_appendix",
     "pr_digest",
     "scoping_doc_changes",
+    "summarize_audit_documents",
 ]
 
 

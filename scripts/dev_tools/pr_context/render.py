@@ -416,12 +416,11 @@ def build_close_candidates_section(
     verified_reason: str,
     author_reason: str,
 ) -> str:
-    # Combine all auto-close issues (verified + author asserted)
-    all_auto_close = set(verified + author_asserted + referenced)
-    author_auto_close = sorted(all_auto_close)
+    # Auto-close candidates are only those explicitly verified or asserted.
+    auto_close = sorted(set(verified + author_asserted))
 
-    # Referenced issues are only those NOT in auto-close categories
-    referenced_only = sorted(set(referenced) - all_auto_close)
+    # Referenced issues remain separate unless explicitly asserted/verified.
+    referenced_only = sorted(set(referenced) - set(auto_close))
 
     return "\n".join(
         [
@@ -430,7 +429,7 @@ def build_close_candidates_section(
             format_list(verified, verified_reason),
             "",
             "Auto-close issues (author asserted):",
-            format_list(author_auto_close, author_reason),
+            format_list(auto_close, author_reason),
             "",
             "Referenced issues (detected):",
             format_list(referenced_only, "(none)"),

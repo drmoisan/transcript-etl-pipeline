@@ -82,6 +82,31 @@ class FeatureDocExcerpt:
 
 
 @dataclass
+class AuditDocumentSummary:
+    """Summary of audit artifacts for PR context and verification evidence.
+
+    Purpose:
+        Capture key details from audit artifacts so PR context can reference
+        issue coverage and verification evidence.
+
+    Attributes:
+        path (str): Workspace-relative path to the audit artifact.
+        issue_refs (list[str]): Issue references found in the document.
+        delivered_issue_refs (list[str]): Issues marked delivered in inventories.
+        evidence_paths (list[str]): Evidence file paths cited by the audit.
+        commands (list[str]): Verification commands captured in the audit.
+        excerpt (str): Truncated excerpt for appendix inclusion.
+    """
+
+    path: str
+    issue_refs: list[str]
+    delivered_issue_refs: list[str]
+    evidence_paths: list[str]
+    commands: list[str]
+    excerpt: str
+
+
+@dataclass
 class PRContextResult:
     """Structured result from building the PR comparison section."""
 
