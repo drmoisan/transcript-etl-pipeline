@@ -1,0 +1,24 @@
+Timestamp: 2026-02-04T02:41:17Z
+Command: ls -la docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-speakerless-heuristics-22 && ls -1 docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-speakerless-heuristics-22
+
+Feature: #22
+Feature folder: docs/features/active/2025-12-04-baseline-coverage-20/2025-12-04-speakerless-heuristics-22
+
+--- ls -la ---
+total 48
+drwxr-xr-x  3 vscode vscode  4096 Feb  3 17:47 .
+drwxr-xr-x 14 vscode vscode  4096 Feb  3 21:33 ..
+-rw-r--r--  1 vscode vscode  2701 Feb  3 17:47 22-speakerless-heuristics.md
+drwxr-xr-x  2 vscode vscode  4096 Feb  3 17:47 baseline
+-rw-r--r--  1 vscode vscode  2277 Feb  3 17:47 issue.md
+-rw-r--r--  1 vscode vscode 12699 Feb  3 17:47 plan.2026-02-02T12-24.md
+-rwxr-xr-x  1 vscode vscode  5072 Feb  2 12:33 spec.md
+-rwxr-xr-x  1 vscode vscode  3053 Feb  2 12:33 user-story.md
+
+--- files ---
+22-speakerless-heuristics.md
+baseline
+issue.md
+plan.2026-02-02T12-24.md
+spec.md
+user-story.md

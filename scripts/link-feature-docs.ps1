@@ -1,5 +1,5 @@
 # Updates a GitHub issue body to include links to feature docs (user story, spec, plan).
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess = $true)]
 param(
     [Parameter(Mandatory = $true)]
     [string] $IssueNumber,
@@ -7,24 +7,24 @@ param(
     [string] $FeatureName
 )
 
-function Stop-ScriptWithError($msg) {
-    Write-Host $msg
+function Write-ScriptError($msg) {
+    Write-Error $msg
     exit 1
 }
 
 if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
-    Stop-ScriptWithError "gh CLI not found on PATH. Install gh and authenticate first."
+    Write-ScriptError "gh CLI not found on PATH. Install gh and authenticate first."
 }
 
 $issueJson = & gh issue view $IssueNumber --json body
 if ($LASTEXITCODE -ne 0 -or -not $issueJson) {
-    Stop-ScriptWithError "Unable to fetch issue #$IssueNumber. Check the number and gh auth."
+    Write-ScriptError "Unable to fetch issue #$IssueNumber. Check the number and gh auth."
 }
 
 $issue = $issueJson | ConvertFrom-Json
 $body = $issue.body
 if ([string]::IsNullOrWhiteSpace($body)) {
-    Stop-ScriptWithError "Issue #$IssueNumber has an empty body; aborting to avoid overwriting content."
+    Write-ScriptError "Issue #$IssueNumber has an empty body; aborting to avoid overwriting content."
 }
 
 # Normalize feature name to both underscore and hyphen variants for paths
@@ -37,7 +37,7 @@ $docsBlock = @"
 - [Plan](docs/features/active/$featurePath/plan.md)
 "@
 
-function Set-OrAppendSection {
+function Format-OrAppendSection {
     param(
         [string] $Content,
         [string] $SectionHeading,
@@ -57,17 +57,26 @@ function Set-OrAppendSection {
     return $Content.TrimEnd() + "`n`n" + $Replacement.TrimEnd()
 }
 
-$newBody = Set-OrAppendSection -Content $body -SectionHeading "## Feature Docs" -Replacement $docsBlock
+$newBody = Format-OrAppendSection -Content $body -SectionHeading "## Feature Docs" -Replacement $docsBlock
 
 $tmp = [System.IO.Path]::ChangeExtension([System.IO.Path]::GetTempFileName(), '.md')
-Set-Content -Path $tmp -Value $newBody -Encoding UTF8
+if ($PSCmdlet.ShouldProcess($tmp, "Write updated issue body")) {
+    Set-Content -Path $tmp -Value $newBody -Encoding UTF8
+}
 
-& gh issue edit $IssueNumber --body-file $tmp
-$exit = $LASTEXITCODE
-Remove-Item $tmp -ErrorAction SilentlyContinue
+if ($PSCmdlet.ShouldProcess("Issue #$IssueNumber", "Update issue body from temp file")) {
+    & gh issue edit $IssueNumber --body-file $tmp
+    $exit = $LASTEXITCODE
+} else {
+    $exit = 0
+}
+
+if ($PSCmdlet.ShouldProcess($tmp, "Remove temporary file")) {
+    Remove-Item $tmp -ErrorAction SilentlyContinue
+}
 
 if ($exit -eq 0) {
-    Write-Host "Updated issue #$IssueNumber with Feature Docs links."
+    Write-Information ("Updated issue #{0} with Feature Docs links." -f $IssueNumber) -InformationAction Continue
 } else {
-    Stop-ScriptWithError "Failed to update issue #$IssueNumber."
+    Write-ScriptError "Failed to update issue #$IssueNumber."
 }

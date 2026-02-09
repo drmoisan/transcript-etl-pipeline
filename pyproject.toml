@@ -15,6 +15,7 @@ python-docx = "^1.1.0"
 english-words = "^2.0.2"
 nltk = "^3.9.2"
 numpy = "^2.3.5"
+tzdata = "^2025.3"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.10.0"
@@ -50,7 +51,7 @@ reportUnknownMemberType = true
 reportUnknownVariableType = true
 
 [tool.coverage.run]
-source = ["src"]
+source = ["src", "scripts/dev_tools"]
 omit = [
     "tests/*",
     "*/tests/*",
@@ -59,6 +60,12 @@ omit = [
 ]
 
 [tool.coverage.report]
+# Initial fail-under floor: 15% (current coverage ~16%)
+# Plan to ratchet up as coverage improves:
+# - After initial stabilization: raise to 20%
+# - After core module coverage: raise to 30%
+# - Long-term goal: 50%+ as test coverage expands
+fail_under = 15
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",

@@ -34,10 +34,29 @@ def format_to_rtf(doc: Document, output_path: str) -> None:
         doc: The transcript document to format
         output_path: Path where the RTF file should be saved
     """
-    rtf_content = _generate_rtf(doc)
+    rtf_content = generate_rtf(doc)
 
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(rtf_content)
+
+
+def generate_rtf(doc: Document) -> str:
+    """Generate RTF content for a transcript document.
+
+    Purpose:
+        Provide a filesystem-free representation of the formatted document,
+        enabling deterministic tests without file I/O.
+
+    Args:
+        doc (Document): The transcript document to format.
+
+    Returns:
+        str: The complete RTF content for the document.
+
+    Side Effects:
+        None. This function performs no I/O.
+    """
+    return _generate_rtf(doc)
 
 
 def _generate_rtf(doc: Document) -> str:

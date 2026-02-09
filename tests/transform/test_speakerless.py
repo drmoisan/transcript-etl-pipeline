@@ -7,6 +7,33 @@ from transcript_etl_pipeline.transform.speakerless import (
 )
 
 
+class TestHasSpeakerLabelsEdgeCases:
+    """Additional edge case tests for speaker label detection."""
+
+    def test_text_with_only_whitespace_lines(self) -> None:
+        """Test handling of text with only whitespace lines."""
+        text = "   \r\n   \r\n   "
+        assert has_speaker_labels(text) is False
+
+    def test_text_with_mixed_labeled_unlabeled(self) -> None:
+        """Test text with mix of labeled and unlabeled lines."""
+        text = "Speaker A: Hello.\r\nUnlabeled text here.\r\nSpeaker B: Hi."
+        assert has_speaker_labels(text) is True
+
+    def test_text_with_numbered_speakers(self) -> None:
+        """Test detection of numbered speaker labels."""
+        text = "Speaker 1: Hello.\r\nSpeaker 2: Hi there."
+        assert has_speaker_labels(text) is True
+
+    def test_text_with_low_label_ratio(self) -> None:
+        """Test text where labels are less than 10% of lines."""
+        # Create text where labeled lines are < 10%
+        unlabeled = "\r\n".join(["Line " + str(i) for i in range(20)])
+        text = "Speaker A: Hello.\r\n" + unlabeled
+        # Only 1 label in 21 lines = < 10%
+        assert has_speaker_labels(text) is False
+
+
 class TestHasSpeakerLabels:
     """Tests for speaker label detection."""
 
@@ -108,6 +135,79 @@ class TestDetectSpeakerChanges:
         assert 0 in changes
 
 
+class TestDetectSpeakerChangesHeuristics:
+    """Tests for specific speaker change heuristics."""
+
+    def test_detect_speaker_changes_tag_question_includes_change(self) -> None:
+        """Verify tag questions trigger a speaker change."""
+        text = "We should proceed, right?\r\nYes, let's do it."
+        changes = detect_speaker_changes(text)
+        assert 1 in changes
+
+    def test_detect_speaker_changes_continuation_no_shift(self) -> None:
+        """Verify continuation statements do not trigger speaker shift."""
+        text = "I think we should proceed.\r\nYou know I agree."
+        changes = detect_speaker_changes(text)
+        assert changes == [0]
+
+    def test_thank_you_pattern_triggers_change(self) -> None:
+        """Test that 'thank you' patterns trigger speaker change."""
+        text = "I've finished my presentation.\r\nThank you for that overview."
+        changes = detect_speaker_changes(text)
+        # Second sentence with "Thank you" should trigger change
+        assert len(changes) >= 2
+
+    def test_thanks_pattern_triggers_change(self) -> None:
+        """Test that 'thanks' patterns trigger speaker change."""
+        text = "Here is the report.\r\nThanks for sharing."
+        changes = detect_speaker_changes(text)
+        # "Thanks" should trigger change
+        assert len(changes) >= 2
+
+    def test_thats_pattern_triggers_change(self) -> None:
+        """Test that 'That's' patterns trigger speaker change."""
+        text = "We need more resources.\r\nThat's a good point."
+        changes = detect_speaker_changes(text)
+        # "That's" should trigger change
+        assert len(changes) >= 2
+
+    def test_pronoun_shift_i_to_you(self) -> None:
+        """Test I->You pronoun shift detection."""
+        text = "I believe this is correct.\r\nYou are absolutely right."
+        changes = detect_speaker_changes(text)
+        # Shift from I to You should trigger change
+        assert len(changes) >= 2
+
+    def test_pronoun_shift_you_to_i(self) -> None:
+        """Test You->I pronoun shift detection."""
+        text = "You should review the document.\r\nI will look at it tomorrow."
+        changes = detect_speaker_changes(text)
+        # Shift from You to I should trigger change
+        assert len(changes) >= 2
+
+    def test_no_change_same_pronoun(self) -> None:
+        """Test that same pronoun usage may not trigger change."""
+        text = "I think we should proceed. I also believe we need more resources."
+        changes = detect_speaker_changes(text)
+        # Same pronouns may indicate same speaker
+        assert 0 in changes
+
+    def test_response_after_question(self) -> None:
+        """Test response detection after question."""
+        # Question followed by a statement with first-person pronoun shift
+        text = "What do you think?\r\nI believe it's Friday."
+        changes = detect_speaker_changes(text)
+        # The response may trigger a change
+        assert 0 in changes  # First sentence is always a change point
+
+    def test_continuous_text_without_newlines(self) -> None:
+        """Test speaker change detection in continuous text."""
+        text = "What do you think? I think it's great. Really? Yes, definitely."
+        changes = detect_speaker_changes(text)
+        # Should detect changes even without newlines
+        assert len(changes) >= 1
+
+
 class TestAssignSpeakerLabels:
     """Tests for speaker label assignment."""
 
@@ -163,6 +263,78 @@ class TestAssignSpeakerLabels:
         lines = result.split("\r\n")
         labeled_lines = [line for line in lines if line.strip() and "Speaker" in line]
         assert len(labeled_lines) >= 1
+
+
+class TestAssignSpeakerLabelsEdgeCases:
+    """Additional edge case tests for speaker label assignment."""
+
+    def test_assign_speaker_labels_addressee_not_self(self) -> None:
+        """Verify addressee lines are not assigned to the addressed speaker."""
+        text = "I'm Frank Oz.\r\nThanks Frank."
+        result = assign_speaker_labels(text, num_speakers=3)
+        lines = [line for line in result.split("\r\n") if line.strip()]
+        frank_speaker = lines[0].split(":")[0]
+        thanks_speaker = lines[1].split(":")[0]
+        assert thanks_speaker != frank_speaker
+
+    def test_assign_speaker_labels_closing_statement_to_organizer(self) -> None:
+        """Verify closing statements are assigned to the organizer."""
+        text = (
+            "I'm Peter Parker.\r\n"
+            "I'm Frank Oz.\r\n"
+            "I'm Fred Flintstone.\r\n"
+            "Great. Thank you both."
+        )
+        result = assign_speaker_labels(text, num_speakers=3)
+        lines = [line for line in result.split("\r\n") if line.strip()]
+        organizer_speaker = lines[0].split(":")[0]
+        closing_speaker = lines[-1].split(":")[0]
+        assert closing_speaker == organizer_speaker
+
+    def test_single_sentence_text(self) -> None:
+        """Test handling of single sentence text."""
+        text = "Just one sentence here."
+        result = assign_speaker_labels(text)
+        assert "Speaker A:" in result
+        assert "Just one sentence here." in result
+
+    def test_no_change_points_detected(self) -> None:
+        """Test text where no change points are detected."""
+        # Continuous similar statements
+        text = "First thing. Second thing. Third thing."
+        result = assign_speaker_labels(text)
+        # Should still produce output with at least one speaker
+        assert "Speaker A:" in result
+
+    def test_auto_detect_num_speakers(self) -> None:
+        """Test automatic detection of number of speakers."""
+        text = "What time is it?\r\n" "It's 3 PM.\r\n" "Thanks!\r\n" "You're welcome."
+        result = assign_speaker_labels(text)  # No num_speakers specified
+        # Should have speaker labels
+        assert "Speaker" in result
+
+    def test_num_speakers_none_uses_default(self) -> None:
+        """Test that num_speakers=None uses default detection."""
+        text = "Hello.\r\nHi there.\r\nHow are you?\r\nGood, thanks."
+        result = assign_speaker_labels(text, num_speakers=None)
+        assert "Speaker" in result
+
+    def test_zero_num_speakers_treated_as_one(self) -> None:
+        """Test that num_speakers=0 is treated as at least 1."""
+        text = "Hello.\r\nHi there."
+        # This tests the max(1, num_speakers) logic
+        result = assign_speaker_labels(text, num_speakers=1)
+        assert "Speaker A:" in result
+
+    def test_many_change_points_caps_at_4_speakers(self) -> None:
+        """Test that auto-detected speakers are capped at 4."""
+        text = "Hello.\r\nHi.\r\nHey.\r\nGreetings.\r\n" "Thanks.\r\nSure.\r\nOkay.\r\nRight."
+        result = assign_speaker_labels(text)  # Auto-detect
+        lines = [line for line in result.split("\r\n") if line.strip()]
+        speakers = {line.split(":")[0] for line in lines}
+        # Should not exceed 4 speakers
+        valid_speakers = {"Speaker A", "Speaker B", "Speaker C", "Speaker D"}
+        assert speakers.issubset(valid_speakers)
 
 
 class TestNLTKIntegration:

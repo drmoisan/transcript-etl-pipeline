@@ -1,0 +1,103 @@
+{
+  "$schema": "../devcontainer.schema.json",
+  "build": {
+    "context": "../..",
+    "dockerfile": "Dockerfile"
+  },
+  "containerEnv": {
+    "BG_WORKTREE_PATH": "/workspaces/transcript-etl-pipeline-bg",
+    "TZ": "America/New_York"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.black-formatter",
+        "charliermarsh.ruff",
+        "AdamViola.parquet-explorer",
+        "zeshuaro.vscode-python-poetry",
+        "ms-vscode.live-server",
+        "ms-vscode.powershell",
+        "eamodio.gitlens",
+        "mhutchie.git-graph",
+        "graphite.gti-vscode",
+        "github.vscode-pull-request-github",
+        "editorconfig.editorconfig",
+        "humao.rest-client",
+        "ryanluker.vscode-coverage-gutters",
+        "tenninebt.vscode-koverage",
+        "pspester.pester-test",
+        "ms-azuretools.vscode-containers",
+        "bierner.markdown-preview-github-styles",
+        "bierner.markdown-mermaid",
+        "mechatroner.rainbow-csv",
+        "openai.chatgpt",
+        "github.vscode-github-actions",
+        "bierner.markdown-checkbox"
+      ],
+      "settings": {
+        "[python]": {
+          "editor.codeActionsOnSave": {
+            "source.fixAll": "explicit",
+            "source.organizeImports": "explicit"
+          },
+          "editor.defaultFormatter": "ms-python.black-formatter",
+          "editor.formatOnSave": true
+        },
+        "black-formatter.args": [
+          "--config",
+          "${workspaceFolder}/pyproject.toml"
+        ],
+        "powershell.codeFormatting.preset": "OTBS",
+        "powershell.integratedConsole.showOnStartup": false,
+        "powershell.integratedConsole.startInBackground": true,
+        "powershell.scriptAnalysis.enable": true,
+        "powershell.scriptAnalysis.settingsPath": "${workspaceFolder}/scripts/powershell/PoshQC/settings/pssa.settings.psd1",
+        "python.analysis.typeCheckingMode": "strict",
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+        "python.formatting.provider": "none",
+        "python.terminal.activateEnvironment": false,
+        "python.testing.pytestEnabled": true,
+        "python.testing.unittestEnabled": false,
+        "terminal.integrated.defaultProfile.linux": "pwsh",
+        "terminal.integrated.profiles.linux": {
+          "bash": {
+            "icon": "terminal-bash",
+            "path": "/bin/bash"
+          },
+          "pwsh": {
+            "args": [
+              "-NoLogo"
+            ],
+            "icon": "terminal-powershell",
+            "path": "/usr/bin/pwsh"
+          }
+        },
+        "terminal.integrated.shellIntegration.enabled": true
+      }
+    }
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/git:1": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {
+      "version": "latest"
+    }
+  },
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/workspaces/transcript-etl-pipeline-host,type=bind,consistency=cached,readonly",
+    "source=${localWorkspaceFolder}/artifacts,target=/workspaces/transcript-etl-pipeline/artifacts,type=bind,consistency=cached",
+    "source=${localWorkspaceFolderBasename}-workspace-bg,target=/workspaces/transcript-etl-pipeline-bg,type=volume",
+    "source=${localWorkspaceFolder}/data,target=/workspaces/transcript-etl-pipeline/data,type=bind,consistency=cached"
+  ],
+  "name": "Transcript ETL Pipeline Dev Container",
+  "postCreateCommand": "bash -lc 'set -euo pipefail; sudo mkdir -p /workspaces/transcript-etl-pipeline; sudo chown -R vscode:vscode /workspaces/transcript-etl-pipeline; if [ ! -d /workspaces/transcript-etl-pipeline/.git ] && [ -d /workspaces/transcript-etl-pipeline-host ]; then tar -C /workspaces/transcript-etl-pipeline-host --exclude=.venv --exclude=artifacts --exclude=data -cf - . | tar -C /workspaces/transcript-etl-pipeline -xf -; fi; sudo chown -R vscode:vscode /workspaces/transcript-etl-pipeline; bash .devcontainer/post-create.sh'",
+  "remoteUser": "vscode",
+  "workspaceFolder": "/workspaces/transcript-etl-pipeline",
+  "workspaceMount": "source=${localWorkspaceFolderBasename}-workspace,target=/workspaces/transcript-etl-pipeline,type=volume"
+}

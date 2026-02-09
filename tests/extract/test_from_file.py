@@ -1,6 +1,6 @@
 """Tests for file extraction."""
 
-import tempfile
+import io
 from pathlib import Path
 
 import pytest
@@ -11,143 +11,373 @@ from transcript_etl_pipeline.extract.from_file import detect_encoding, extract_f
 class TestDetectEncoding:
     """Tests for encoding detection."""
 
-    def test_detect_utf8_no_bom(self) -> None:
+    def test_detect_utf8_no_bom(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test detecting UTF-8 without BOM."""
-        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False) as f:
-            f.write("Hello world")
-            temp_path = f.name
+        file_content = b"Hello world"
+        mock_file = io.BytesIO(file_content)
 
-        try:
-            encoding = detect_encoding(Path(temp_path))
-            assert encoding == "utf-8"
-        finally:
-            Path(temp_path).unlink()
+        def mock_open_func(path: Path, mode: str) -> io.BytesIO:
+            return mock_file
 
-    def test_detect_utf8_with_bom(self) -> None:
+        monkeypatch.setattr("builtins.open", mock_open_func)
+
+        encoding = detect_encoding(Path("test.txt"))
+        assert encoding == "utf-8"
+
+    def test_detect_utf8_with_bom(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test detecting UTF-8 with BOM."""
-        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8-sig", delete=False) as f:
-            f.write("Hello world")
-            temp_path = f.name
+        # UTF-8 BOM (EF BB BF) + content
+        file_content = b"\xef\xbb\xbfHello world"
+        mock_file = io.BytesIO(file_content)
 
-        try:
-            encoding = detect_encoding(Path(temp_path))
-            assert encoding == "utf-8-sig"
-        finally:
-            Path(temp_path).unlink()
+        def mock_open_func(path: Path, mode: str) -> io.BytesIO:
+            return mock_file
 
-    def test_detect_utf16_le(self) -> None:
-        """Test detecting UTF-16 with BOM."""
-        # Python's utf-16 adds BOM automatically
-        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-16", delete=False) as f:
-            f.write("Hello world")
-            temp_path = f.name
+        monkeypatch.setattr("builtins.open", mock_open_func)
 
-        try:
-            encoding = detect_encoding(Path(temp_path))
-            # Should detect utf-16 (which handles BOM automatically)
-            assert encoding == "utf-16"
-        finally:
-            Path(temp_path).unlink()
+        encoding = detect_encoding(Path("test.txt"))
+        assert encoding == "utf-8-sig"
 
-    def test_detect_utf16_be(self) -> None:
-        """Test detecting UTF-16 Big Endian with BOM by writing raw bytes."""
-        # Write a file with explicit UTF-16 BE BOM
-        with tempfile.NamedTemporaryFile(mode="wb", delete=False) as f:
-            # UTF-16 BE BOM + "Hi" encoded in UTF-16 BE
-            f.write(b"\xfe\xff\x00H\x00i")
-            temp_path = f.name
+    def test_detect_utf16_le_with_bom(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test detecting UTF-16 LE with BOM."""
+        # UTF-16 LE BOM (FF FE) + "Hi" in UTF-16 LE
+        file_content = b"\xff\xfeH\x00i\x00"
+        mock_file = io.BytesIO(file_content)
 
-        try:
-            encoding = detect_encoding(Path(temp_path))
-            assert encoding == "utf-16"
-        finally:
-            Path(temp_path).unlink()
+        def mock_open_func(path: Path, mode: str) -> io.BytesIO:
+            return mock_file
+
+        monkeypatch.setattr("builtins.open", mock_open_func)
+
+        encoding = detect_encoding(Path("test.txt"))
+        assert encoding == "utf-16"
+
+    def test_detect_utf16_be_with_bom(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test detecting UTF-16 BE with BOM."""
+        # UTF-16 BE BOM (FE FF) + "Hi" in UTF-16 BE
+        file_content = b"\xfe\xff\x00H\x00i"
+        mock_file = io.BytesIO(file_content)
+
+        def mock_open_func(path: Path, mode: str) -> io.BytesIO:
+            return mock_file
+
+        monkeypatch.setattr("builtins.open", mock_open_func)
+
+        encoding = detect_encoding(Path("test.txt"))
+        assert encoding == "utf-16"
+
+    def test_detect_encoding_short_file(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test detecting encoding on file with less than 4 bytes."""
+        file_content = b"Hi"
+        mock_file = io.BytesIO(file_content)
+
+        def mock_open_func(path: Path, mode: str) -> io.BytesIO:
+            return mock_file
+
+        monkeypatch.setattr("builtins.open", mock_open_func)
+
+        encoding = detect_encoding(Path("test.txt"))
+        assert encoding == "utf-8"
+
+    def test_detect_encoding_empty_file(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test detecting encoding on empty file."""
+        file_content = b""
+        mock_file = io.BytesIO(file_content)
+
+        def mock_open_func(path: Path, mode: str) -> io.BytesIO:
+            return mock_file
+
+        monkeypatch.setattr("builtins.open", mock_open_func)
+
+        encoding = detect_encoding(Path("test.txt"))
+        assert encoding == "utf-8"
 
 
 class TestExtractFromFile:
     """Tests for file extraction."""
 
-    def test_extract_txt_file_utf8(self) -> None:
+    @staticmethod
+    def _mock_path_exists(_self: Path) -> bool:
+        """Helper to mock Path.exists as True."""
+        return True
+
+    @staticmethod
+    def _mock_path_is_file(_self: Path) -> bool:
+        """Helper to mock Path.is_file as True."""
+        return True
+
+    @staticmethod
+    def _mock_path_is_not_file(_self: Path) -> bool:
+        """Helper to mock Path.is_file as False."""
+        return False
+
+    def test_extract_txt_file_utf8(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test extracting content from UTF-8 text file."""
         content = "This is a test transcript.\nWith multiple lines."
+        file_bytes = content.encode("utf-8")
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", suffix=".txt", delete=False
-        ) as f:
-            f.write(content)
-            temp_path = f.name
+        # Mock Path methods
+        def mock_exists(_self: Path) -> bool:
+            return True
 
-        try:
-            extracted = extract_from_file(temp_path)
-            assert extracted == content
-        finally:
-            Path(temp_path).unlink()
+        def mock_is_file(_self: Path) -> bool:
+            return True
 
-    def test_extract_md_file(self) -> None:
+        monkeypatch.setattr(Path, "exists", mock_exists)
+        monkeypatch.setattr(Path, "is_file", mock_is_file)
+        monkeypatch.setattr(Path, "suffix", ".txt")
+
+        # Mock file operations
+        mock_binary = io.BytesIO(file_bytes)
+        mock_text = io.StringIO(content)
+
+        call_count = {"count": 0}
+
+        def mock_open_func(path: Path, mode: str = "r", encoding: str | None = None) -> io.IOBase:
+            call_count["count"] += 1
+            if mode == "rb":
+                return mock_binary
+            return mock_text
+
+        monkeypatch.setattr("builtins.open", mock_open_func)
+
+        extracted = extract_from_file("test.txt")
+        assert extracted == content
+
+    def test_extract_md_file(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test extracting content from markdown file."""
         content = "# Meeting Notes\n\nThis is the transcript."
+        file_bytes = content.encode("utf-8")
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", suffix=".md", delete=False
-        ) as f:
-            f.write(content)
-            temp_path = f.name
+        # Mock Path methods
+        monkeypatch.setattr(Path, "exists", self._mock_path_exists)
+        monkeypatch.setattr(Path, "is_file", self._mock_path_is_file)
+        monkeypatch.setattr(Path, "suffix", ".md")
 
-        try:
-            extracted = extract_from_file(temp_path)
-            assert extracted == content
-        finally:
-            Path(temp_path).unlink()
+        # Mock file operations
+        mock_binary = io.BytesIO(file_bytes)
+        mock_text = io.StringIO(content)
 
-    def test_extract_utf16_file(self) -> None:
+        def mock_open_func(path: Path, mode: str = "r", encoding: str | None = None) -> io.IOBase:
+            if mode == "rb":
+                return mock_binary
+            return mock_text
+
+        monkeypatch.setattr("builtins.open", mock_open_func)
+
+        extracted = extract_from_file("test.md")
+        assert extracted == content
+
+    def test_extract_utf16_file(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test extracting content from UTF-16 encoded file."""
         content = "Transcript with UTF-16 encoding"
+        # UTF-16 LE BOM + content
+        file_bytes = b"\xff\xfe" + content.encode("utf-16-le")
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-16", suffix=".txt", delete=False
-        ) as f:
-            f.write(content)
-            temp_path = f.name
+        # Mock Path methods
+        monkeypatch.setattr(Path, "exists", self._mock_path_exists)
+        monkeypatch.setattr(Path, "is_file", self._mock_path_is_file)
+        monkeypatch.setattr(Path, "suffix", ".txt")
 
-        try:
-            extracted = extract_from_file(temp_path)
-            assert extracted == content
-        finally:
-            Path(temp_path).unlink()
+        # Mock file operations
+        mock_binary = io.BytesIO(file_bytes)
+        mock_text = io.StringIO(content)
+
+        def mock_open_func(path: Path, mode: str = "r", encoding: str | None = None) -> io.IOBase:
+            if mode == "rb":
+                return mock_binary
+            return mock_text
+
+        monkeypatch.setattr("builtins.open", mock_open_func)
+
+        extracted = extract_from_file("test.txt")
+        assert extracted == content
+
+    def test_extract_utf8_with_bom(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test extracting content from UTF-8 file with BOM."""
+        content = "Content with BOM"
+        # UTF-8 BOM + content
+        file_bytes = b"\xef\xbb\xbf" + content.encode("utf-8")
+
+        # Mock Path methods
+        monkeypatch.setattr(Path, "exists", self._mock_path_exists)
+        monkeypatch.setattr(Path, "is_file", self._mock_path_is_file)
+        monkeypatch.setattr(Path, "suffix", ".txt")
+
+        # Mock file operations
+        mock_binary = io.BytesIO(file_bytes)
+        mock_text = io.StringIO(content)
+
+        def mock_open_func(path: Path, mode: str = "r", encoding: str | None = None) -> io.IOBase:
+            if mode == "rb":
+                return mock_binary
+            return mock_text
+
+        monkeypatch.setattr("builtins.open", mock_open_func)
+
+        extracted = extract_from_file("test.txt")
+        assert extracted == content
 
     def test_file_not_found(self) -> None:
         """Test that FileNotFoundError is raised for non-existent file."""
         with pytest.raises(FileNotFoundError, match="File not found"):
             extract_from_file("/nonexistent/file.txt")
 
-    def test_unsupported_file_type(self) -> None:
+    def test_unsupported_file_type(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test that ValueError is raised for unsupported file types."""
-        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
-            temp_path = f.name
+        # Mock Path to make file exist
+        monkeypatch.setattr(Path, "exists", self._mock_path_exists)
+        monkeypatch.setattr(Path, "is_file", self._mock_path_is_file)
+        monkeypatch.setattr(Path, "suffix", ".pdf")
 
-        try:
-            with pytest.raises(ValueError, match="Unsupported file type"):
-                extract_from_file(temp_path)
-        finally:
-            Path(temp_path).unlink()
+        with pytest.raises(ValueError, match="Unsupported file type"):
+            extract_from_file("test.pdf")
 
-    def test_directory_path_raises_error(self) -> None:
+    def test_directory_path_raises_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test that passing a directory path raises ValueError."""
-        with (
-            tempfile.TemporaryDirectory() as temp_dir,
-            pytest.raises(ValueError, match="not a file"),
-        ):
-            extract_from_file(temp_dir)
+        # Mock Path to make directory exist but not be a file
+        monkeypatch.setattr(Path, "exists", self._mock_path_exists)
+        monkeypatch.setattr(Path, "is_file", self._mock_path_is_not_file)
 
-    def test_empty_file(self) -> None:
+        with pytest.raises(ValueError, match="not a file"):
+            extract_from_file("/some/directory")
+
+    def test_empty_file(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test extracting from an empty file returns empty string."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", suffix=".txt", delete=False
-        ) as f:
-            temp_path = f.name
+        content = ""
+        file_bytes = b""
 
-        try:
-            extracted = extract_from_file(temp_path)
-            assert extracted == ""
-        finally:
-            Path(temp_path).unlink()
+        # Mock Path methods
+        monkeypatch.setattr(Path, "exists", self._mock_path_exists)
+        monkeypatch.setattr(Path, "is_file", self._mock_path_is_file)
+        monkeypatch.setattr(Path, "suffix", ".txt")
+
+        # Mock file operations
+        mock_binary = io.BytesIO(file_bytes)
+        mock_text = io.StringIO(content)
+
+        def mock_open_func(path: Path, mode: str = "r", encoding: str | None = None) -> io.IOBase:
+            if mode == "rb":
+                return mock_binary
+            return mock_text
+
+        monkeypatch.setattr("builtins.open", mock_open_func)
+
+        extracted = extract_from_file("test.txt")
+        assert extracted == ""
+
+    def test_unicode_decode_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test that UnicodeDecodeError is wrapped in OSError."""
+        # Mock Path methods
+        monkeypatch.setattr(Path, "exists", self._mock_path_exists)
+        monkeypatch.setattr(Path, "is_file", self._mock_path_is_file)
+        monkeypatch.setattr(Path, "suffix", ".txt")
+
+        # Mock encoding detection to return utf-8
+        file_bytes = b"\x00\x00\x00\x00"
+        mock_binary = io.BytesIO(file_bytes)
+
+        def mock_open_func(path: Path, mode: str = "r", encoding: str | None = None) -> io.IOBase:
+            if mode == "rb":
+                return mock_binary
+            # Simulate UnicodeDecodeError on text read
+            raise UnicodeDecodeError("utf-8", b"\xff\xfe", 0, 1, "invalid start byte")
+
+        monkeypatch.setattr("builtins.open", mock_open_func)
+
+        with pytest.raises(OSError, match="Failed to decode file"):
+            extract_from_file("test.txt")
+
+    def test_generic_exception_during_read(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test that generic exceptions during read are wrapped in OSError."""
+        # Mock Path methods
+        monkeypatch.setattr(Path, "exists", self._mock_path_exists)
+        monkeypatch.setattr(Path, "is_file", self._mock_path_is_file)
+        monkeypatch.setattr(Path, "suffix", ".txt")
+
+        # Mock encoding detection
+        file_bytes = b"content"
+        mock_binary = io.BytesIO(file_bytes)
+
+        def mock_open_func(path: Path, mode: str = "r", encoding: str | None = None) -> io.IOBase:
+            if mode == "rb":
+                return mock_binary
+            # Simulate generic exception
+            raise PermissionError("Permission denied")
+
+        monkeypatch.setattr("builtins.open", mock_open_func)
+
+        with pytest.raises(OSError, match="Error reading file"):
+            extract_from_file("test.txt")
+
+    def test_file_with_special_characters(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test extracting file with Unicode special characters and emojis."""
+        content = "Hello 世界 🌍 café"
+        file_bytes = content.encode("utf-8")
+
+        # Mock Path methods
+        monkeypatch.setattr(Path, "exists", self._mock_path_exists)
+        monkeypatch.setattr(Path, "is_file", self._mock_path_is_file)
+        monkeypatch.setattr(Path, "suffix", ".txt")
+
+        # Mock file operations
+        mock_binary = io.BytesIO(file_bytes)
+        mock_text = io.StringIO(content)
+
+        def mock_open_func(path: Path, mode: str = "r", encoding: str | None = None) -> io.IOBase:
+            if mode == "rb":
+                return mock_binary
+            return mock_text
+
+        monkeypatch.setattr("builtins.open", mock_open_func)
+
+        extracted = extract_from_file("test.txt")
+        assert extracted == content
+
+    def test_file_with_mixed_line_endings(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test extracting file with mixed line endings (CRLF and LF)."""
+        content = "Line 1\r\nLine 2\nLine 3\r\nLine 4"
+        file_bytes = content.encode("utf-8")
+
+        # Mock Path methods
+        monkeypatch.setattr(Path, "exists", self._mock_path_exists)
+        monkeypatch.setattr(Path, "is_file", self._mock_path_is_file)
+        monkeypatch.setattr(Path, "suffix", ".txt")
+
+        # Mock file operations
+        mock_binary = io.BytesIO(file_bytes)
+        mock_text = io.StringIO(content)
+
+        def mock_open_func(path: Path, mode: str = "r", encoding: str | None = None) -> io.IOBase:
+            if mode == "rb":
+                return mock_binary
+            return mock_text
+
+        monkeypatch.setattr("builtins.open", mock_open_func)
+
+        extracted = extract_from_file("test.txt")
+        assert extracted == content
+
+    def test_case_insensitive_extension(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test that file extensions are case-insensitive."""
+        content = "Content"
+        file_bytes = content.encode("utf-8")
+
+        # Mock Path methods
+        monkeypatch.setattr(Path, "exists", self._mock_path_exists)
+        monkeypatch.setattr(Path, "is_file", self._mock_path_is_file)
+        monkeypatch.setattr(Path, "suffix", ".TXT")
+
+        # Mock file operations
+        mock_binary = io.BytesIO(file_bytes)
+        mock_text = io.StringIO(content)
+
+        def mock_open_func(path: Path, mode: str = "r", encoding: str | None = None) -> io.IOBase:
+            if mode == "rb":
+                return mock_binary
+            return mock_text
+
+        monkeypatch.setattr("builtins.open", mock_open_func)
+
+        extracted = extract_from_file("test.TXT")
+        assert extracted == content

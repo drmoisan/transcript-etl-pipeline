@@ -94,9 +94,11 @@ def ensure_nltk_data() -> bool:
         logger.warning("NLTK library not available")
         return False
 
+    nltk_module = cast(Any, nltk)
+
     def resource_available(resource_path: str) -> bool:
         try:
-            nltk.data.find(resource_path)  # type: ignore[attr-defined]
+            nltk_module.data.find(resource_path)
             return True
         except LookupError:
             return False
@@ -106,10 +108,10 @@ def ensure_nltk_data() -> bool:
         "tokenizers/punkt"
     ):
         try:
-            nltk.download("punkt_tab", quiet=True)  # type: ignore[attr-defined]
+            nltk_module.download("punkt_tab", quiet=True)
         except Exception:
             try:
-                nltk.download("punkt", quiet=True)  # type: ignore[attr-defined]
+                nltk_module.download("punkt", quiet=True)
             except Exception:
                 logger.warning("Could not download punkt tokenizer")
                 return False
@@ -119,10 +121,10 @@ def ensure_nltk_data() -> bool:
         "taggers/averaged_perceptron_tagger"
     ):
         try:
-            nltk.download("averaged_perceptron_tagger_eng", quiet=True)  # type: ignore[attr-defined]
+            nltk_module.download("averaged_perceptron_tagger_eng", quiet=True)
         except Exception:
             try:
-                nltk.download("averaged_perceptron_tagger", quiet=True)  # type: ignore[attr-defined]
+                nltk_module.download("averaged_perceptron_tagger", quiet=True)
             except Exception:
                 logger.warning("Could not download POS tagger")
                 return False

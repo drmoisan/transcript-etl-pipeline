@@ -1,0 +1,41 @@
+Timestamp: 2026-02-04T23:33:19Z
+Command: python -m poetry run pytest tests/transform/test_identity_aware_grouping.py --cov=src/transcript_etl_pipeline/transform --cov-report=term-missing
+EXIT_CODE: 0
+
+Timestamp: 2026-02-04T03:37:18Z
+Command: python -m poetry run pytest tests/transform/test_identity_aware_grouping.py --cov=src/transcript_etl_pipeline/transform --cov-report=term-missing
+============================= test session starts ==============================
+platform linux -- Python 3.13.9, pytest-8.4.2, pluggy-1.6.0
+rootdir: /workspaces/transcript-etl-pipeline
+configfile: pytest.ini
+plugins: anyio-4.12.1, cov-5.0.0
+collected 17 items
+
+tests/transform/test_identity_aware_grouping.py .................        [100%]
+
+---------- coverage: platform linux, python 3.13.9-final-0 -----------
+Name                                                                 Stmts   Miss  Cover   Missing
+--------------------------------------------------------------------------------------------------
+src/transcript_etl_pipeline/transform/__init__.py                        3      0   100%
+src/transcript_etl_pipeline/transform/dialogue_names_deprecated.py     108    108     0%   8-1643
+src/transcript_etl_pipeline/transform/enhance.py                        13     13     0%   6-54
+src/transcript_etl_pipeline/transform/identity_constraints.py           81     12    85%   49, 51, 176-181, 193, 198, 211-212, 214
+src/transcript_etl_pipeline/transform/name.py                           79     79     0%   11-266
+src/transcript_etl_pipeline/transform/normalize.py                      47     39    17%   33-36, 53-76, 90-105, 122-135, 152-155
+src/transcript_etl_pipeline/transform/notes.py                          78     78     0%   7-281
+src/transcript_etl_pipeline/transform/paragraphs.py                    161    139    14%   65-109, 122-123, 140-157, 163-170, 176-190, 196-222, 226-243, 249-266, 270-272, 276-282, 286-287, 292-302, 314-317
+src/transcript_etl_pipeline/transform/speaker_helpers.py               371    142    62%   91-130, 136-149, 163-184, 199-205, 222-260, 297, 301, 395-396, 494, 497, 522-527, 595-608, 618, 637-654, 695, 717-721, 778-785, 855-858, 908, 917-922, 946-960
+src/transcript_etl_pipeline/transform/speakerless.py                   144    135     6%   63-85, 106-182, 207-382
+src/transcript_etl_pipeline/transform/speakers.py                      417    417     0%   7-1116
+--------------------------------------------------------------------------------------------------
+TOTAL                                                                 1502   1162    23%
+
+Required test coverage of 15.0% reached. Total coverage: 22.64%
+
+============================== 17 passed in 0.25s ==============================
+
+---
+EvidenceSchemaAddendum:
+Timestamp: 2026-02-04T23:33:19Z
+Command: python -m poetry run pytest tests/transform/test_identity_aware_grouping.py --cov=src/transcript_etl_pipeline/transform --cov-report=term-missing
+EXIT_CODE: 0

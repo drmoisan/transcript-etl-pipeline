@@ -450,7 +450,7 @@ class TestRunWithCallgraph:
         assert result == 6
 
     def test_restores_trace_function_after_execution(self) -> None:
-        """Should restore sys.settrace to None after execution."""
+        """Should restore sys.settrace to its previous value after execution."""
         import sys
 
         def dummy_func() -> None:
@@ -463,14 +463,17 @@ class TestRunWithCallgraph:
                 debug_callgraph.NODES.clear()
                 debug_callgraph.EDGES.clear()
 
+                # Save the trace function before calling run_with_callgraph
+                original_trace = sys.gettrace()
                 debug_callgraph.run_with_callgraph(dummy_func)
 
-                assert sys.gettrace() is None
+                # Should restore to the original trace function (e.g., coverage's tracer)
+                assert sys.gettrace() is original_trace
             finally:
                 os.chdir(original_cwd)
 
     def test_restores_trace_function_on_exception(self) -> None:
-        """Should restore sys.settrace even when function raises exception."""
+        """Should restore sys.settrace to its previous value even when function raises exception."""
         import sys
 
         def failing_func() -> None:
@@ -483,10 +486,13 @@ class TestRunWithCallgraph:
                 debug_callgraph.NODES.clear()
                 debug_callgraph.EDGES.clear()
 
+                # Save the trace function before calling run_with_callgraph
+                original_trace = sys.gettrace()
                 with pytest.raises(ValueError, match="Test error"):
                     debug_callgraph.run_with_callgraph(failing_func)
 
-                assert sys.gettrace() is None
+                # Should restore to the original trace function even on exception
+                assert sys.gettrace() is original_trace
             finally:
                 os.chdir(original_cwd)
 

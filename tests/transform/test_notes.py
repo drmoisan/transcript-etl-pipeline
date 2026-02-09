@@ -10,7 +10,10 @@ from unittest.mock import patch
 
 from transcript_etl_pipeline.document.model import SectionType
 from transcript_etl_pipeline.transform.notes import (
+    _clean_markdown_text,  # pyright: ignore[reportPrivateUsage]
     _generate_notes_label,  # pyright: ignore[reportPrivateUsage]
+    _get_heading_level,  # pyright: ignore[reportPrivateUsage]
+    _parse_bullet_line,  # pyright: ignore[reportPrivateUsage]
     _parse_markdown,  # pyright: ignore[reportPrivateUsage]
     transform_notes,
 )
@@ -56,6 +59,16 @@ class TestTransformNotes:
         assert sections[1].paragraphs[0].text == "Notes"
         assert sections[1].paragraphs[0].heading_level == 2
         assert sections[2].section_type == SectionType.NOTES_BODY
+
+    def test_regression_transform_notes_label_after_h1_with_label(self) -> None:
+        """Ensure provided label is used for H2 after H1."""
+        text = "# Title\n\n- Bullet"
+        sections = transform_notes(text, label="Meeting Notes")
+
+        assert sections[0].paragraphs[0].text == "Title"
+        assert sections[0].paragraphs[0].heading_level == 1
+        assert sections[1].paragraphs[0].text == "Meeting Notes"
+        assert sections[1].paragraphs[0].heading_level == 2
 
     def test_transform_notes_empty_text_with_label(self) -> None:
         """transform_notes returns only header when text is empty with label."""
@@ -198,6 +211,37 @@ class TestParseMarkdown:
         assert result[0].is_bullet is True
         assert result[0].bullet_level == 1
         assert result[0].text == "Item"
+
+    def test_regression_parse_markdown_mixed_order(self) -> None:
+        """_parse_markdown preserves heading/bullet ordering."""
+        result = _parse_markdown("# Title\n- One\n## Section\n- Two")
+        assert [item.text for item in result] == ["Title", "One", "Section", "Two"]
+        assert result[0].heading_level == 1
+        assert result[2].heading_level == 2
+        assert result[1].is_bullet is True
+        assert result[3].is_bullet is True
+
+
+class TestCleanMarkdownText:
+    """Tests for markdown cleanup helper."""
+
+    def test_regression_clean_markdown_text_escapes(self) -> None:
+        """_clean_markdown_text strips markdown emphasis and escapes."""
+        result = _clean_markdown_text("\\$100 **bold** __strong__")
+        assert result == "$100 bold strong"
+
+
+class TestHeadingAndBulletHelpers:
+    """Tests for heading and bullet parsing helpers."""
+
+    def test_regression_get_heading_level_leading_whitespace(self) -> None:
+        """_get_heading_level ignores leading whitespace."""
+        assert _get_heading_level("  ## Heading") == 2
+
+    def test_regression_parse_bullet_line_indentation_levels(self) -> None:
+        """_parse_bullet_line returns expected indentation levels."""
+        assert _parse_bullet_line("- Item") == (1, "Item")
+        assert _parse_bullet_line("  - Nested") == (2, "Nested")
 
     def test_parse_markdown_bullet_level_2(self) -> None:
         """_parse_markdown detects nested bullets."""

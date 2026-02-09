@@ -1,0 +1,36 @@
+Timestamp: 2026-02-04T23:31:13Z
+Command: python -m poetry run pytest tests/transform/test_speakerless.py tests/transform/test_speaker_helpers.py --cov=transcript_etl_pipeline.transform.speakerless --cov=transcript_etl_pipeline.transform.speaker_helpers --cov-report=term
+EXIT_CODE: 0
+
+Timestamp: 2026-02-04T03:27:43Z
+Command: python -m poetry run pytest tests/transform/test_speakerless.py tests/transform/test_speaker_helpers.py --cov=transcript_etl_pipeline.transform.speakerless --cov=transcript_etl_pipeline.transform.speaker_helpers --cov-report=term
+
+============================= test session starts ==============================
+platform linux -- Python 3.13.9, pytest-8.4.2, pluggy-1.6.0
+rootdir: /workspaces/transcript-etl-pipeline
+configfile: pytest.ini
+plugins: anyio-4.12.1, cov-5.0.0
+collected 155 items
+
+tests/transform/test_speakerless.py .................................... [ 23%]
+.....................                                                    [ 36%]
+tests/transform/test_speaker_helpers.py ................................ [ 57%]
+..................................................................       [100%]
+
+---------- coverage: platform linux, python 3.13.9-final-0 -----------
+Name                                                       Stmts   Miss  Cover
+------------------------------------------------------------------------------
+src/transcript_etl_pipeline/transform/speaker_helpers.py     371     30    92%
+src/transcript_etl_pipeline/transform/speakerless.py         144      7    95%
+------------------------------------------------------------------------------
+TOTAL                                                        515     37    93%
+
+Required test coverage of 15.0% reached. Total coverage: 92.82%
+
+============================= 155 passed in 0.34s ==============================
+
+---
+EvidenceSchemaAddendum:
+Timestamp: 2026-02-04T23:31:13Z
+Command: python -m poetry run pytest tests/transform/test_speakerless.py tests/transform/test_speaker_helpers.py --cov=transcript_etl_pipeline.transform.speakerless --cov=transcript_etl_pipeline.transform.speaker_helpers --cov-report=term
+EXIT_CODE: 0

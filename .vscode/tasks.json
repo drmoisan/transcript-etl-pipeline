@@ -1,11 +1,1006 @@
+// See https://go.microsoft.com/fwlink/?LinkId=733558
+// for the documentation about the tasks.json format
 {
   "version": "2.0.0",
+  "$schema": "./schemas/tasks.schema.json",
+  "inputs": [
+    {
+    "default": "development",
+    "description": "Base branch for PR comparison (e.g., development, main)",
+    "id": "PRBaseBranch",
+    "type": "promptString"
+    },
+    {
+    "default": "notes-feature",
+    "description": "Short name (kebab-case, e.g., notes-feature)",
+    "id": "PotentialShortName",
+    "type": "promptString"
+    },
+    {
+    "default": "docs/features/potential/2025-12-01-notes-feature.md",
+    "description": "Path to potential feature file",
+    "id": "PotentialFilePath",
+    "type": "promptString"
+    },
+    {
+    "default": "api-timeout-bug",
+    "description": "Short name (kebab-case, e.g., api-timeout-bug)",
+    "id": "PotentialBugShortName",
+    "type": "promptString"
+    },
+    {
+    "default": "feature",
+    "description": "Promotion type / label to apply",
+    "id": "PotentialPromotionType",
+    "options": [
+      "epic",
+      "feature",
+      "refactor",
+      "bug"
+    ],
+    "type": "pickString"
+    },
+    {
+    "default": "new_feature",
+    "description": "Feature folder name (kebab/underscore-case, e.g., notes_feature)",
+    "id": "ActiveFeatureName",
+    "type": "promptString"
+    },
+    {
+    "default": "",
+    "description": "Feature folder under docs/features/active (leave blank to auto-detect)",
+    "id": "ExecutePlanFeatureFolder",
+    "type": "promptString"
+    },
+    {
+    "default": "feature",
+    "description": "Template type",
+    "id": "ActiveWorkType",
+    "options": [
+      "feature",
+      "refactor",
+      "epic",
+      "bug"
+    ],
+    "type": "pickString"
+    },
+    {
+    "default": "auto",
+    "description": "Issue number (optional, e.g., 14)",
+    "id": "ActiveIssueNumber",
+    "type": "promptString"
+    },
+    {
+    "default": "",
+    "description": "Issue number to update (e.g., 14)",
+    "id": "LinkIssueNumber",
+    "type": "promptString"
+    },
+    {
+    "default": "new_feature",
+    "description": "Feature folder name (e.g., new_feature)",
+    "id": "LinkFeatureName",
+    "type": "promptString"
+    },
+    {
+    "default": "",
+    "description": "Child issue number to link (e.g., 15)",
+    "id": "ChildIssueNumber",
+    "type": "promptString"
+    },
+    {
+    "default": "10",
+    "description": "Parent tracking issue number (e.g., 10)",
+    "id": "ParentIssueNumber",
+    "type": "promptString"
+    },
+    {
+    "default": "Python Engineer (Strongly Typed, Testable, Pytest-First)",
+    "description": "Agent personality to inject into the template",
+    "id": "ExecutePlanAgent",
+    "options": [
+      "Python Engineer (Strongly Typed, Testable, Pytest-First)",
+      "Python Execution Only",
+      "atomic_executor"
+    ],
+    "type": "pickString"
+    },
+    {
+    "default": "gpt-5.2",
+    "description": "Preferred model passed to --preferred-model",
+    "id": "AtomicPreferredModel",
+    "options": [
+      "Claude Sonnet 4.5",
+      "Claude Haiku 4.5",
+      "Claude Opus 4.5",
+      "Claude Sonnet 4",
+      "GPT-5.2-Codex",
+      "GPT-5.1-Codex-Max",
+      "GPT-5.1-Codex",
+      "GPT-5.2",
+      "GPT-5.1",
+      "GPT-5",
+      "GPT-5.1-Codex-Mini",
+      "GPT-5 mini",
+      "GPT-4.1",
+      "Gemini 3 Pro (Preview)"
+    ],
+    "type": "pickString"
+    },
+    {
+    "default": "docs/features/active/",
+    "description": "Path to feature folder or plan file (relative or absolute)",
+    "id": "AtomicFeaturePath",
+    "type": "promptString"
+    }
+  ],
   "tasks": [
+    {
+      "args": [
+        "-NoLogo",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/dev-tools/load-openai-key.ps1",
+        "-ItemName",
+        "Lexile OpenAI Key"
+      ],
+      "command": "pwsh",
+      "label": "Load OpenAI Key",
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "-NoLogo",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/dev-tools/publish-sideloaded-extension.ps1",
+        "-Force"
+      ],
+      "command": "pwsh",
+      "label": "Publish (Side-load) VSIX",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "run",
+        "black",
+        "."
+      ],
+      "command": "poetry",
+      "group": {
+        "isDefault": false,
+        "kind": "build"
+      },
+      "label": "QC: 1 Black: format",
+      "presentation": {
+        "close": false,
+        "panel": "new",
+        "reveal": "always",
+        "showReuseMessage": false
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "run",
+        "ruff",
+        "check"
+      ],
+      "command": "poetry",
+      "group": {
+        "isDefault": false,
+        "kind": "test"
+      },
+      "label": "QC: 2 Ruff: lint",
+      "presentation": {
+        "close": false,
+        "panel": "new",
+        "reveal": "always",
+        "showReuseMessage": false
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "run",
+        "ruff",
+        "check",
+        "--fix"
+      ],
+      "command": "poetry",
+      "group": {
+        "isDefault": false,
+        "kind": "build"
+      },
+      "label": "QC: 2 Ruff: fix",
+      "presentation": {
+        "close": false,
+        "panel": "new",
+        "reveal": "always",
+        "showReuseMessage": false
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "run",
+        "pyright"
+      ],
+      "command": "poetry",
+      "group": {
+        "isDefault": false,
+        "kind": "test"
+      },
+      "label": "QC: 3 Pyright: type-check",
+      "presentation": {
+        "close": false,
+        "panel": "new",
+        "reveal": "always",
+        "showReuseMessage": false
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "run",
+        "pytest"
+      ],
+      "command": "poetry",
+      "group": {
+        "isDefault": true,
+        "kind": "test"
+      },
+      "label": "QC: 4 Pytest: run tests",
+      "presentation": {
+        "close": false,
+        "panel": "new",
+        "reveal": "always",
+        "showReuseMessage": false
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "run",
+        "pytest",
+        "--cov=src/transcript_etl_pipeline",
+        "--cov=scripts/dev_tools",
+        "--cov-report=term-missing"
+      ],
+      "command": "poetry",
+      "group": {
+        "isDefault": false,
+        "kind": "test"
+      },
+      "label": "QC: 4 Pytest: run tests with coverage",
+      "presentation": {
+        "close": false,
+        "panel": "new",
+        "reveal": "always",
+        "showReuseMessage": false
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "-NoLogo",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "& { Import-Module '${workspaceFolder}/scripts/powershell/PoshQC'; Invoke-PoshQCFormat -Root '${workspaceFolder}' }"
+      ],
+      "command": "pwsh",
+      "detail": "Formats PowerShell files using Invoke-Formatter and repo PSScriptAnalyzer settings.",
+      "group": {
+        "isDefault": false,
+        "kind": "build"
+      },
+      "label": "PoshQC: 1 format",
+      "presentation": {
+        "close": false,
+        "panel": "new",
+        "reveal": "always",
+        "showReuseMessage": false
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "-NoLogo",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "& { Import-Module '${workspaceFolder}/scripts/powershell/PoshQC'; Invoke-PoshQCAnalyze -Root '${workspaceFolder}' }"
+      ],
+      "command": "pwsh",
+      "detail": "Runs PSScriptAnalyzer with strict settings and fails on any findings.",
+      "group": {
+        "isDefault": false,
+        "kind": "build"
+      },
+      "label": "PoshQC: 2 analyze",
+      "presentation": {
+        "close": false,
+        "panel": "new",
+        "reveal": "always",
+        "showReuseMessage": false
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "-NoLogo",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "& { Import-Module '${workspaceFolder}/scripts/powershell/PoshQC'; $files = Get-ChildItem -Path '${workspaceFolder}' -Recurse -Include *.ps1, *.psm1 -File; if ($files) { foreach ($f in $files) { Invoke-ScriptAnalyzer -Path $f.FullName -Settings '${workspaceFolder}/scripts/powershell/PoshQC/settings/pssa.settings.psd1' -Severity Error,Warning,Information -Fix } } else { Write-Host 'No PowerShell files found under workspace.' } }"
+      ],
+      "command": "pwsh",
+      "detail": "Runs PSScriptAnalyzer with -Fix to auto-apply supported fixes for PowerShell files.",
+      "group": {
+        "isDefault": false,
+        "kind": "build"
+      },
+      "label": "PoshQC: 2b autofix (PSSA -Fix)",
+      "presentation": {
+        "close": false,
+        "panel": "new",
+        "reveal": "always",
+        "showReuseMessage": false
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "-NoLogo",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "& { Import-Module '${workspaceFolder}/scripts/powershell/PoshQC'; Invoke-PoshQCTest -Root '${workspaceFolder}' }"
+      ],
+      "command": "pwsh",
+      "detail": "Runs Pester with repo configuration and JUnit output.",
+      "group": {
+        "isDefault": false,
+        "kind": "test"
+      },
+      "label": "PoshQC: 4 test (Pester)",
+      "presentation": {
+        "close": false,
+        "panel": "new",
+        "reveal": "always",
+        "showReuseMessage": false
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "dependsOn": [
+        "JSON: format",
+        "JSON: validate",
+        "QC: Black: format",
+        "QC: Ruff: lint",
+        "QC: Pyright: type-check",
+        "QC: Pytest: run tests with coverage",
+        "PoshQC: 1 format",
+        "PoshQC: 2 analyze",
+        "PoshQC: 4 test (Pester)"
+      ],
+      "dependsOrder": "sequence",
+      "group": {
+        "isDefault": false,
+        "kind": "build"
+      },
+      "label": "QC: 5 Run All Checks",
+      "presentation": {
+        "panel": "new",
+        "reveal": "always",
+        "showReuseMessage": false
+      },
+      "problemMatcher": []
+    },
+    {
+      "args": [
+        "run",
+        "python",
+        "-m",
+        "scripts.dev_tools.fix_all"
+      ],
+      "command": "poetry",
+      "group": {
+        "isDefault": true,
+        "kind": "build"
+      },
+      "label": "QC: 0 Fix All",
+      "presentation": {
+        "panel": "new",
+        "reveal": "always",
+        "showReuseMessage": false
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "run",
+        "python",
+        "-m",
+        "scripts.dev_tools.format_json"
+      ],
+      "command": "poetry",
+      "detail": "Formats governed JSON files with jq --sort-keys.",
+      "group": {
+        "isDefault": false,
+        "kind": "build"
+      },
+      "label": "JSON: format",
+      "presentation": {
+        "close": false,
+        "panel": "new",
+        "reveal": "always",
+        "showReuseMessage": false
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "run",
+        "python",
+        "-m",
+        "scripts.dev_tools.validate_json"
+      ],
+      "command": "poetry",
+      "detail": "Validates governed JSON files against their $schema.",
+      "group": {
+        "isDefault": false,
+        "kind": "test"
+      },
+      "label": "JSON: validate",
+      "presentation": {
+        "close": false,
+        "panel": "new",
+        "reveal": "always",
+        "showReuseMessage": false
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "run",
+        "python",
+        "-m",
+        "scripts.dev_tools.markdown_label_formatter",
+        "${relativeFile}",
+        "--output",
+        "${relativeFile}"
+      ],
+      "command": "poetry",
+      "detail": "Formats the active markdown file with chat label normalization.",
+      "group": {
+        "isDefault": false,
+        "kind": "build"
+      },
+      "label": "Copilot MD: format current chat file",
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always",
+        "showReuseMessage": false
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "run",
+        "python",
+        "-m",
+        "scripts.dev_tools.collect_commit_context",
+        "--output",
+        "${workspaceFolder}/artifacts/commit_context.txt"
+      ],
+      "command": "poetry",
+      "detail": "Collects git diff and status information for commit message generation",
+      "label": "Git: Collect Commit Context",
+      "presentation": {
+        "panel": "new",
+        "reveal": "always",
+        "showReuseMessage": false
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "run",
+        "python",
+        "-m",
+        "scripts.dev_tools.pr_context.collector",
+        "--base",
+        "${input:PRBaseBranch}"
+      ],
+      "command": "poetry",
+      "detail": "Collects git PR context comparing current branch to specified base branch",
+      "label": "Git: Collect Pull Request Context",
+      "presentation": {
+        "panel": "new",
+        "reveal": "always"
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "run",
+        "python",
+        "-m",
+        "scripts.dev_tools.copy_research_to_issue"
+      ],
+      "command": "poetry",
+      "detail": "Interactively selects a research doc and an active issue file, then copies it into the issue folder as research.md.",
+      "label": "Dev: Copy Research to Active Folder",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "panel": "new",
+        "reveal": "always",
+        "showReuseMessage": false
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "issue",
+        "create",
+        "--template",
+        "feature-request.md",
+        "--web"
+      ],
+      "command": "gh",
+      "detail": "Opens browser with .github/ISSUE_TEMPLATE/feature-request.md via gh (requires gh CLI auth).",
+      "label": "Dev: New GitHub Feature Issue (manual)",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "panel": "new",
+        "reveal": "always"
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "run",
+        "python",
+        "-m",
+        "scripts.dev_tools.potential_to_issue",
+        "--potential-path",
+        "${relativeFile}",
+        "--promotion-type",
+        "${input:PotentialPromotionType}"
+      ],
+      "command": "poetry",
+      "detail": "Creates a feature issue from the active editor file (workspace-relative) using gh issue create (non-interactive) via Python.",
+      "label": "Dev: 2 Promote Potential to GitHub Issue",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "panel": "new",
+        "reveal": "always"
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "-NoLogo",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/dev-tools/link-feature-docs.ps1",
+        "-IssueNumber",
+        "${input:LinkIssueNumber}",
+        "-FeatureName",
+        "${input:LinkFeatureName}"
+      ],
+      "command": "pwsh",
+      "detail": "Adds/updates a Feature Docs section in an issue with links to user-story/spec/plan.",
+      "label": "Dev: 5 Link Feature Docs to GitHub",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "panel": "new",
+        "reveal": "always"
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "-NoLogo",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/dev-tools/link-parent-child.ps1",
+        "-ChildIssueNumber",
+        "${input:ChildIssueNumber}",
+        "-ParentIssueNumber",
+        "${input:ParentIssueNumber}"
+      ],
+      "command": "pwsh",
+      "detail": "Adds child link to parent tracking issue and comments on the child with the parent link.",
+      "label": "Dev: 4 Link GitHub Parent/Child Issues",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "panel": "new",
+        "reveal": "always"
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "run",
+        "python",
+        "-m",
+        "scripts.dev_tools.new_active_feature_folder",
+        "--feature-name",
+        "${input:ActiveFeatureName}",
+        "--type",
+        "${input:ActiveWorkType}",
+        "--issue-number",
+        "${input:ActiveIssueNumber}"
+      ],
+      "command": "poetry",
+      "detail": "Creates docs/features/active/<name>/ from the selected template (feature/refactor/epic/bug) and opens the relevant files.",
+      "label": "Dev: 3 Create Active Folder",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "panel": "new",
+        "reveal": "always"
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "issue",
+        "create",
+        "--template",
+        "bug-report.md",
+        "--web"
+      ],
+      "command": "gh",
+      "detail": "Opens browser with .github/ISSUE_TEMPLATE/bug-report.md via gh (requires gh CLI auth).",
+      "label": "Dev: New GitHub Bug Issue",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "panel": "new",
+        "reveal": "always"
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "-NoLogo",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "& { Import-Module '${workspaceFolder}/scripts/powershell/PoshQC'; Install-PoshQCTools }"
+      ],
+      "command": "pwsh",
+      "detail": "Installs PSScriptAnalyzer and Pester (CurrentUser scope) for repo tasks.",
+      "label": "Dev: Install PowerShell Tooling",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "panel": "new",
+        "reveal": "always"
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "run",
+        "python",
+        "${workspaceFolder}/scripts/dev_tools/resolve_execute_plan_prompt.py",
+        "--feature",
+        "${file}",
+        "--agent",
+        "${input:ExecutePlanAgent}"
+      ],
+      "command": "poetry",
+      "detail": "Resolves the feature from the current file, fills execute-plan prompt, and copies it to the clipboard.",
+      "label": "Dev: Resolve Execute Plan Prompt",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "panel": "new",
+        "reveal": "always",
+        "showReuseMessage": false
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "run",
+        "python",
+        "${workspaceFolder}/scripts/dev_tools/new_potential_bug_entry.py",
+        "--short-name",
+        "${input:PotentialBugShortName}"
+      ],
+      "command": "poetry",
+      "detail": "Creates a dated potential bug file from the automation template for later promotion.",
+      "label": "Dev: 1A New Potential Bug",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "panel": "new",
+        "reveal": "always"
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "-NoLogo",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/dev-tools/new-potential-entry.ps1",
+        "-ShortName",
+        "${input:PotentialShortName}"
+      ],
+      "command": "pwsh",
+      "detail": "Creates a dated potential feature file from the template and opens it plus backlog.md for editing.",
+      "label": "Dev: 1 New Potential Entry",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "panel": "new",
+        "reveal": "always"
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "run",
+        "python",
+        "scripts/dev_tools/resolve_file_prompt.py",
+        "--template",
+        "${workspaceFolder}/.github/prompts/generate-atomic-plan.prompt.md",
+        "--target",
+        "${file}"
+      ],
+      "command": "poetry",
+      "detail": "Resolves ${file} in the atomic plan prompt with the active file path and copies to clipboard.",
+      "label": "Dev: Resolve Atomic Plan Prompt",
+      "presentation": {
+        "panel": "new",
+        "reveal": "always"
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "run",
+        "python",
+        "scripts/dev_tools/resolve_hard_lock_prompt.py",
+        "--target",
+        "${file}",
+        "--workspace",
+        "${workspaceFolder}"
+      ],
+      "command": "poetry",
+      "detail": "Resolves ${file} in the execute-hard-lock prompt with the active plan file path and copies to clipboard.",
+      "label": "Dev: Resolve Execute Hard-Lock Prompt",
+      "presentation": {
+        "panel": "new",
+        "reveal": "always"
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "run",
+        "python",
+        "-m",
+        "scripts.dev_tools.atomic_executor.cli",
+        "execute-all",
+        "${input:AtomicFeaturePath}",
+        "--workspace",
+        "${workspaceFolder}",
+        "--preferred-model",
+        "${input:AtomicPreferredModel}",
+        "--max-fix-attempts",
+        "10"
+      ],
+      "command": "poetry",
+      "detail": "Starts the atomic executor with prompts for feature folder and preferred model.",
+      "label": "Atomic Executor: Execute (prompted)",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "panel": "new",
+        "reveal": "always",
+        "showReuseMessage": false
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "-NoLogo",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/dev-tools/sync-agents-from-instructions.ps1"
+      ],
+      "command": "pwsh",
+      "detail": "Synchronizes AGENTS.md from the canonical instruction files.",
+      "label": "Dev: Sync AGENTS.md from Instructions",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "panel": "new",
+        "reveal": "always"
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "run",
+        "format"
+      ],
+      "command": "npm",
+      "group": {
+        "isDefault": false,
+        "kind": "build"
+      },
+      "label": "TS: 1 Prettier: format",
+      "presentation": {
+        "close": false,
+        "panel": "new",
+        "reveal": "always",
+        "showReuseMessage": false
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "run",
+        "lint"
+      ],
+      "command": "npm",
+      "group": {
+        "isDefault": false,
+        "kind": "test"
+      },
+      "label": "TS: 2 ESLint: lint",
+      "presentation": {
+        "close": false,
+        "panel": "new",
+        "reveal": "always",
+        "showReuseMessage": false
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "run",
+        "typecheck"
+      ],
+      "command": "npm",
+      "group": {
+        "isDefault": false,
+        "kind": "test"
+      },
+      "label": "TS: 3 TSC: type-check",
+      "presentation": {
+        "close": false,
+        "panel": "new",
+        "reveal": "always",
+        "showReuseMessage": false
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "args": [
+        "run",
+        "test:unit"
+      ],
+      "command": "npm",
+      "group": {
+        "isDefault": false,
+        "kind": "test"
+      },
+      "label": "TS: 4 Jest: unit tests",
+      "presentation": {
+        "close": false,
+        "panel": "new",
+        "reveal": "always",
+        "showReuseMessage": false
+      },
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
+      "type": "npm",
+      "script": "watch",
+      "problemMatcher": "$tsc-watch",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "never"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
     {
       "label": "Black: format",
       "type": "shell",
       "command": "poetry",
-      "args": ["run", "black", "."],
+      "args": [
+        "run",
+        "black",
+        "."
+      ],
       "problemMatcher": [],
       "presentation": {
         "reveal": "always",
@@ -20,7 +1015,11 @@
       "label": "Ruff: lint",
       "type": "shell",
       "command": "poetry",
-      "args": ["run", "ruff", "check"],
+      "args": [
+        "run",
+        "ruff",
+        "check"
+      ],
       "problemMatcher": [],
       "presentation": {
         "reveal": "always",
@@ -35,7 +1034,10 @@
       "label": "Pyright: type-check",
       "type": "shell",
       "command": "poetry",
-      "args": ["run", "pyright"],
+      "args": [
+        "run",
+        "pyright"
+      ],
       "problemMatcher": [],
       "presentation": {
         "reveal": "always",
@@ -50,7 +1052,10 @@
       "label": "Pytest: run tests",
       "type": "shell",
       "command": "poetry",
-      "args": ["run", "pytest"],
+      "args": [
+        "run",
+        "pytest"
+      ],
       "problemMatcher": [],
       "presentation": {
         "reveal": "always",
@@ -81,17 +1086,17 @@
       "type": "shell",
       "command": "pwsh",
       "args": [
-          "-NoLogo",
-          "-NoProfile",
-          "-ExecutionPolicy",
-          "Bypass",
-          "-File",
-          "${workspaceFolder}/scripts/fix-all.ps1"
+        "-NoLogo",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/fix-all.ps1"
       ],
       "problemMatcher": [],
       "presentation": {
-          "reveal": "always",
-          "panel": "new"
+        "reveal": "always",
+        "panel": "new"
       }
     },
     {
@@ -165,26 +1170,26 @@
       },
       "detail": "Adds/updates a Feature Docs section in an issue with links to user-story/spec/plan."
     },
-        {
-            "label": "Feature: Create Active Folder",
-            "type": "shell",
-            "command": "pwsh",
-            "args": [
-                "-NoLogo",
-                "-NoProfile",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-File",
-                "${workspaceFolder}/scripts/new-active-feature-folder.ps1",
-                "-FeatureName",
-                "${input:ActiveFeatureName}",
-                "-IssueNumber",
-                "${input:ActiveIssueNumber}"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
-            "problemMatcher": [],
+    {
+      "label": "Feature: Create Active Folder",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoLogo",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/new-active-feature-folder.ps1",
+        "-FeatureName",
+        "${input:ActiveFeatureName}",
+        "-IssueNumber",
+        "${input:ActiveIssueNumber}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
       "presentation": {
         "reveal": "always",
         "panel": "new"
@@ -212,67 +1217,29 @@
       },
       "detail": "Opens browser with .github/ISSUE_TEMPLATE/bug-report.md via gh (requires gh CLI auth)."
     },
-        {
-            "label": "Feature: New Potential Entry",
-            "type": "shell",
-            "command": "pwsh",
-            "args": [
-                "-NoLogo",
-                "-NoProfile",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-File",
-                "${workspaceFolder}/scripts/new-potential-entry.ps1",
-                "-ShortName",
-                "${input:PotentialShortName}"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "new"
-            },
-            "detail": "Creates a dated potential feature file from the template and opens it plus backlog.md for editing."
-        }
-    ],
-  "inputs": [
     {
-      "id": "PotentialShortName",
-      "type": "promptString",
-      "description": "Short name (kebab-case, e.g., notes-feature)",
-      "default": "notes-feature"
-    },
-        {
-            "id": "PotentialFilePath",
-            "type": "promptString",
-            "description": "Path to potential feature file",
-            "default": "docs/features/potential/2025-12-01-notes-feature.md"
-    },
-        {
-            "id": "ActiveFeatureName",
-            "type": "promptString",
-            "description": "Feature folder name (kebab/underscore-case, e.g., notes_feature)",
-            "default": "notes_feature"
-        },
-        {
-            "id": "ActiveIssueNumber",
-            "type": "promptString",
-            "description": "Issue number (optional, e.g., 14)",
-            "default": "auto"
-        },
-        {
-            "id": "LinkIssueNumber",
-            "type": "promptString",
-            "description": "Issue number to update (e.g., 14)",
-            "default": ""
-        },
-        {
-            "id": "LinkFeatureName",
-            "type": "promptString",
-            "description": "Feature folder name (e.g., notes_feature)",
-            "default": "notes_feature"
-        }
-    ]
+      "label": "Feature: New Potential Entry",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoLogo",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/new-potential-entry.ps1",
+        "-ShortName",
+        "${input:PotentialShortName}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "detail": "Creates a dated potential feature file from the template and opens it plus backlog.md for editing."
+    }
+  ]
 }

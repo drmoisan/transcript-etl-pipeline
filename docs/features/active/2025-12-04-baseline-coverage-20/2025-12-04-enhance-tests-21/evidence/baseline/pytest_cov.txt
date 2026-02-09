@@ -1,0 +1,98 @@
+Timestamp: 2026-02-05T18:54:57
+Command: poetry run pytest --cov=src/transcript_etl_pipeline --cov-report=term-missing --cov-report=xml
+EXIT_CODE: 0
+
+============================= test session starts =============================
+platform win32 -- Python 3.13.7, pytest-8.4.2, pluggy-1.6.0
+rootdir: C:\Users\DanMoisan\source\repos\transcript-etl-pipeline
+configfile: pytest.ini
+testpaths: tests
+plugins: cov-5.0.0
+collected 618 items
+
+tests\devtools\test_debug_callgraph.py ................................. [  5%]
+                                                                         [  5%]
+tests\document\test_formatting_rules.py ................                 [  7%]
+tests\document\test_model.py ................                            [ 10%]
+tests\document\test_model_merge.py ....................                  [ 13%]
+tests\document\test_parser_unit.py ...........                           [ 15%]
+tests\document\test_reader.py ..............................             [ 20%]
+tests\extract\test_from_clipboard.py .......                             [ 21%]
+tests\extract\test_from_file.py ...........                              [ 23%]
+tests\formatters\test_md_formatter.py ...........                        [ 25%]
+tests\formatters\test_notes_formatting.py ...........                    [ 26%]
+tests\formatters\test_rtf_formatter.py ..........                        [ 28%]
+tests\integration\test_3speaker_spacex_discussion.py .x                  [ 28%]
+tests\integration\test_end_to_end_docx.py ....                           [ 29%]
+tests\integration\test_end_to_end_md.py .....                            [ 30%]
+tests\integration\test_end_to_end_notes.py ...........                   [ 32%]
+tests\integration\test_end_to_end_rtf.py ....                            [ 32%]
+tests\integration\test_end_to_end_speakerless.py ........                [ 33%]
+tests\integration\test_parser.py .........                               [ 35%]
+tests\integration\test_speakerless_integration.py ................       [ 38%]
+tests\transform\test_enhance.py ..............                           [ 40%]
+tests\transform\test_identity_aware_grouping.py .................        [ 43%]
+tests\transform\test_identity_constraints.py ........................... [ 47%]
+......                                                                   [ 48%]
+tests\transform\test_name.py ........................................... [ 55%]
+...                                                                      [ 55%]
+tests\transform\test_normalize.py ...........................            [ 60%]
+tests\transform\test_notes.py ......................                     [ 63%]
+tests\transform\test_paragraphs.py ................................      [ 68%]
+tests\transform\test_speakerless.py ...................................  [ 74%]
+tests\transform\test_speakers.py ....................................... [ 80%]
+........................................................................ [ 92%]
+..............................................                           [100%]
+
+============================== warnings summary ===============================
+src\transcript_etl_pipeline\transform\speakers.py:12
+  C:\Users\DanMoisan\source\repos\transcript-etl-pipeline\src\transcript_etl_pipeline\transform\speakers.py:12: DeprecationWarning: dialogue_names_deprecated is deprecated; use extract_person_names_from_text instead.
+    from transcript_etl_pipeline.transform import dialogue_names_deprecated
+
+tests/transform/test_speakers.py: 17 warnings
+  C:\Users\DanMoisan\source\repos\transcript-etl-pipeline\src\transcript_etl_pipeline\transform\speakers.py:24: DeprecationWarning: _extract_names_from_dialogue is deprecated; use extract_person_names_from_text instead.
+    return dialogue_names_deprecated._extract_names_from_dialogue(  # pyright: ignore[reportPrivateUsage]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+
+---------- coverage: platform win32, python 3.13.7-final-0 -----------
+Name                                                                 Stmts   Miss  Cover   Missing
+--------------------------------------------------------------------------------------------------
+src\transcript_etl_pipeline\__init__.py                                  1      0   100%
+src\transcript_etl_pipeline\__main__.py                                  4      4     0%   3-13
+src\transcript_etl_pipeline\cli.py                                     274    244    11%   43-129, 141-142, 158-167, 178-188, 232-313, 334-352, 371-376, 397-401, 430, 452-648
+src\transcript_etl_pipeline\config.py                                   30     23    23%   20-22, 31, 40-52, 61-69
+src\transcript_etl_pipeline\devtools\__init__.py                         2      0   100%
+src\transcript_etl_pipeline\devtools\debug_callgraph.py                113     31    73%   30-34, 41-45, 59-86, 239-242
+src\transcript_etl_pipeline\document\__init__.py                         2      0   100%
+src\transcript_etl_pipeline\document\formatting_rules.py                22      3    86%   48, 53, 58
+src\transcript_etl_pipeline\document\model.py                          102     52    49%   36-39, 58-60, 64, 76, 95, 99-102, 106-109, 113, 117, 125-128, 132-135, 143-149, 156, 160, 164, 168, 172, 186-195, 209-217
+src\transcript_etl_pipeline\document\parser.py                          57     53     7%   25-102, 120-132, 144-153
+src\transcript_etl_pipeline\document\reader.py                         206    190     8%   37-49, 66-84, 96-209, 221-223, 237-239, 252-261, 282-300, 313-321, 334-338, 355-437, 450-468
+src\transcript_etl_pipeline\extract\__init__.py                          3      0   100%
+src\transcript_etl_pipeline\extract\from_clipboard.py                   33     23    30%   16-17, 37-58, 75-82
+src\transcript_etl_pipeline\extract\from_file.py                        28     24    14%   21-32, 49-73
+src\transcript_etl_pipeline\formatters\__init__.py                       0      0   100%
+src\transcript_etl_pipeline\formatters\docx_formatter.py                57     41    28%   69-76, 86-87, 99-135, 146-158, 168-170
+src\transcript_etl_pipeline\formatters\md_formatter.py                  44     39    11%   30-33, 45-53, 65-68, 82-131
+src\transcript_etl_pipeline\formatters\rtf_formatter.py                 57     50    12%   37-40, 53-66, 78-81, 94-158, 171-177
+src\transcript_etl_pipeline\logging_config.py                           22     16    27%   16-42
+src\transcript_etl_pipeline\transform\__init__.py                        3      0   100%
+src\transcript_etl_pipeline\transform\dialogue_names_deprecated.py     108     94    13%   42-44, 61-92, 110-543, 560-1567, 1597-1643
+src\transcript_etl_pipeline\transform\enhance.py                        13      7    46%   42-54
+src\transcript_etl_pipeline\transform\identity_constraints.py           81     66    19%   48-51, 72-86, 110-250, 266-285
+src\transcript_etl_pipeline\transform\name.py                           79     45    43%   80, 92-100, 110-121, 137-153, 164-167, 179, 207-219, 234-258, 266
+src\transcript_etl_pipeline\transform\normalize.py                      47     39    17%   33-36, 53-76, 90-105, 122-135, 152-155
+src\transcript_etl_pipeline\transform\notes.py                          78     67    14%   43-120, 129-130, 142-191, 208-214, 226-233, 249-265, 281
+src\transcript_etl_pipeline\transform\paragraphs.py                    161    139    14%   65-109, 122-123, 140-157, 163-170, 176-190, 196-222, 226-243, 249-266, 270-272, 276-282, 286-287, 292-302, 314-317
+src\transcript_etl_pipeline\transform\speaker_helpers.py               371    345     7%   91-130, 136-149, 163-184, 199-205, 222-260, 278-309, 332-365, 383-425, 448-467, 493-620, 637-654, 681-864, 889-922, 946-960
+src\transcript_etl_pipeline\transform\speakerless.py                   144    135     6%   63-85, 106-182, 207-382
+src\transcript_etl_pipeline\transform\speakers.py                      417    382     8%   24, 32, 42, 50, 93, 113-247, 260-288, 305-323, 327-342, 348-378, 384-402, 408-414, 438-478, 497-524, 552-684, 700-702, 726-788, 806-820, 834-886, 897-901, 922-989, 1003-1016, 1029-1044, 1058-1064, 1076-1080, 1092-1116
+src\transcript_etl_pipeline\ui.py                                      202    202     0%   7-466
+--------------------------------------------------------------------------------------------------
+TOTAL                                                                 2761   2314    16%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+XFAIL tests/integration/test_3speaker_spacex_discussion.py::TestThreeSpeakerSpaceXDiscussion::test_three_speaker_detection_and_assignment - Complex 3-speaker detection requires algorithmic improvements. See docs/3speaker-spacex-test-analysis.md for detailed failure analysis.
+================= 617 passed, 1 xfailed, 18 warnings in 3.50s =================

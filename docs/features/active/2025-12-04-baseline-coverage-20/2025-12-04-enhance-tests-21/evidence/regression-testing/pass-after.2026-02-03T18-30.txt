@@ -1,0 +1,26 @@
+Timestamp: 2026-02-04T23:30:38Z
+Command: poetry run pytest tests/transform/test_enhance.py
+EXIT_CODE: 0
+
+============================= test session starts ==============================
+platform linux -- Python 3.13.9, pytest-8.4.2, pluggy-1.6.0
+rootdir: /workspaces/transcript-etl-pipeline
+configfile: pytest.ini
+plugins: anyio-4.12.1, cov-5.0.0
+collected 37 items
+
+tests/transform/test_enhance.py .....................................    [100%]
+
+=============================== warnings summary ===============================
+src/transcript_etl_pipeline/transform/speakers.py:12
+  /workspaces/transcript-etl-pipeline/src/transcript_etl_pipeline/transform/speakers.py:12: DeprecationWarning: dialogue_names_deprecated is deprecated; use extract_person_names_from_text instead.
+    from transcript_etl_pipeline.transform import dialogue_names_deprecated
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 37 passed, 1 warning in 0.18s =========================
+
+---
+EvidenceSchemaAddendum:
+Timestamp: 2026-02-04T23:30:38Z
+Command: poetry run pytest tests/transform/test_enhance.py
+EXIT_CODE: 0

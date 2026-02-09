@@ -1,0 +1,211 @@
+Timestamp: 2026-02-05T00:09:04Z
+Command: poetry run pytest
+EXIT_CODE: 0
+
+============================= test session starts ==============================
+platform linux -- Python 3.13.9, pytest-8.4.2, pluggy-1.6.0
+rootdir: /workspaces/transcript-etl-pipeline
+configfile: pytest.ini
+testpaths: tests
+plugins: anyio-4.12.1, cov-5.0.0
+collected 1754 items
+
+tests/dev_tools/atomic_executor/test_cli.py ............................ [  1%]
+........................                                                 [  2%]
+tests/dev_tools/atomic_executor/test_copilot_backoff.py ...              [  3%]
+tests/dev_tools/atomic_executor/test_copilot_rate_limiter.py ..          [  3%]
+tests/dev_tools/atomic_executor/test_copilot_throttling_classifier.py .. [  3%]
+..........                                                               [  3%]
+tests/dev_tools/atomic_executor/test_executor_throttle_bounded_retries.py . [  3%]
+                                                                         [  3%]
+tests/dev_tools/atomic_executor/test_executor_throttle_ordering.py .     [  4%]
+tests/dev_tools/atomic_executor/test_executor_throttle_retry_regression.py . [  4%]
+                                                                         [  4%]
+tests/dev_tools/atomic_executor/test_feature_resolver.py ............... [  4%]
+                                                                         [  4%]
+tests/dev_tools/atomic_executor/test_plan_discovery.py .........         [  5%]
+tests/dev_tools/atomic_executor/test_plan_parser.py .................... [  6%]
+.................                                                        [  7%]
+tests/dev_tools/atomic_executor/test_prompt_builder.py ................. [  8%]
+.                                                                        [  8%]
+tests/dev_tools/atomic_executor/test_pytest_expectations.py ............ [  9%]
+.                                                                        [  9%]
+tests/dev_tools/atomic_executor/test_qc_runner.py ...................... [ 10%]
+..                                                                       [ 10%]
+tests/dev_tools/atomic_executor/test_unicode_integration.py ..           [ 10%]
+tests/dev_tools/test_atomic_executor_cli.py ..............               [ 11%]
+tests/dev_tools/test_clean_devcontainer.py ....                          [ 11%]
+tests/dev_tools/test_collect_commit_context.py ......................... [ 13%]
+                                                                         [ 13%]
+tests/dev_tools/test_collect_pr_context.py ............................. [ 14%]
+..                                                                       [ 15%]
+tests/dev_tools/test_copy_research_to_issue.py ..........                [ 15%]
+tests/dev_tools/test_feature_docs.py ................................    [ 17%]
+tests/dev_tools/test_fix_all.py .............................            [ 19%]
+tests/dev_tools/test_format_json.py .....................                [ 20%]
+tests/dev_tools/test_git.py .......................                      [ 21%]
+tests/dev_tools/test_github.py ......................................... [ 23%]
+..                                                                       [ 24%]
+tests/dev_tools/test_json_config.py ...............                      [ 24%]
+tests/dev_tools/test_markdown_label_formatter.py ....................... [ 26%]
+.......                                                                  [ 26%]
+tests/dev_tools/test_new_active_feature_folder.py ...................... [ 27%]
+..............                                                           [ 28%]
+tests/dev_tools/test_new_active_feature_folder_bug_template_preserved.py . [ 28%]
+                                                                         [ 28%]
+tests/dev_tools/test_new_potential_bug_entry.py .............            [ 29%]
+tests/dev_tools/test_plan_progress_report.py ..............              [ 30%]
+tests/dev_tools/test_potential_to_issue.py .................             [ 31%]
+tests/dev_tools/test_pr_context_integration.py ....                      [ 31%]
+tests/dev_tools/test_render.py ......................................... [ 33%]
+.................                                                        [ 34%]
+tests/dev_tools/test_render_helpers.py ............................      [ 36%]
+tests/dev_tools/test_resolve_execute_plan_prompt.py .................... [ 37%]
+.......................                                                  [ 38%]
+tests/dev_tools/test_resolve_file_prompt.py .............                [ 39%]
+tests/dev_tools/test_resolve_hard_lock_prompt.py ................        [ 40%]
+tests/dev_tools/test_shell_qc.py ............................            [ 42%]
+tests/dev_tools/test_validate_json.py ...........................        [ 43%]
+tests/devtools/test_debug_callgraph.py ................................. [ 45%]
+                                                                         [ 45%]
+tests/document/test_formatting_rules.py ................                 [ 46%]
+tests/document/test_model.py ................                            [ 47%]
+tests/document/test_model_merge.py ....................                  [ 48%]
+tests/document/test_parser_unit.py ...................                   [ 49%]
+tests/document/test_reader.py ..............................             [ 51%]
+tests/extract/test_from_clipboard.py ...................                 [ 52%]
+tests/extract/test_from_file.py ...................                      [ 53%]
+tests/formatters/test_docx_formatter.py .....                            [ 53%]
+tests/formatters/test_md_formatter.py ...                                [ 53%]
+tests/formatters/test_notes_formatting.py ...........                    [ 54%]
+tests/formatters/test_rtf_formatter.py .....                             [ 54%]
+tests/integration/test_3speaker_spacex_discussion.py .x                  [ 54%]
+tests/integration/test_cli_e2e_notes.py .............                    [ 55%]
+tests/integration/test_cli_e2e_speakerless.py ............               [ 56%]
+tests/integration/test_end_to_end_docx.py ....                           [ 56%]
+tests/integration/test_end_to_end_md.py .....                            [ 56%]
+tests/integration/test_end_to_end_notes.py ...........                   [ 57%]
+tests/integration/test_end_to_end_rtf.py ....                            [ 57%]
+tests/integration/test_end_to_end_speakerless.py ........                [ 58%]
+tests/integration/test_parser.py .........                               [ 58%]
+tests/integration/test_speakerless_integration.py ................       [ 59%]
+tests/test_cli_unit.py .......                                           [ 59%]
+tests/test_config_unit.py ......                                         [ 60%]
+tests/test_logging_config_unit.py ...                                    [ 60%]
+tests/test_main_entrypoint.py .                                          [ 60%]
+tests/test_ui.py ................................................        [ 63%]
+tests/test_ui_unit.py .....                                              [ 63%]
+tests/transform/test_enhance.py .....................................    [ 65%]
+tests/transform/test_identity_aware_grouping.py .................        [ 66%]
+tests/transform/test_identity_constraints.py ........................... [ 68%]
+.................                                                        [ 69%]
+tests/transform/test_multi_speaker_regression.py ....................... [ 70%]
+..........xx....x.x...                                                   [ 71%]
+tests/transform/test_name.py ........................................... [ 74%]
+...                                                                      [ 74%]
+tests/transform/test_normalize.py ....................................   [ 76%]
+tests/transform/test_notes.py ...........................                [ 77%]
+tests/transform/test_paragraphs.py ..................................... [ 80%]
+....................                                                     [ 81%]
+tests/transform/test_speaker_helpers.py ................................ [ 83%]
+..................................................................       [ 86%]
+tests/transform/test_speakerless.py .................................... [ 88%]
+.....................                                                    [ 90%]
+tests/transform/test_speakers.py ....................................... [ 92%]
+........................................................................ [ 96%]
+................................................................         [100%]
+
+=============================== warnings summary ===============================
+src/transcript_etl_pipeline/transform/speakers.py:12
+  /workspaces/transcript-etl-pipeline/src/transcript_etl_pipeline/transform/speakers.py:12: DeprecationWarning: dialogue_names_deprecated is deprecated; use extract_person_names_from_text instead.
+    from transcript_etl_pipeline.transform import dialogue_names_deprecated
+
+tests/transform/test_speakers.py: 17 warnings
+  /workspaces/transcript-etl-pipeline/src/transcript_etl_pipeline/transform/speakers.py:24: DeprecationWarning: _extract_names_from_dialogue is deprecated; use extract_person_names_from_text instead.
+    return dialogue_names_deprecated._extract_names_from_dialogue(  # pyright: ignore[reportPrivateUsage]
+
+
+Name                                                                 Stmts   Miss  Cover   Missing
+scripts/dev_tools/__init__.py                                            0      0   100%
+scripts/dev_tools/atomic_executor/__init__.py                            6      0   100%
+scripts/dev_tools/atomic_executor/cli.py                               920    299    68%   102-107, 351, 385, 420, 428-429, 440, 488-489, 502, 513-514, 566, 588, 616-628, 654, 747, 825, 833, 837-838, 895-898, 906-910, 968, 978, 992-993, 1036, 1047-1050, 1070-1072, 1095-1103, 1158, 1177-1187, 1211-1222, 1297, 1306-1307, 1325, 1359-1363, 1373-1377, 1439, 1472-1474, 1492, 1532-1533, 1551, 1569-1631, 1685, 1764-1908, 1945-2080, 2179, 2181, 2210-2211, 2243-2244, 2275-2283, 2287, 2342-2355, 2432, 2503, 2507-2509, 2556, 2563-2564, 2618, 2628-2633
+scripts/dev_tools/atomic_executor/copilot_runner.py                      6      0   100%
+scripts/dev_tools/atomic_executor/copilot_throttling.py                 90     10    89%   42, 67, 136, 138, 214, 216, 227, 229, 327, 340
+scripts/dev_tools/atomic_executor/feature_resolver.py                   61      1    98%   138
+scripts/dev_tools/atomic_executor/plan_discovery.py                     38      0   100%
+scripts/dev_tools/atomic_executor/plan_parser.py                       225     14    94%   340, 399, 408, 433, 514, 521, 533, 541, 556, 576, 615, 620, 637-638
+scripts/dev_tools/atomic_executor/prompt_builder.py                    129     36    72%   49, 53, 57, 61, 81, 89, 209, 214, 246-248, 256-257, 275, 328, 378, 382, 387-389, 410-433
+scripts/dev_tools/atomic_executor/pytest_expectations.py               152     38    75%   55, 189, 242-243, 280, 293-294, 300-303, 328-342, 355-378
+scripts/dev_tools/atomic_executor/qc_runner.py                         307    114    63%   138, 179, 205-206, 221, 225, 233-234, 271-308, 335-379, 401-402, 425-443, 493-504, 510, 523, 536, 545, 561, 578, 648, 688, 691, 713, 719-720, 755, 803, 807, 919-939, 1019-1023, 1033-1037
+scripts/dev_tools/atomic_executor/qc_toolchain.py                       15      0   100%
+scripts/dev_tools/clean_devcontainer.py                                 34      2    94%   162, 176
+scripts/dev_tools/collect_commit_context.py                            123      1    99%   33
+scripts/dev_tools/copy_research_to_issue.py                             80     41    49%   49, 52-53, 56, 78, 82, 159-165, 186-189, 217-231, 244-256, 276-314
+scripts/dev_tools/fix_all.py                                           362     62    83%   59, 121, 123, 149, 153, 159, 187, 243, 270-291, 351, 407, 616, 642-644, 649-651, 678-680, 711-713, 735-737, 766-773, 807, 912-914, 940-942, 968-970, 1008, 1014, 1021-1022, 1100-1101
+scripts/dev_tools/format_json.py                                        67      0   100%
+scripts/dev_tools/json_config.py                                        20      2    90%   47, 49
+scripts/dev_tools/markdown_label_formatter.py                           65      0   100%
+scripts/dev_tools/new_active_feature_folder.py                         374     43    89%   66, 69, 72-73, 76-81, 84-86, 89, 92-93, 96-99, 103, 130, 138, 208, 212, 246, 556-557, 980-1000, 1004-1017
+scripts/dev_tools/new_potential_bug_entry.py                            91      8    91%   22, 37-44, 61, 138-142
+scripts/dev_tools/plan_progress_report.py                               99     25    75%   147-148, 152, 176-179, 211, 291-297, 312-315, 328-345, 361-366
+scripts/dev_tools/potential_to_issue.py                                239     15    94%   80, 92, 153, 162-163, 242, 249-250, 254, 258-259, 267, 351, 361-362
+scripts/dev_tools/pr_context/__init__.py                                 2      0   100%
+scripts/dev_tools/pr_context/collector.py                              191     15    92%   194, 201, 226, 253-254, 276-279, 290, 301, 339, 372, 428, 448
+scripts/dev_tools/pr_context/feature_docs.py                           129      9    93%   106, 117, 121-122, 164-168
+scripts/dev_tools/pr_context/git.py                                     61      0   100%
+scripts/dev_tools/pr_context/github.py                                 350     23    93%   81, 89, 97, 104, 130, 139-140, 152, 162, 167, 176, 189, 196, 231-233, 299, 421, 444, 499, 510, 516, 543
+scripts/dev_tools/pr_context/models.py                                 121      1    99%   152
+scripts/dev_tools/pr_context/render.py                                 346     31    91%   74, 98-100, 110, 138, 315, 325, 329-330, 485, 495-496, 534-540, 564, 599-611
+scripts/dev_tools/pr_context/summary_helpers.py                        155     14    91%   82, 239, 242, 273, 278, 283-284, 327-338
+scripts/dev_tools/resolve_execute_plan_prompt.py                       158      9    94%   149-150, 264, 286, 371, 428, 519-521
+scripts/dev_tools/resolve_file_prompt.py                               129     11    91%   50, 78, 102-111, 124, 222, 324, 334
+scripts/dev_tools/resolve_hard_lock_prompt.py                           65      3    95%   79-80, 83
+scripts/dev_tools/shell_qc.py                                          209     35    83%   48, 52-53, 56, 60-65, 76-77, 100, 150-151, 173-174, 194-195, 232-242, 256, 293-294, 363-365, 392, 441
+scripts/dev_tools/tk_dialog_helpers.py                                  99     57    42%   39-40, 64-67, 85-117, 133-159, 170-171, 182, 189, 234, 236, 243-258
+scripts/dev_tools/validate_json.py                                     121     14    88%   104, 112, 117, 134, 139-143, 206-211
+src/transcript_etl_pipeline/__init__.py                                  1      0   100%
+src/transcript_etl_pipeline/__main__.py                                  4      0   100%
+src/transcript_etl_pipeline/cli.py                                     274     82    70%   188, 246, 248, 258, 262, 272, 430, 499-557, 564, 572-573, 581-583, 586-594, 611-613, 615-617, 643-648
+src/transcript_etl_pipeline/config.py                                   30      1    97%   50
+src/transcript_etl_pipeline/devtools/__init__.py                         2      0   100%
+src/transcript_etl_pipeline/devtools/debug_callgraph.py                114     10    91%   32-33, 65-76, 80
+src/transcript_etl_pipeline/document/__init__.py                         2      0   100%
+src/transcript_etl_pipeline/document/formatting_rules.py                22      0   100%
+src/transcript_etl_pipeline/document/model.py                          102      9    91%   125-128, 132-135, 156
+src/transcript_etl_pipeline/document/parser.py                          61      0   100%
+src/transcript_etl_pipeline/document/reader.py                         206     17    92%   69, 77-78, 82, 181-182, 202-203, 261, 300, 335, 367, 424-425, 464-466
+src/transcript_etl_pipeline/extract/__init__.py                          3      0   100%
+src/transcript_etl_pipeline/extract/from_clipboard.py                   33      2    94%   16-17
+src/transcript_etl_pipeline/extract/from_file.py                        28      0   100%
+src/transcript_etl_pipeline/formatters/__init__.py                       0      0   100%
+src/transcript_etl_pipeline/formatters/docx_formatter.py                57      1    98%   156
+src/transcript_etl_pipeline/formatters/md_formatter.py                  44      0   100%
+src/transcript_etl_pipeline/formatters/rtf_formatter.py                 57      2    96%   128-129
+src/transcript_etl_pipeline/logging_config.py                           22      0   100%
+src/transcript_etl_pipeline/transform/__init__.py                        3      0   100%
+src/transcript_etl_pipeline/transform/dialogue_names_deprecated.py     108     27    75%   61-92, 117, 128, 1476, 1480, 1624, 1640-1641
+src/transcript_etl_pipeline/transform/enhance.py                        13      0   100%
+src/transcript_etl_pipeline/transform/identity_constraints.py           81      2    98%   177, 198
+src/transcript_etl_pipeline/transform/name.py                           79      2    97%   214, 258
+src/transcript_etl_pipeline/transform/normalize.py                      47      0   100%
+src/transcript_etl_pipeline/transform/notes.py                          78      1    99%   281
+src/transcript_etl_pipeline/transform/paragraphs.py                    161      8    95%   207, 214-216, 220, 241, 300-301
+src/transcript_etl_pipeline/transform/speaker_helpers.py               371     30    92%   136-149, 230, 256-258, 595-608, 618, 785, 951-960
+src/transcript_etl_pipeline/transform/speakerless.py                   144      6    96%   82, 219, 226, 268, 287, 327
+src/transcript_etl_pipeline/transform/speakers.py                      417     28    93%   32, 93, 585, 629-630, 671, 676, 684, 850-851, 882-883, 952-977, 980-983, 989
+src/transcript_etl_pipeline/ui.py                                      202     13    94%   23-29, 86, 412, 419-425
+TOTAL                                                                 8405   1174    86%
+
+Required test coverage of 15.0% reached. Total coverage: 86.03%
+=========================== short test summary info ============================
+XFAIL tests/integration/test_3speaker_spacex_discussion.py::TestThreeSpeakerSpaceXDiscussion::test_three_speaker_detection_and_assignment - Complex 3-speaker detection requires algorithmic improvements. See docs/3speaker-spacex-test-analysis.md for detailed failure analysis.
+XFAIL tests/transform/test_multi_speaker_regression.py::TestIdentityAwareAssignment::test_generic_meeting_identity_constraints - Identity constraint ordering: first speaker identification may not map to Speaker A due to sentence tokenization and change detection order. This is a known gap in the current algorithm.
+XFAIL tests/transform/test_multi_speaker_regression.py::TestIdentityAwareAssignment::test_generic_meeting_addressing_constraints - Addresses-other constraint enforcement may not work when speaker identity is established mid-conversation. This is a known gap.
+XFAIL tests/transform/test_multi_speaker_regression.py::TestSpaceXDiscussionRegression::test_expected_speaker_rotation_pattern - Perfect A/B/C rotation in natural conversation is algorithmically challenging. Current implementation uses heuristics that may not achieve perfect rotation.
+XFAIL tests/transform/test_multi_speaker_regression.py::TestTeamStandupRegression::test_addressing_team_members - Addressing constraints for team members by name requires the algorithm to recognize that 'Sarah, you're next' comes from a different speaker than Sarah. This is a known gap in the current implementation.
+================= 1749 passed, 5 xfailed, 18 warnings in 5.71s =================
+---
+EvidenceSchemaAddendum:
+Timestamp: 2026-02-05T00:09:04Z
+Command: poetry run pytest
+EXIT_CODE: 0

@@ -1,0 +1,39 @@
+name: Codex Web Setup
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/codex/codex-web-setup.sh"
+      - ".github/workflows/codex-web-setup.yml"
+      - "scripts/powershell/PoshQC/**"
+  push:
+    branches: [master, development]
+    paths:
+      - ".github/codex/codex-web-setup.sh"
+      - ".github/workflows/codex-web-setup.yml"
+      - "scripts/powershell/PoshQC/**"
+
+permissions:
+  contents: read
+
+jobs:
+  codex-web-setup:
+    name: Validate codex-web-setup.sh
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        id: setup-python
+        with:
+          python-version: "3.13"
+
+      - name: Allow git to operate as root
+        run: sudo git config --system --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Run codex-web setup script
+        run: sudo PYTHON_EXE='${{ steps.setup-python.outputs.python-path }}' bash .github/codex/codex-web-setup.sh

@@ -40,6 +40,12 @@ class TestNormalizeLineEndings:
         """Test with empty text."""
         assert _normalize_line_endings("") == ""
 
+    def test_normalize_line_endings_mixed_inputs(self) -> None:
+        """Test normalizing mixed CRLF/LF/CR inputs."""
+        text = "a\r\nb\nc\rd"
+        result = _normalize_line_endings(text)
+        assert result == "a\r\nb\r\nc\r\nd"
+
 
 class TestCleanWhitespace:
     """Tests for whitespace cleaning."""
@@ -78,6 +84,18 @@ class TestCleanWhitespace:
         """Test with empty text."""
         assert _clean_whitespace("") == ""
 
+    def test_clean_whitespace_collapses_duplicate_spaces(self) -> None:
+        """Test collapsing duplicate spaces while preserving CRLF."""
+        text = "A  B\r\nC   D"
+        result = _clean_whitespace(text)
+        assert result == "A B\r\nC D"
+
+    def test_clean_whitespace_collapses_blank_lines_and_trailing(self) -> None:
+        """Test collapsing blank lines and trimming trailing blanks."""
+        text = "A\r\n\r\n\r\nB\r\n\r\n"
+        result = _clean_whitespace(text)
+        assert result == "A\r\n\r\nB"
+
 
 class TestIsLabel:
     """Tests for label detection."""
@@ -112,6 +130,18 @@ class TestIsLabel:
         """Test labels with numbers."""
         assert _is_label("Speaker1:") is True
         assert _is_label("Manager2:") is True
+
+    def test_is_label_accepts_capitalized_token(self) -> None:
+        """Test capitalized token is treated as label."""
+        assert _is_label("Speaker:") is True
+
+    def test_is_label_rejects_lowercase_token(self) -> None:
+        """Test lowercase token is rejected."""
+        assert _is_label("speaker:") is False
+
+    def test_is_label_rejects_token_with_spaces(self) -> None:
+        """Test token with spaces is rejected."""
+        assert _is_label("Speaker Name:") is False
 
 
 class TestNormalizeLabels:
@@ -163,6 +193,18 @@ class TestNormalizeLabels:
         result = _normalize_labels(text)
         assert result == text
 
+    def test_normalize_labels_inserts_space_after_label(self) -> None:
+        """Test label with no space gets normalized."""
+        text = "Bob:Hello"
+        result = _normalize_labels(text)
+        assert result == "Bob: Hello"
+
+    def test_normalize_labels_splits_mid_line_label(self) -> None:
+        """Test mid-line label split into a new line."""
+        text = "Hi. Bob: Hello"
+        result = _normalize_labels(text)
+        assert result == "Hi.\r\nBob: Hello"
+
 
 class TestNormalizeText:
     """Tests for complete normalization."""
@@ -198,3 +240,9 @@ class TestNormalizeText:
         assert len(lines) >= 4
         assert lines[0] == "Title: Meeting Notes"
         assert lines[1] == "Date: 2024-01-01"
+
+    def test_normalize_text_applies_all_steps(self) -> None:
+        """Test normalize_text applies line endings, whitespace, and labels."""
+        text = "Bob:Hello\n\nA  B"
+        result = normalize_text(text)
+        assert result == "Bob: Hello\r\n\r\nA B"

@@ -1,0 +1,91 @@
+Timestamp: 2026-02-04T23:51:19Z
+Command: poetry run pytest --cov=src/transcript_etl_pipeline --cov=scripts/dev_tools --cov-report=term-missing
+EXIT_CODE: 0
+
+Name                                                                 Stmts   Miss  Cover   Missing
+--------------------------------------------------------------------------------------------------
+scripts/dev_tools/__init__.py                                            0      0   100%
+scripts/dev_tools/atomic_executor/__init__.py                            6      0   100%
+scripts/dev_tools/atomic_executor/cli.py                               920    299    68%   102-107, 351, 385, 420, 428-429, 440, 488-489, 502, 513-514, 566, 588, 616-628, 654, 747, 825, 833, 837-838, 895-898, 906-910, 968, 978, 992-993, 1036, 1047-1050, 1070-1072, 1095-1103, 1158, 1177-1187, 1211-1222, 1297, 1306-1307, 1325, 1359-1363, 1373-1377, 1439, 1472-1474, 1492, 1532-1533, 1551, 1569-1631, 1685, 1764-1908, 1945-2080, 2179, 2181, 2210-2211, 2243-2244, 2275-2283, 2287, 2342-2355, 2432, 2503, 2507-2509, 2556, 2563-2564, 2618, 2628-2633
+scripts/dev_tools/atomic_executor/copilot_runner.py                      6      0   100%
+scripts/dev_tools/atomic_executor/copilot_throttling.py                 90     10    89%   42, 67, 136, 138, 214, 216, 227, 229, 327, 340
+scripts/dev_tools/atomic_executor/feature_resolver.py                   61      1    98%   138
+scripts/dev_tools/atomic_executor/plan_discovery.py                     38      0   100%
+scripts/dev_tools/atomic_executor/plan_parser.py                       225     14    94%   340, 399, 408, 433, 514, 521, 533, 541, 556, 576, 615, 620, 637-638
+scripts/dev_tools/atomic_executor/prompt_builder.py                    129     36    72%   49, 53, 57, 61, 81, 89, 209, 214, 246-248, 256-257, 275, 328, 378, 382, 387-389, 410-433
+scripts/dev_tools/atomic_executor/pytest_expectations.py               152     38    75%   55, 189, 242-243, 280, 293-294, 300-303, 328-342, 355-378
+scripts/dev_tools/atomic_executor/qc_runner.py                         307    114    63%   138, 179, 205-206, 221, 225, 233-234, 271-308, 335-379, 401-402, 425-443, 493-504, 510, 523, 536, 545, 561, 578, 648, 688, 691, 713, 719-720, 755, 803, 807, 919-939, 1019-1023, 1033-1037
+scripts/dev_tools/atomic_executor/qc_toolchain.py                       15      0   100%
+scripts/dev_tools/clean_devcontainer.py                                 34      2    94%   162, 176
+scripts/dev_tools/collect_commit_context.py                            123      1    99%   33
+scripts/dev_tools/copy_research_to_issue.py                             80     41    49%   49, 52-53, 56, 78, 82, 159-165, 186-189, 217-231, 244-256, 276-314
+scripts/dev_tools/fix_all.py                                           362     62    83%   59, 121, 123, 149, 153, 159, 187, 243, 270-291, 351, 407, 616, 642-644, 649-651, 678-680, 711-713, 735-737, 766-773, 807, 912-914, 940-942, 968-970, 1008, 1014, 1021-1022, 1100-1101
+scripts/dev_tools/format_json.py                                        67      0   100%
+scripts/dev_tools/json_config.py                                        20      2    90%   47, 49
+scripts/dev_tools/markdown_label_formatter.py                           65      0   100%
+scripts/dev_tools/new_active_feature_folder.py                         374     43    89%   66, 69, 72-73, 76-81, 84-86, 89, 92-93, 96-99, 103, 130, 138, 208, 212, 246, 556-557, 980-1000, 1004-1017
+scripts/dev_tools/new_potential_bug_entry.py                            91      8    91%   22, 37-44, 61, 138-142
+scripts/dev_tools/plan_progress_report.py                               99     25    75%   147-148, 152, 176-179, 211, 291-297, 312-315, 328-345, 361-366
+scripts/dev_tools/potential_to_issue.py                                239     15    94%   80, 92, 153, 162-163, 242, 249-250, 254, 258-259, 267, 351, 361-362
+scripts/dev_tools/pr_context/__init__.py                                 2      0   100%
+scripts/dev_tools/pr_context/collector.py                              191     15    92%   194, 201, 226, 253-254, 276-279, 290, 301, 339, 372, 428, 448
+scripts/dev_tools/pr_context/feature_docs.py                           129      9    93%   106, 117, 121-122, 164-168
+scripts/dev_tools/pr_context/git.py                                     61      0   100%
+scripts/dev_tools/pr_context/github.py                                 350     23    93%   81, 89, 97, 104, 130, 139-140, 152, 162, 167, 176, 189, 196, 231-233, 299, 421, 444, 499, 510, 516, 543
+scripts/dev_tools/pr_context/models.py                                 121      1    99%   152
+scripts/dev_tools/pr_context/render.py                                 346     31    91%   74, 98-100, 110, 138, 315, 325, 329-330, 485, 495-496, 534-540, 564, 599-611
+scripts/dev_tools/pr_context/summary_helpers.py                        155     14    91%   82, 239, 242, 273, 278, 283-284, 327-338
+scripts/dev_tools/resolve_execute_plan_prompt.py                       158      9    94%   149-150, 264, 286, 371, 428, 519-521
+scripts/dev_tools/resolve_file_prompt.py                               129     11    91%   50, 78, 102-111, 124, 222, 324, 334
+scripts/dev_tools/resolve_hard_lock_prompt.py                           65      3    95%   79-80, 83
+scripts/dev_tools/shell_qc.py                                          209     35    83%   48, 52-53, 56, 60-65, 76-77, 100, 150-151, 173-174, 194-195, 232-242, 256, 293-294, 363-365, 392, 441
+scripts/dev_tools/tk_dialog_helpers.py                                  99     57    42%   39-40, 64-67, 85-117, 133-159, 170-171, 182, 189, 234, 236, 243-258
+scripts/dev_tools/validate_json.py                                     121     14    88%   104, 112, 117, 134, 139-143, 206-211
+src/transcript_etl_pipeline/__init__.py                                  1      0   100%
+src/transcript_etl_pipeline/__main__.py                                  4      0   100%
+src/transcript_etl_pipeline/cli.py                                     274     82    70%   188, 246, 248, 258, 262, 272, 430, 499-557, 564, 572-573, 581-583, 586-594, 611-613, 615-617, 643-648
+src/transcript_etl_pipeline/config.py                                   30      1    97%   50
+src/transcript_etl_pipeline/devtools/__init__.py                         2      0   100%
+src/transcript_etl_pipeline/devtools/debug_callgraph.py                114     10    91%   32-33, 65-76, 80
+src/transcript_etl_pipeline/document/__init__.py                         2      0   100%
+src/transcript_etl_pipeline/document/formatting_rules.py                22      0   100%
+src/transcript_etl_pipeline/document/model.py                          102      9    91%   125-128, 132-135, 156
+src/transcript_etl_pipeline/document/parser.py                          61      0   100%
+src/transcript_etl_pipeline/document/reader.py                         206     17    92%   69, 77-78, 82, 181-182, 202-203, 261, 300, 335, 367, 424-425, 464-466
+src/transcript_etl_pipeline/extract/__init__.py                          3      0   100%
+src/transcript_etl_pipeline/extract/from_clipboard.py                   33      2    94%   16-17
+src/transcript_etl_pipeline/extract/from_file.py                        28      0   100%
+src/transcript_etl_pipeline/formatters/__init__.py                       0      0   100%
+src/transcript_etl_pipeline/formatters/docx_formatter.py                57      1    98%   156
+src/transcript_etl_pipeline/formatters/md_formatter.py                  44      0   100%
+src/transcript_etl_pipeline/formatters/rtf_formatter.py                 57      2    96%   128-129
+src/transcript_etl_pipeline/logging_config.py                           22      0   100%
+src/transcript_etl_pipeline/transform/__init__.py                        3      0   100%
+src/transcript_etl_pipeline/transform/dialogue_names_deprecated.py     108     27    75%   61-92, 117, 128, 1476, 1480, 1624, 1640-1641
+src/transcript_etl_pipeline/transform/enhance.py                        13      0   100%
+src/transcript_etl_pipeline/transform/identity_constraints.py           81      2    98%   177, 198
+src/transcript_etl_pipeline/transform/name.py                           79      2    97%   214, 258
+src/transcript_etl_pipeline/transform/normalize.py                      47      0   100%
+src/transcript_etl_pipeline/transform/notes.py                          78      1    99%   281
+src/transcript_etl_pipeline/transform/paragraphs.py                    161      8    95%   207, 214-216, 220, 241, 300-301
+src/transcript_etl_pipeline/transform/speaker_helpers.py               371     30    92%   136-149, 230, 256-258, 595-608, 618, 785, 951-960
+src/transcript_etl_pipeline/transform/speakerless.py                   144      6    96%   82, 219, 226, 268, 287, 327
+src/transcript_etl_pipeline/transform/speakers.py                      417     28    93%   32, 93, 585, 629-630, 671, 676, 684, 850-851, 882-883, 952-977, 980-983, 989
+src/transcript_etl_pipeline/ui.py                                      202     13    94%   23-29, 86, 412, 419-425
+--------------------------------------------------------------------------------------------------
+TOTAL                                                                 8405   1174    86%
+
+Required test coverage of 15.0% reached. Total coverage: 86.03%
+=========================== short test summary info ============================
+XFAIL tests/integration/test_3speaker_spacex_discussion.py::TestThreeSpeakerSpaceXDiscussion::test_three_speaker_detection_and_assignment - Complex 3-speaker detection requires algorithmic improvements. See docs/3speaker-spacex-test-analysis.md for detailed failure analysis.
+XFAIL tests/transform/test_multi_speaker_regression.py::TestIdentityAwareAssignment::test_generic_meeting_identity_constraints - Identity constraint ordering: first speaker identification may not map to Speaker A due to sentence tokenization and change detection order. This is a known gap in the current algorithm.
+XFAIL tests/transform/test_multi_speaker_regression.py::TestIdentityAwareAssignment::test_generic_meeting_addressing_constraints - Addresses-other constraint enforcement may not work when speaker identity is established mid-conversation. This is a known gap.
+XFAIL tests/transform/test_multi_speaker_regression.py::TestSpaceXDiscussionRegression::test_expected_speaker_rotation_pattern - Perfect A/B/C rotation in natural conversation is algorithmically challenging. Current implementation uses heuristics that may not achieve perfect rotation.
+XFAIL tests/transform/test_multi_speaker_regression.py::TestTeamStandupRegression::test_addressing_team_members - Addressing constraints for team members by name requires the algorithm to recognize that 'Sarah, you're next' comes from a different speaker than Sarah. This is a known gap in the current implementation.
+1749 passed, 5 xfailed, 18 warnings in 5.35s
+
+---
+EvidenceSchemaAddendum:
+Timestamp: 2026-02-04T23:51:19Z
+Command: poetry run pytest --cov=src/transcript_etl_pipeline --cov=scripts/dev_tools --cov-report=term-missing
+EXIT_CODE: 0
