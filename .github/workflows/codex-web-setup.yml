@@ -8,7 +8,7 @@ on:
       - ".github/workflows/codex-web-setup.yml"
       - "scripts/powershell/PoshQC/**"
   push:
-    branches: [master, main, develop]
+    branches: [master, development]
     paths:
       - ".github/codex/codex-web-setup.sh"
       - ".github/workflows/codex-web-setup.yml"
